@@ -129,6 +129,24 @@
   .recurring-card h3 { color: var(--turf-deep); font-size: 15px; margin-bottom: 4px; font-weight: 800; }
   .recurring-card p.hint { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
+  .cal-dow { text-align: center; font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-bottom: 4px; }
+  .cal-cell { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 6px; min-height: 92px; display: flex; flex-direction: column; }
+  .cal-cell.pad { background: transparent; border: none; }
+  .cal-cell.closed { background: var(--chalk); }
+  .cal-daynum { font-size: 12px; font-weight: 800; color: var(--turf-deep); margin-bottom: 4px; flex: none; }
+  .cal-slots { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; max-height: 100px; }
+  .cal-slot { font-size: 10.5px; padding: 2px 5px; border-radius: 5px; background: #eef3ef; color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
+  .cal-slot.empty { background: none; border: 1px dashed var(--line); color: var(--muted); cursor: pointer; width: 100%; }
+  .cal-slot.empty:hover { border-color: var(--turf); color: var(--turf); }
+  .cal-slot.mine { background: var(--silver); color: var(--ink); font-weight: 700; }
+  @media (max-width: 700px) {
+    .cal-grid { gap: 3px; }
+    .cal-cell { min-height: 64px; padding: 4px; }
+    .cal-daynum { font-size: 10px; }
+    .cal-slot { font-size: 8.5px; padding: 1px 3px; }
+    .cal-slots { max-height: 68px; }
+  }
   .daytoggle { border: 1.5px solid var(--line); background: #fff; color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
   .daytoggle:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
   .daytoggle.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
@@ -210,15 +228,12 @@
   <div class="header-inner">
     <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
     <div class="header-text">
-      <div class="eyebrow">Seaford Lacrosse &middot; 2027 Season</div>
-      <h1>Field Schedule</h1>
-      <p class="sub">March 1 &ndash; June 30, 2027</p>
+      <h1>Seaford Lacrosse</h1>
     </div>
   </div>
   <nav class="view-tabs" id="viewTabs" style="display:none">
     <button class="view-tab active" data-view="schedule">View Schedule</button>
     <button class="view-tab" data-view="book">Book a Slot</button>
-    <button class="view-tab" data-view="fieldavail">Field Availability</button>
     <button class="view-tab" data-view="openweek">Open This Week</button>
     <button class="view-tab" data-view="admin" id="adminTab" style="display:none">Admin</button>
   </nav>
@@ -251,13 +266,46 @@
 
 <!-- ============ SCHEDULE VIEW ============ -->
 <div id="viewSchedule" style="display:none">
-  <div class="toolbar">
-    <div class="now-showing" id="nowShowing">All teams</div>
-    <button class="allbtn" id="allBtn">Show all teams</button>
+  <div class="mode-toggle" id="scheduleModeToggle">
+    <button class="mtab active" data-mode="team">By Team</button>
+    <button class="mtab" data-mode="field">By Field</button>
   </div>
-  <div class="wrap">
-    <p class="count" id="count"></p>
-    <div id="results"></div>
+
+  <div id="scheduleByTeam">
+    <div class="toolbar">
+      <div class="now-showing" id="nowShowing">All teams</div>
+      <button class="allbtn" id="allBtn">Show all teams</button>
+    </div>
+    <div class="wrap">
+      <p class="count" id="count"></p>
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <div id="scheduleByField" style="display:none">
+    <p class="section-label">Pick a field</p>
+    <div class="field-chips" id="availFieldChips"></div>
+    <div class="field-note" id="availFieldNote"></div>
+    <p class="field-note" id="fieldBookingAs" style="margin:-4px 0 14px"></p>
+
+    <div class="mode-toggle" id="fieldModeToggle">
+      <button class="mtab" data-mode="week">Weekly</button>
+      <button class="mtab active" data-mode="month">Monthly</button>
+    </div>
+
+    <div class="weeknav" id="availWeekNavBar" style="display:none">
+      <button id="availPrevWeek">&larr; Prev week</button>
+      <span class="label" id="availWeekLabel"></span>
+      <button id="availNextWeek">Next week &rarr;</button>
+    </div>
+    <div class="weeknav" id="availMonthNavBar">
+      <button id="availPrevMonth">&larr; Prev month</button>
+      <span class="label" id="availMonthLabel"></span>
+      <button id="availNextMonth">Next month &rarr;</button>
+    </div>
+
+    <div id="availWeekGrid"></div>
+    <div id="availMonthGrid" class="cal-grid"></div>
   </div>
 </div>
 
@@ -300,19 +348,6 @@
     <button class="btn-primary" style="width:auto;padding:11px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
     <div id="recurringResults"></div>
   </div>
-</div>
-
-<!-- ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============ -->
-<div id="viewFieldAvail" class="booking" style="display:none">
-  <p class="section-label">Pick a field to see who's there and what's open</p>
-  <div class="field-chips" id="availFieldChips"></div>
-  <div class="field-note" id="availFieldNote"></div>
-  <div class="weeknav">
-    <button id="availPrevWeek">&larr; Prev week</button>
-    <span class="label" id="availWeekLabel"></span>
-    <button id="availNextWeek">Next week &rarr;</button>
-  </div>
-  <div id="availWeekGrid"></div>
 </div>
 
 <!-- ============ OPEN THIS WEEK VIEW ============ -->
@@ -447,6 +482,7 @@ let realtimeChannel = null;
 let currentView = 'schedule';
 let scheduleGender = 'girls';
 let scheduleGrade = null;        // filter for schedule view, null = all
+let scheduleMode = 'team';       // 'team' | 'field' — which sub-view of View Schedule is showing
 let selectedField = 'seamans';
 let currentWeekMonday = mondayOf(SEASON_START);
 let bookViewMode = 'month'; // 'week' | 'month' | 'season'
@@ -469,9 +505,11 @@ const el = {
   lockedTeamBanner: document.getElementById('lockedTeamBanner'),
   viewSchedule: document.getElementById('viewSchedule'),
   viewBook: document.getElementById('viewBook'),
-  viewFieldAvail: document.getElementById('viewFieldAvail'),
   viewOpenWeek: document.getElementById('viewOpenWeek'),
   viewAdmin: document.getElementById('viewAdmin'),
+  scheduleModeToggle: document.getElementById('scheduleModeToggle'),
+  scheduleByTeam: document.getElementById('scheduleByTeam'),
+  scheduleByField: document.getElementById('scheduleByField'),
   nowShowing: document.getElementById('nowShowing'),
   allBtn: document.getElementById('allBtn'),
   results: document.getElementById('results'),
@@ -497,10 +535,18 @@ const el = {
   recurringResults: document.getElementById('recurringResults'),
   availFieldChips: document.getElementById('availFieldChips'),
   availFieldNote: document.getElementById('availFieldNote'),
+  fieldBookingAs: document.getElementById('fieldBookingAs'),
+  fieldModeToggle: document.getElementById('fieldModeToggle'),
+  availWeekNavBar: document.getElementById('availWeekNavBar'),
+  availMonthNavBar: document.getElementById('availMonthNavBar'),
   availWeekLabel: document.getElementById('availWeekLabel'),
   availPrevWeek: document.getElementById('availPrevWeek'),
   availNextWeek: document.getElementById('availNextWeek'),
+  availMonthLabel: document.getElementById('availMonthLabel'),
+  availPrevMonth: document.getElementById('availPrevMonth'),
+  availNextMonth: document.getElementById('availNextMonth'),
   availWeekGrid: document.getElementById('availWeekGrid'),
+  availMonthGrid: document.getElementById('availMonthGrid'),
   openWeekCount: document.getElementById('openWeekCount'),
   openWeekBookingAs: document.getElementById('openWeekBookingAs'),
   openWeekResults: document.getElementById('openWeekResults'),
@@ -741,20 +787,11 @@ function switchView(view){
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   el.viewSchedule.style.display = view === 'schedule' ? 'block' : 'none';
   el.viewBook.style.display = view === 'book' ? 'block' : 'none';
-  el.viewFieldAvail.style.display = view === 'fieldavail' ? 'block' : 'none';
   el.viewOpenWeek.style.display = view === 'openweek' ? 'block' : 'none';
   el.viewAdmin.style.display = view === 'admin' ? 'block' : 'none';
 
   if(view === 'schedule'){
-    el.lockedTeamBanner.style.display = 'none';
-    el.teamPicker.style.display = 'block';
-    el.pickerHeading.textContent = 'Filter by team';
-    document.querySelectorAll('.gtab').forEach(t => {
-      t.style.display = 'inline-block';
-      t.classList.toggle('active', t.dataset.g === scheduleGender);
-    });
-    buildGradeGrid();
-    renderSchedule();
+    renderScheduleMode();
   } else if(view === 'book'){
     if(myProfile.role === 'coach'){
       el.teamPicker.style.display = 'none';
@@ -781,11 +818,6 @@ function switchView(view){
       buildGradeGrid(true);
       buildFieldChips(); buildRecurringUI(); renderWeek();
     }
-  } else if(view === 'fieldavail'){
-    el.teamPicker.style.display = 'none';
-    el.lockedTeamBanner.style.display = 'none';
-    buildAvailFieldChips();
-    renderFieldAvailability();
   } else if(view === 'openweek'){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
@@ -853,6 +885,36 @@ el.gradeGrid.addEventListener('click', e => {
 });
 
 el.allBtn.addEventListener('click', () => { scheduleGrade = null; buildGradeGrid(); renderSchedule(); });
+
+el.scheduleModeToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mtab'); if(!btn) return;
+  scheduleMode = btn.dataset.mode;
+  document.querySelectorAll('#scheduleModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  renderScheduleMode();
+});
+
+function renderScheduleMode(){
+  el.scheduleByTeam.style.display = scheduleMode === 'team' ? 'block' : 'none';
+  el.scheduleByField.style.display = scheduleMode === 'field' ? 'block' : 'none';
+
+  if(scheduleMode === 'team'){
+    el.lockedTeamBanner.style.display = 'none';
+    el.teamPicker.style.display = 'block';
+    el.pickerHeading.textContent = 'Filter by team';
+    document.querySelectorAll('.gtab').forEach(t => {
+      t.style.display = 'inline-block';
+      t.classList.toggle('active', t.dataset.g === scheduleGender);
+    });
+    buildGradeGrid();
+    renderSchedule();
+  } else {
+    el.teamPicker.style.display = 'none';
+    el.lockedTeamBanner.style.display = 'none';
+    if((myProfile.role === 'director' || myProfile.role === 'admin') && !bookAsGrade) bookAsGrade = GRADES[0];
+    buildAvailFieldChips();
+    renderFieldView();
+  }
+}
 
 // ============ SCHEDULE VIEW ============
 function renderSchedule(){
@@ -1196,6 +1258,18 @@ el.weekGrid.addEventListener('click', async e => {
 // ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============
 let availField = 'seamans';
 let availWeekMonday = mondayOf(SEASON_START);
+let fieldViewMode = 'month'; // 'week' | 'month'
+let availMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
+
+function updateFieldBookingAsLabel(){
+  const teamId = myBookingTeamId ? myBookingTeamId() : null;
+  if(teamId){
+    const key = teamKeyFor(teamId);
+    el.fieldBookingAs.textContent = key ? `Booking as: ${teamLabel(...key.split('|'))}` : '';
+  } else {
+    el.fieldBookingAs.textContent = '';
+  }
+}
 
 function buildAvailFieldChips(){
   el.availFieldChips.innerHTML = '';
@@ -1208,21 +1282,45 @@ function buildAvailFieldChips(){
   });
   const f = FIELD_MAP[availField];
   el.availFieldNote.textContent = f && f.note ? f.note : '';
+  updateFieldBookingAsLabel();
 }
 el.availFieldChips.addEventListener('click', e => {
   if(!e.target.classList.contains('fchip')) return;
   availField = e.target.dataset.id;
   buildAvailFieldChips();
-  renderFieldAvailability();
+  renderFieldView();
+});
+el.fieldModeToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mtab'); if(!btn) return;
+  fieldViewMode = btn.dataset.mode;
+  document.querySelectorAll('#fieldModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  renderFieldView();
 });
 el.availPrevWeek.addEventListener('click', () => {
   const next = addDays(availWeekMonday, -7);
-  if(next >= mondayOf(SEASON_START)){ availWeekMonday = next; renderFieldAvailability(); }
+  if(next >= mondayOf(SEASON_START)){ availWeekMonday = next; renderFieldView(); }
 });
 el.availNextWeek.addEventListener('click', () => {
   const next = addDays(availWeekMonday, 7);
-  if(next <= SEASON_END){ availWeekMonday = next; renderFieldAvailability(); }
+  if(next <= SEASON_END){ availWeekMonday = next; renderFieldView(); }
 });
+el.availPrevMonth.addEventListener('click', () => {
+  const next = addMonths(availMonthFirst, -1);
+  if(next >= firstDayOfMonth(SEASON_START)){ availMonthFirst = next; renderFieldView(); }
+});
+el.availNextMonth.addEventListener('click', () => {
+  const next = addMonths(availMonthFirst, 1);
+  if(next <= SEASON_END){ availMonthFirst = next; renderFieldView(); }
+});
+
+function renderFieldView(){
+  el.availWeekNavBar.style.display = fieldViewMode === 'week' ? 'flex' : 'none';
+  el.availMonthNavBar.style.display = fieldViewMode === 'month' ? 'flex' : 'none';
+  el.availWeekGrid.style.display = fieldViewMode === 'week' ? 'block' : 'none';
+  el.availMonthGrid.style.display = fieldViewMode === 'month' ? 'grid' : 'none';
+  if(fieldViewMode === 'week') renderFieldAvailability();
+  else renderFieldMonthGrid();
+}
 
 function renderFieldAvailability(){
   const monday = availWeekMonday;
@@ -1232,6 +1330,7 @@ function renderFieldAvailability(){
   el.availNextWeek.disabled = addDays(monday, 7) > SEASON_END;
 
   const field = FIELD_MAP[availField];
+  const myTeamId = myBookingTeamId();
   const today = new Date(); today.setHours(0,0,0,0);
 
   let html = '', daysShown = 0;
@@ -1252,9 +1351,13 @@ function renderFieldAvailability(){
         if(existing){
           const key = teamKeyFor(existing.team_id);
           const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
-          html += `<span class="book-slot booked"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}</span>`;
+          const isMine = existing.team_id === myTeamId;
+          html += `<span class="book-slot ${isMine?'mine':'booked'}"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}</span>`;
+        } else if(isPast){
+          html += `<span class="book-slot booked" style="opacity:.4"><span class="sub">${escSafe(sub)}:</span>&mdash;</span>`;
         } else {
-          html += `<span class="book-slot" style="cursor:default;border-style:dashed"><span class="sub">${escSafe(sub)}:</span><span class="plus" style="color:var(--turf)">Open</span></span>`;
+          const payload = JSON.stringify({fieldId:availField, date:dateStr, subfield:sub, time});
+          html += `<button class="book-slot" data-fieldbook='${payload.replace(/'/g,"&#39;")}'><span class="sub">${escSafe(sub)}:</span><span class="plus">+ Book</span></button>`;
         }
       });
       html += `</div></div>`;
@@ -1265,6 +1368,86 @@ function renderFieldAvailability(){
     html = `<div class="empty-week">This field has no available days in the current week. Try a different field or another week.</div>`;
   }
   el.availWeekGrid.innerHTML = html;
+}
+
+function renderFieldMonthGrid(){
+  const monthStart = firstDayOfMonth(availMonthFirst);
+  const monthEnd = lastDayOfMonth(availMonthFirst);
+  el.availMonthLabel.textContent = `${MONTHS[availMonthFirst.getMonth()]} ${availMonthFirst.getFullYear()}`;
+  el.availPrevMonth.disabled = addMonths(availMonthFirst, -1) < firstDayOfMonth(SEASON_START);
+  el.availNextMonth.disabled = addMonths(availMonthFirst, 1) > SEASON_END;
+
+  const field = FIELD_MAP[availField];
+  const myTeamId = myBookingTeamId();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = DOW_SHORT.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  const leadingBlanks = monthStart.getDay(); // 0=Sun .. 6=Sat
+  for(let i=0;i<leadingBlanks;i++) html += `<div class="cal-cell pad"></div>`;
+
+  let cursor = new Date(monthStart);
+  while(cursor <= monthEnd){
+    const date = new Date(cursor);
+    const dow = date.getDay();
+    const dateStr = fmtDateISO(date);
+    const inSeason = date >= SEASON_START && date <= SEASON_END;
+    const avail = inSeason ? field.availability.find(a => a.days.includes(dow)) : null;
+    const isPast = date < today;
+
+    if(!avail){
+      html += `<div class="cal-cell closed"><div class="cal-daynum">${date.getDate()}</div></div>`;
+    } else {
+      let slotsHtml = '';
+      avail.times.forEach(time => {
+        avail.subfields.forEach(sub => {
+          const existing = bookingsCache.find(b => b.field_id===availField && b.date===dateStr && b.subfield===sub && b.time===time);
+          if(existing){
+            const key = teamKeyFor(existing.team_id);
+            const teamText = key ? teamLabel(...key.split('|')) : '(unknown)';
+            const isMine = existing.team_id === myTeamId;
+            slotsHtml += `<span class="cal-slot${isMine?' mine':''}" title="${escSafe(time)} ${escSafe(sub)}">${escSafe(teamText)}</span>`;
+          } else if(isPast){
+            slotsHtml += `<span class="cal-slot" style="opacity:.4">&mdash;</span>`;
+          } else {
+            const payload = JSON.stringify({fieldId:availField, date:dateStr, subfield:sub, time});
+            slotsHtml += `<button class="cal-slot empty" data-fieldbook='${payload.replace(/'/g,"&#39;")}' title="${escSafe(time)} ${escSafe(sub)}">Empty</button>`;
+          }
+        });
+      });
+      html += `<div class="cal-cell"><div class="cal-daynum">${date.getDate()}</div><div class="cal-slots">${slotsHtml}</div></div>`;
+    }
+    cursor = addDays(cursor, 1);
+  }
+
+  const trailingBlanks = (7 - (monthEnd.getDay() + 1) % 7) % 7;
+  for(let i=0;i<trailingBlanks;i++) html += `<div class="cal-cell pad"></div>`;
+
+  el.availMonthGrid.innerHTML = html;
+}
+
+el.availWeekGrid.addEventListener('click', e => handleFieldBookClick(e));
+el.availMonthGrid.addEventListener('click', e => handleFieldBookClick(e));
+async function handleFieldBookClick(e){
+  const btn = e.target.closest('[data-fieldbook]');
+  if(!btn) return;
+  const payload = JSON.parse(btn.dataset.fieldbook);
+  const teamId = myBookingTeamId();
+  if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
+  btn.disabled = true;
+  const { error } = await sb.from('bookings').insert({
+    field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
+    time: payload.time, team_id: teamId, booked_by: session.user.id,
+  });
+  if(error){
+    if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
+    else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
+    else flash('Booking failed: '+error.message, 'err');
+  } else {
+    flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+  }
+  await refreshBookings();
+  renderFieldView();
 }
 
 // ============ OPEN THIS WEEK VIEW (all fields, next 7 days, everyone) ============

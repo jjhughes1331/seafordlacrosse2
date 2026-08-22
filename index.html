@@ -274,6 +274,7 @@
   <div id="scheduleByTeam">
     <div class="toolbar">
       <div class="now-showing" id="nowShowing">All teams</div>
+      <button class="allbtn" id="exportCsvBtn" style="display:none">Export to CSV (TeamSnap)</button>
       <button class="allbtn" id="allBtn">Show all teams</button>
     </div>
     <div class="wrap">
@@ -512,6 +513,7 @@ const el = {
   scheduleByField: document.getElementById('scheduleByField'),
   nowShowing: document.getElementById('nowShowing'),
   allBtn: document.getElementById('allBtn'),
+  exportCsvBtn: document.getElementById('exportCsvBtn'),
   results: document.getElementById('results'),
   count: document.getElementById('count'),
   fieldChips: document.getElementById('fieldChips'),
@@ -886,6 +888,100 @@ el.gradeGrid.addEventListener('click', e => {
 
 el.allBtn.addEventListener('click', () => { scheduleGrade = null; buildGradeGrid(); renderSchedule(); });
 
+// ============ EXPORT TO CSV (TeamSnap import format) ============
+// TeamSnap's schedule-import template has these exact columns. Every
+// booking becomes a "Practice" event row (no opponent data, since
+// there's no such thing for a practice) with the field name as
+// Location Name and the subfield as Location Details.
+const TEAMSNAP_HEADERS = [
+  "Delete this column before saving for import!","Date","Time","Duration (HH:MM)",
+  "Arrival Time (Minutes)","Name","Opponent Name","Opponent Contact Name",
+  "Opponent Contact Phone Number","Opponent Contact E-mail Address","Location Name",
+  "Location Address","Location Details","Location URL","Home or Away","Uniform",
+  "Extra Label","Notes"
+];
+
+function csvEscape(v){
+  v = String(v ?? '');
+  if(/[",\n]/.test(v)) return '"' + v.replace(/"/g,'""') + '"';
+  return v;
+}
+
+function fmtDateForCSV(iso){
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(m,10)}/${parseInt(d,10)}/${y}`;
+}
+
+// Splits a range like "11:00-12:00 PM" into a TeamSnap-style start time
+// ("11:00 AM") and duration ("1:00"). Only one AM/PM suffix is stored
+// (applying to the end time); the start's meridiem is inferred by
+// picking whichever interpretation gives a non-negative duration —
+// this correctly resolves boundary cases like "11:00-12:00 PM" to an
+// 11:00 AM start, not 11:00 PM.
+function parseTimeRangeForExport(range){
+  const m = range.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if(!m) return { startStr:'', durStr:'' };
+  const [, sh, sm, eh, em, endMeridiem] = m;
+  const to24 = (h, meridiem) => { let hh = parseInt(h,10) % 12; if(meridiem.toUpperCase()==='PM') hh += 12; return hh; };
+  const endHour24 = to24(eh, endMeridiem);
+  const endMinTotal = endHour24*60 + parseInt(em,10);
+  let startMeridiem = endMeridiem;
+  let startHour24 = to24(sh, startMeridiem);
+  let startMinTotal = startHour24*60 + parseInt(sm,10);
+  if(startMinTotal > endMinTotal){
+    startMeridiem = endMeridiem.toUpperCase()==='PM' ? 'AM' : 'PM';
+    startHour24 = to24(sh, startMeridiem);
+    startMinTotal = startHour24*60 + parseInt(sm,10);
+  }
+  const durMin = endMinTotal - startMinTotal;
+  const durH = Math.floor(durMin/60), durM = durMin%60;
+  let startHour12 = startHour24 % 12; if(startHour12===0) startHour12 = 12;
+  return {
+    startStr: `${startHour12}:${sm} ${startMeridiem}`,
+    durStr: `${durH}:${String(durM).padStart(2,'0')}`,
+  };
+}
+
+function exportTeamScheduleCSV(){
+  const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
+  if(!teamKey) return;
+  const filtered = bookingsCache
+    .filter(b => teamKeyFor(b.team_id) === teamKey)
+    .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  const rows = filtered.map(b => {
+    const { startStr, durStr } = parseTimeRangeForExport(b.time);
+    const fieldName = FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id;
+    return [
+      '',                     // Delete this column before saving for import!
+      fmtDateForCSV(b.date),  // Date
+      startStr,               // Time
+      durStr,                 // Duration (HH:MM)
+      '',                     // Arrival Time (Minutes) - no data source, left blank
+      'Practice',             // Name
+      '', '', '', '',         // Opponent fields - not applicable
+      fieldName,              // Location Name
+      '',                     // Location Address - not tracked in this app
+      b.subfield || '',       // Location Details
+      '',                     // Location URL - not tracked
+      '',                     // Home or Away - not applicable
+      '',                     // Uniform - not applicable
+      '',                     // Extra Label
+      '',                     // Notes
+    ].map(csvEscape).join(',');
+  });
+
+  const csv = [TEAMSNAP_HEADERS.map(csvEscape).join(','), ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = teamLabel(scheduleGender, scheduleGrade).replace(/\s+/g,'-').toLowerCase();
+  a.href = url; a.download = `${fname}-teamsnap-import.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+el.exportCsvBtn.addEventListener('click', exportTeamScheduleCSV);
+
 el.scheduleModeToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
   scheduleMode = btn.dataset.mode;
@@ -921,6 +1017,7 @@ function renderSchedule(){
   const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
   const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
   el.nowShowing.innerHTML = scheduleGrade ? `Showing <span class="tag">${label}</span>` : 'All teams';
+  el.exportCsvBtn.style.display = teamKey ? 'inline-block' : 'none';
 
   const filtered = teamKey
     ? bookingsCache.filter(b => teamKeyFor(b.team_id) === teamKey)
@@ -1406,12 +1503,12 @@ function renderFieldMonthGrid(){
             const key = teamKeyFor(existing.team_id);
             const teamText = key ? teamLabel(...key.split('|')) : '(unknown)';
             const isMine = existing.team_id === myTeamId;
-            slotsHtml += `<span class="cal-slot${isMine?' mine':''}" title="${escSafe(time)} ${escSafe(sub)}">${escSafe(teamText)}</span>`;
+            slotsHtml += `<span class="cal-slot${isMine?' mine':''}" title="${escSafe(sub)}"><b>${escSafe(time)}</b> ${escSafe(teamText)}</span>`;
           } else if(isPast){
-            slotsHtml += `<span class="cal-slot" style="opacity:.4">&mdash;</span>`;
+            slotsHtml += `<span class="cal-slot" style="opacity:.4"><b>${escSafe(time)}</b> &mdash;</span>`;
           } else {
             const payload = JSON.stringify({fieldId:availField, date:dateStr, subfield:sub, time});
-            slotsHtml += `<button class="cal-slot empty" data-fieldbook='${payload.replace(/'/g,"&#39;")}' title="${escSafe(time)} ${escSafe(sub)}">Empty</button>`;
+            slotsHtml += `<button class="cal-slot empty" data-fieldbook='${payload.replace(/'/g,"&#39;")}' title="${escSafe(sub)}"><b>${escSafe(time)}</b> Empty</button>`;
           }
         });
       });

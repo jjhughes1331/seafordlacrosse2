@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seaford Lacrosse 2027 Field Schedule</title>
+<link rel="icon" href="seaford-lacrosse-logo.jpg">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    /* Palette pulled from the crest: dark green, black, silver/gray, white */
+    --turf-deep: #14371f;
+    --turf: #1f5c38;
+    --ink: #14201a;
+    --muted: #5c6b62;
+    --line: #dde6de;
+    --chalk: #f6f8f6;
+    --silver: #aeb8b1;
+    --silver-deep: #7c8a82;
+    --card: #ffffff;
+    --danger: #b0402a;
+    --danger-bg: #fbe9e4;
+    --shadow: 0 1px 2px rgba(15,30,20,.06), 0 8px 24px rgba(15,30,20,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: var(--ink); background: var(--chalk); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 80px; }
+  a { color: var(--turf); }
+
+  /* ===== Header ===== */
+  header { background: var(--card); border-bottom: 4px solid var(--turf-deep); padding: 22px 20px 0; }
+  .header-inner { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .header-inner img { width: 64px; height: auto; border-radius: 6px; }
+  .header-text { flex: 1; min-width: 200px; }
+  .eyebrow { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--silver-deep); font-weight: 700; margin-bottom: 2px; }
+  h1 { font-size: clamp(22px, 4.5vw, 32px); font-weight: 800; letter-spacing: -.5px; color: var(--turf-deep); }
+  .sub { color: var(--muted); margin-top: 2px; font-size: 14px; }
+
+  .view-tabs { display: flex; gap: 4px; margin-top: 18px; flex-wrap: wrap; }
+  .view-tab { border: none; background: transparent; color: var(--muted); padding: 11px 20px; font-size: 14px; font-weight: 700; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: 3px solid transparent; }
+  .view-tab:hover { color: var(--turf-deep); }
+  .view-tab.active { color: var(--turf-deep); border-bottom-color: var(--turf-deep); }
+
+  /* ===== Signed-in bar ===== */
+  .signed-in { max-width: 1000px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: #fff; }
+  .signed-in .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
+  .signed-in .who { font-size: 15px; font-weight: 800; color: var(--turf-deep); }
+  .signed-in .role-pill { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--turf-deep); color: #fff; padding: 3px 9px; border-radius: 20px; }
+  .signout-btn { margin-left: auto; border: 1.5px solid var(--line); background: #fff; color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .signout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ===== Login / auth screens ===== */
+  .auth-screen { max-width: 420px; margin: 60px auto; padding: 32px 28px; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); text-align: center; }
+  .auth-screen img { width: 90px; margin-bottom: 16px; }
+  .auth-screen h2 { font-size: 20px; color: var(--turf-deep); margin-bottom: 6px; font-weight: 800; }
+  .auth-screen p.hint { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .field { text-align: left; margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+  .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 15px; }
+  .field input:focus { outline: none; border-color: var(--turf); }
+  .btn-primary { width: 100%; background: var(--turf-deep); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+  .btn-primary:hover { background: var(--turf); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .link-btn { background: none; border: none; color: var(--turf); font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 14px; text-decoration: underline; }
+  .auth-msg { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; }
+  .auth-msg.err { background: var(--danger-bg); color: var(--danger); }
+  .auth-msg.ok { background: #e6f2ea; color: var(--turf-deep); }
+  .invite-note { font-size: 12px; color: var(--muted); margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+
+  /* ===== Team picker (schedule filter) ===== */
+  .picker { max-width: 1000px; margin: 22px auto 0; padding: 0 20px; }
+  .picker h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 12px; font-weight: 700; }
+  .gender-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .gtab { border: 1.5px solid var(--line); background: #fff; color: var(--muted); padding: 8px 18px; border-radius: 22px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .gtab:hover { border-color: var(--turf); color: var(--turf); }
+  .gtab.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
+  .grade-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 9px; }
+  .gcard { border: 1.5px solid var(--line); background: #fff; border-radius: 11px; padding: 12px 11px; cursor: pointer; text-align: left; transition: all .15s; box-shadow: var(--shadow); }
+  .gcard:hover { border-color: var(--turf); transform: translateY(-1px); }
+  .gcard.active { border-color: var(--turf-deep); background: #eef3ef; box-shadow: 0 0 0 2px var(--turf-deep) inset; }
+  .gcard .grade { font-size: 15px; font-weight: 800; color: var(--turf-deep); }
+  .gcard .cnt { font-size: 11.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+  .gcard.zero { opacity: .5; }
+  .locked-team-banner { background: #eef3ef; border: 1.5px solid var(--turf-deep); border-radius: 10px; padding: 12px 16px; font-size: 14px; font-weight: 700; color: var(--turf-deep); margin: 0 auto 18px; max-width: 1000px; }
+
+  /* ===== Schedule view ===== */
+  .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
+  .now-showing { font-size: 19px; font-weight: 800; color: var(--ink); }
+  .now-showing .tag { color: var(--turf-deep); }
+  .allbtn { margin-left: auto; border: 1.5px solid var(--line); background:#fff; color: var(--muted); padding: 7px 14px; border-radius: 9px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .allbtn:hover { border-color: var(--turf); color: var(--turf); }
+  .count { color: var(--muted); font-size: 13px; margin: 12px 0 16px; }
+  .count b { color: var(--ink); }
+  .venue { margin-bottom: 26px; }
+  .venue-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; margin-bottom: 6px; border-bottom: 2px solid var(--turf-deep); }
+  .venue-head h3 { font-size: 17px; font-weight: 800; color: var(--turf-deep); }
+  .venue-head .n { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  .venue-note { font-size: 12.5px; color: var(--silver-deep); margin: 7px 0 12px; font-style: italic; }
+  .rows { display: grid; gap: 7px; }
+  .row { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; box-shadow: var(--shadow); display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
+  .row .date { font-weight: 700; font-size: 13.5px; color: var(--ink); }
+  .row .date .dow { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
+  .slots { display: flex; flex-wrap: wrap; gap: 6px; }
+  .slots .slot { font-size: 12px; background: #eef3ef; border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; color: var(--turf-deep); }
+  .slots .slot.mine { background: var(--silver); border-color: var(--silver-deep); color: var(--ink); font-weight: 700; }
+  .slots .slot .time { color: var(--muted); font-weight: 600; }
+  .slots .slot.mine .time { color: #33403a; }
+  .slots .slot .sub { font-weight: 700; }
+  .empty-schedule { text-align: center; padding: 45px 20px; color: var(--muted); background: #fff; border: 1px dashed var(--line); border-radius: 10px; }
+  .empty-schedule b { color: var(--ink); display: block; font-size: 16px; margin-bottom: 4px; }
+  .empty-schedule .cta { display: inline-block; margin-top: 12px; color: #fff; text-decoration: none; font-weight: 700; padding: 8px 16px; border-radius: 8px; cursor: pointer; background: var(--turf-deep); font-family: inherit; font-size: 13px; border: none; }
+  .empty-schedule .cta:hover { background: var(--turf); }
+
+  /* ===== Book view ===== */
+  .booking { max-width: 1000px; margin: 16px auto 0; padding: 0 20px; }
+  .section-label { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; font-weight: 700; }
+  .field-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+  .fchip { border: 1.5px solid var(--line); background: #fff; color: var(--muted); padding: 7px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .fchip:hover { border-color: var(--turf); color: var(--turf); }
+  .fchip.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
+  .field-note { color: var(--silver-deep); font-size: 12.5px; font-style: italic; margin-bottom: 14px; }
+  .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 9px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+  .mode-toggle { display: flex; gap: 6px; margin: 10px 0 14px; }
+  .mtab { border: 1.5px solid var(--line); background: #fff; color: var(--muted); padding: 7px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .mtab:hover { border-color: var(--turf); color: var(--turf); }
+  .mtab.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
+  .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .recurring-card h3 { color: var(--turf-deep); font-size: 15px; margin-bottom: 4px; font-weight: 800; }
+  .recurring-card p.hint { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .daytoggle { border: 1.5px solid var(--line); background: #fff; color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .daytoggle:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
+  .daytoggle.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
+  .daytoggle:disabled { opacity: .3; cursor: not-allowed; }
+  .field select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; background: #fff; }
+  .weeknav button { border: 1.5px solid var(--line); background: #fff; padding: 7px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer; }
+  .weeknav button:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
+  .weeknav button:disabled { opacity: .35; cursor: not-allowed; }
+  .weeknav .label { flex: 1; text-align: center; font-weight: 800; font-size: 14px; color: var(--ink); }
+  .day { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 13px; margin-bottom: 11px; box-shadow: var(--shadow); }
+  .day h3 { font-size: 13.5px; font-weight: 800; color: var(--turf-deep); margin-bottom: 9px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+  .day h3 .past { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 6px; }
+  .timerow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 5px 0; align-items: start; }
+  .timerow + .timerow { border-top: 1px dashed var(--line); padding-top: 7px; margin-top: 3px; }
+  .timelabel { font-size: 12.5px; font-weight: 700; color: var(--muted); padding-top: 6px; }
+  .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
+  .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: 12px; border: 1.5px dashed var(--line); background: #fff; color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
+  .book-slot:hover { border-style: solid; border-color: var(--turf); color: var(--turf); background: #f0f6f1; }
+  .book-slot .sub { font-weight: 700; color: var(--ink); }
+  .book-slot.booked { border-style: solid; border-color: var(--line); background: #eef3ef; color: var(--turf-deep); cursor: default; }
+  .book-slot.booked:hover { background: #eef3ef; }
+  .book-slot.mine { border-style: solid; border-color: var(--silver-deep); background: var(--silver); color: var(--ink); font-weight: 700; }
+  .book-slot.mine .cancel { background: rgba(0,0,0,.15); border: none; color: var(--ink); font-weight: 900; padding: 0 5px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-left: 2px; }
+  .book-slot.mine .cancel:hover { background: rgba(0,0,0,.3); }
+  .plus { color: var(--muted); font-weight: 700; }
+  .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: #fff; border: 1px dashed var(--line); border-radius: 10px; }
+
+  /* ===== Admin view ===== */
+  .admin-card { max-width: 1000px; margin: 20px auto 0; padding: 20px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .admin-card h3 { color: var(--turf-deep); font-size: 16px; margin-bottom: 4px; font-weight: 800; }
+  .admin-card p.hint { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
+  .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
+  .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 14px; background: #fff; }
+  .invite-form button { background: var(--turf-deep); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .invite-form button:hover { background: var(--turf); }
+  .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
+  .coach-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .coach-list table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .coach-list th { text-align: left; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1.5px solid var(--line); }
+  .coach-list td { padding: 8px; border-bottom: 1px solid var(--line); }
+  .coach-list .empty-row td { text-align: center; color: var(--muted); font-style: italic; padding: 20px; }
+
+  /* ===== Shared action bar / status ===== */
+  .actions { max-width: 1000px; margin: 30px auto 20px; padding: 18px 20px; background: #fff; border: 1px solid var(--line); border-radius: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .status { color: var(--muted); font-size: 13px; }
+  .status.ok { color: var(--turf-deep); font-weight: 700; }
+  .status.err { color: var(--danger); font-weight: 700; }
+  .spinner-note { color: var(--muted); font-size: 13px; text-align: center; padding: 30px; }
+
+  footer { max-width: 1000px; margin: 20px auto 0; padding: 20px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+
+  @media (max-width: 560px) {
+    .row { grid-template-columns: 1fr; gap: 8px; }
+    .row .date { border-bottom: 1px dashed var(--line); padding-bottom: 6px; }
+    .toolbar { flex-direction: column; align-items: flex-start; }
+    .allbtn { margin-left: 0; }
+    .timerow { grid-template-columns: 1fr; }
+    .timelabel { padding-top: 0; }
+    .view-tab { padding: 9px 14px; font-size: 13px; }
+    .invite-form { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CONFIG — fill these in from your Supabase project
+     Project Settings > API gives you the URL and anon (public) key.
+     The Edge Function URL is the same project ref with /functions/v1/invite-coach
+     ============================================================ -->
+<script>
+  const SUPABASE_URL = "https://gjpqwmcdejpvffdimddk.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_wmEJ2j6OTyiSLE04BP0JSw_zAeEBFMh";
+  const INVITE_FUNCTION_URL = "https://gjpqwmcdejpvffdimddk.supabase.co/functions/v1/invite-coach";
+</script>
+
+<header>
+  <div class="header-inner">
+    <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
+    <div class="header-text">
+      <div class="eyebrow">Seaford Lacrosse &middot; 2027 Season</div>
+      <h1>Field Schedule</h1>
+      <p class="sub">March 1 &ndash; June 30, 2027</p>
+    </div>
+  </div>
+  <nav class="view-tabs" id="viewTabs" style="display:none">
+    <button class="view-tab active" data-view="schedule">View Schedule</button>
+    <button class="view-tab" data-view="book">Book a Slot</button>
+    <button class="view-tab" data-view="fieldavail">Field Availability</button>
+    <button class="view-tab" data-view="openweek">Open This Week</button>
+    <button class="view-tab" data-view="admin" id="adminTab" style="display:none">Admin</button>
+  </nav>
+</header>
+
+<div class="signed-in" id="signedInBar" style="display:none">
+  <span class="label">Signed in as</span>
+  <span class="who" id="whoName"></span>
+  <span class="role-pill" id="rolePill"></span>
+  <button class="signout-btn" id="signOutBtn">Sign out</button>
+</div>
+
+<!-- ============ AUTH SCREENS ============ -->
+<div id="authArea">
+  <div class="auth-screen" id="loadingScreen">
+    <p class="spinner-note">Loading&hellip;</p>
+  </div>
+</div>
+
+<!-- ============ TEAM PICKER (schedule filter, or coach's locked team) ============ -->
+<div class="picker" id="teamPicker" style="display:none">
+  <h2 id="pickerHeading">Filter by team</h2>
+  <div class="gender-tabs" id="genderTabs">
+    <button class="gtab active" data-g="girls">Girls</button>
+    <button class="gtab" data-g="boys">Boys</button>
+  </div>
+  <div class="grade-grid" id="gradeGrid"></div>
+</div>
+<div class="locked-team-banner" id="lockedTeamBanner" style="display:none"></div>
+
+<!-- ============ SCHEDULE VIEW ============ -->
+<div id="viewSchedule" style="display:none">
+  <div class="toolbar">
+    <div class="now-showing" id="nowShowing">All teams</div>
+    <button class="allbtn" id="allBtn">Show all teams</button>
+  </div>
+  <div class="wrap">
+    <p class="count" id="count"></p>
+    <div id="results"></div>
+  </div>
+</div>
+
+<!-- ============ BOOK VIEW ============ -->
+<div id="viewBook" class="booking" style="display:none">
+  <p class="section-label">Pick a field</p>
+  <div class="field-chips" id="fieldChips"></div>
+  <div class="field-note" id="fieldNote"></div>
+
+  <p class="section-label">Book timing</p>
+  <div class="mode-toggle" id="bookModeToggle">
+    <button class="mtab" data-mode="week">Weekly</button>
+    <button class="mtab active" data-mode="month">Monthly</button>
+    <button class="mtab" data-mode="season">Season</button>
+  </div>
+
+  <div id="calendarSection">
+    <div class="weeknav" id="weekNavBar" style="display:none">
+      <button id="prevWeek">&larr; Prev week</button>
+      <span class="label" id="weekLabel"></span>
+      <button id="nextWeek">Next week &rarr;</button>
+    </div>
+    <div class="weeknav" id="monthNavBar">
+      <button id="prevMonth">&larr; Prev month</button>
+      <span class="label" id="monthLabel"></span>
+      <button id="nextMonth">Next month &rarr;</button>
+    </div>
+
+    <div id="weekGrid"></div>
+  </div>
+
+  <div class="recurring-card" id="recurringCard" style="display:none">
+    <h3>Book for the season</h3>
+    <p class="hint">Pick one or more days of the week and a time slot at <b id="recurringFieldName"></b> &mdash; every matching open date from now through the end of the season gets booked in one go.</p>
+    <div class="recurring-days" id="recurringDays"></div>
+    <div class="field" style="max-width:360px">
+      <label>Time slot</label>
+      <select id="recurringSlotSelect"><option value="">Pick day(s) first</option></select>
+    </div>
+    <button class="btn-primary" style="width:auto;padding:11px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
+    <div id="recurringResults"></div>
+  </div>
+</div>
+
+<!-- ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============ -->
+<div id="viewFieldAvail" class="booking" style="display:none">
+  <p class="section-label">Pick a field to see who's there and what's open</p>
+  <div class="field-chips" id="availFieldChips"></div>
+  <div class="field-note" id="availFieldNote"></div>
+  <div class="weeknav">
+    <button id="availPrevWeek">&larr; Prev week</button>
+    <span class="label" id="availWeekLabel"></span>
+    <button id="availNextWeek">Next week &rarr;</button>
+  </div>
+  <div id="availWeekGrid"></div>
+</div>
+
+<!-- ============ OPEN THIS WEEK VIEW ============ -->
+<div id="viewOpenWeek" style="display:none">
+  <div class="wrap">
+    <p class="count" id="openWeekCount"></p>
+    <div id="openWeekResults"></div>
+  </div>
+</div>
+
+<!-- ============ ADMIN VIEW ============ -->
+<div id="viewAdmin" style="display:none">
+  <div class="admin-card">
+    <h3 id="adminHeading">Invite a coach</h3>
+    <p class="hint" id="adminHint"></p>
+    <div class="invite-form">
+      <div class="field" id="inviteRoleField" style="display:none">
+        <label>Invite as</label>
+        <select id="inviteRoleSelect">
+          <option value="coach">Coach</option>
+          <option value="director">Director</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="inviteEmail" placeholder="name@example.com">
+      </div>
+      <div class="field" id="inviteGenderField" style="display:none">
+        <label>Gender</label>
+        <select id="inviteGenderSelect">
+          <option value="girls">Girls</option>
+          <option value="boys">Boys</option>
+        </select>
+      </div>
+      <div class="field" id="inviteTeamField">
+        <label>Team</label>
+        <select id="inviteGrade"></select>
+      </div>
+      <button id="inviteBtn">Send invite</button>
+    </div>
+    <div class="status" id="inviteStatus"></div>
+    <div class="coach-list">
+      <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
+      <table>
+        <thead id="userListHead"><tr><th>Team</th><th>Email</th></tr></thead>
+        <tbody id="coachListBody"></tbody>
+
+      </table>
+    </div>
+  </div>
+
+  <div class="admin-card" style="margin-top:16px">
+    <h3>Bulk invite from spreadsheet</h3>
+    <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b> — one row per coach.
+      <a href="coach-roster-template.xlsx" download style="color:var(--turf);font-weight:700">Download the template</a>.
+      Directors can only upload coaches for their own gender; other rows are skipped.
+    </p>
+    <div class="invite-form">
+      <div class="field" style="flex:1 1 260px">
+        <label>Spreadsheet file</label>
+        <input type="file" id="bulkFileInput" accept=".xlsx,.xls">
+      </div>
+      <button id="bulkUploadBtn">Process file</button>
+    </div>
+    <div id="bulkResults"></div>
+  </div>
+</div>
+
+<div class="actions" id="actionsBar" style="display:none">
+  <span class="status" id="status"></span>
+</div>
+
+<footer id="pageFooter" style="display:none">
+  Access is by invite only. Directors invite coaches from the Admin tab; each coach can only book their own team's slots. Bookings sync live across every signed-in device.
+</footer>
+
+<script>
+// ============ SUPABASE CLIENT ============
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ============ CONSTANTS ============
+const GRADES = ["Kindergarten","1st Grade","2nd Grade","3rd Grade","4th Grade","5th Grade","6th Grade"];
+const DOW_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const SEASON_START = new Date(2027, 2, 1);
+const SEASON_END = new Date(2027, 5, 30);
+
+const FIELDS = [
+  { id:"manor", name:"Manor Soccer Fields",
+    note:"Small field, not full-size. Weekends only.",
+    availability:[ { days:[0,6], subfields:["Small Field"], times:["5:00-8:00 PM"] } ]},
+  { id:"sms", name:"Seaford Middle School",
+    note:"Grass field. School teams have priority; permit starts at 5 PM.",
+    availability:[
+      { days:[1,2,3,4,5], subfields:["Half Field A","Half Field B"], times:["6:00-7:00 PM","7:30-9:00 PM"] },
+      { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
+    ]},
+  { id:"seamans", name:"Seamans Neck Park",
+    note:"Field A closest to parking, B mid field, C far end.",
+    availability:[
+      { days:[1,2,3,4,5], subfields:["Field A","Field B","Field C"], times:["5:00-6:30 PM","6:30-8:00 PM","8:00-10:00 PM"] },
+      { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
+    ]},
+  { id:"harbor", name:"Harbor School",
+    note:"Field 1 inside track, Field 2 outside track.",
+    availability:[
+      { days:[1,2,3,4,5], subfields:["Field 1","Field 2"], times:["4:30-5:30 PM","5:30-6:30 PM","6:30-7:30 PM","7:30-8:30 PM"] },
+      { days:[0,6], subfields:["Field 1","Field 2"], times:["9:00-10:00 AM","10:00-11:00 AM","11:00-12:00 PM","12:00-1:00 PM","1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM","6:00-7:00 PM","7:00-8:00 PM"] },
+    ]},
+  { id:"seafordhs", name:"Seaford HS",
+    note:"Turf field. School games have priority weeknights.",
+    availability:[
+      { days:[1,2,3,4,5], subfields:["Half Field A (North)","Half Field B (South)"], times:["7:15-9:00 PM"] },
+      { days:[6], subfields:["Half Field A (North)","Half Field B (South)"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM","6:00-7:00 PM"] },
+    ]},
+  { id:"cedarcreek", name:"Cedar Creek",
+    note:"East Field, Tuesday and Thursday only. Half field only (shared with soccer and Wantagh Lax).",
+    availability:[ { days:[2,4], subfields:["1/2 Field"], times:["4:30-5:30 PM","5:30-6:30 PM","6:30-8:00 PM"] } ]},
+];
+const FIELD_MAP = Object.fromEntries(FIELDS.map(f => [f.id, f]));
+
+// ============ STATE ============
+let session = null;
+let myProfile = null;          // { role, gender, team_id, email }
+let teams = [];                // [{id, gender, grade}]
+let teamsById = {};             // id -> {gender, grade}
+let teamsByKey = {};             // "girls|3rd Grade" -> id
+let bookingsCache = [];          // in-memory copy of all bookings, refreshed on load + realtime
+let realtimeChannel = null;
+
+let currentView = 'schedule';
+let scheduleGender = 'girls';
+let scheduleGrade = null;        // filter for schedule view, null = all
+let selectedField = 'seamans';
+let currentWeekMonday = mondayOf(SEASON_START);
+let bookViewMode = 'month'; // 'week' | 'month' | 'season'
+let currentMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
+
+// ============ ELEMENTS ============
+const el = {
+  authArea: document.getElementById('authArea'),
+  loadingScreen: document.getElementById('loadingScreen'),
+  viewTabs: document.getElementById('viewTabs'),
+  adminTab: document.getElementById('adminTab'),
+  signedInBar: document.getElementById('signedInBar'),
+  whoName: document.getElementById('whoName'),
+  rolePill: document.getElementById('rolePill'),
+  signOutBtn: document.getElementById('signOutBtn'),
+  teamPicker: document.getElementById('teamPicker'),
+  pickerHeading: document.getElementById('pickerHeading'),
+  genderTabs: document.getElementById('genderTabs'),
+  gradeGrid: document.getElementById('gradeGrid'),
+  lockedTeamBanner: document.getElementById('lockedTeamBanner'),
+  viewSchedule: document.getElementById('viewSchedule'),
+  viewBook: document.getElementById('viewBook'),
+  viewFieldAvail: document.getElementById('viewFieldAvail'),
+  viewOpenWeek: document.getElementById('viewOpenWeek'),
+  viewAdmin: document.getElementById('viewAdmin'),
+  nowShowing: document.getElementById('nowShowing'),
+  allBtn: document.getElementById('allBtn'),
+  results: document.getElementById('results'),
+  count: document.getElementById('count'),
+  fieldChips: document.getElementById('fieldChips'),
+  fieldNote: document.getElementById('fieldNote'),
+  weekLabel: document.getElementById('weekLabel'),
+  prevWeek: document.getElementById('prevWeek'),
+  nextWeek: document.getElementById('nextWeek'),
+  weekGrid: document.getElementById('weekGrid'),
+  bookModeToggle: document.getElementById('bookModeToggle'),
+  calendarSection: document.getElementById('calendarSection'),
+  recurringCard: document.getElementById('recurringCard'),
+  weekNavBar: document.getElementById('weekNavBar'),
+  monthNavBar: document.getElementById('monthNavBar'),
+  monthLabel: document.getElementById('monthLabel'),
+  prevMonth: document.getElementById('prevMonth'),
+  nextMonth: document.getElementById('nextMonth'),
+  recurringFieldName: document.getElementById('recurringFieldName'),
+  recurringDays: document.getElementById('recurringDays'),
+  recurringSlotSelect: document.getElementById('recurringSlotSelect'),
+  recurringBookBtn: document.getElementById('recurringBookBtn'),
+  recurringResults: document.getElementById('recurringResults'),
+  availFieldChips: document.getElementById('availFieldChips'),
+  availFieldNote: document.getElementById('availFieldNote'),
+  availWeekLabel: document.getElementById('availWeekLabel'),
+  availPrevWeek: document.getElementById('availPrevWeek'),
+  availNextWeek: document.getElementById('availNextWeek'),
+  availWeekGrid: document.getElementById('availWeekGrid'),
+  openWeekCount: document.getElementById('openWeekCount'),
+  openWeekResults: document.getElementById('openWeekResults'),
+  adminHeading: document.getElementById('adminHeading'),
+  adminHint: document.getElementById('adminHint'),
+  inviteRoleField: document.getElementById('inviteRoleField'),
+  inviteRoleSelect: document.getElementById('inviteRoleSelect'),
+  inviteGenderField: document.getElementById('inviteGenderField'),
+  inviteGenderSelect: document.getElementById('inviteGenderSelect'),
+  inviteTeamField: document.getElementById('inviteTeamField'),
+  inviteEmail: document.getElementById('inviteEmail'),
+  inviteGrade: document.getElementById('inviteGrade'),
+  inviteBtn: document.getElementById('inviteBtn'),
+  inviteStatus: document.getElementById('inviteStatus'),
+  userListLabel: document.getElementById('userListLabel'),
+  userListHead: document.getElementById('userListHead'),
+  coachListBody: document.getElementById('coachListBody'),
+  bulkFileInput: document.getElementById('bulkFileInput'),
+  bulkUploadBtn: document.getElementById('bulkUploadBtn'),
+  bulkResults: document.getElementById('bulkResults'),
+  actionsBar: document.getElementById('actionsBar'),
+  status: document.getElementById('status'),
+  pageFooter: document.getElementById('pageFooter'),
+};
+
+// ============ HELPERS ============
+function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function mondayOf(d){ const x=new Date(d); const dw=x.getDay(); const diff=(dw===0?-6:1-dw); x.setDate(x.getDate()+diff); return x; }
+function fmtDateLong(s){ const d=parseISO(s); return `${MONTHS[d.getMonth()]} ${d.getDate()}`; }
+function dowOfISO(s){ return DOW_FULL[parseISO(s).getDay()]; }
+function teamLabel(gender, grade){ return `${gender==='girls'?'Girls':'Boys'} ${grade}`; }
+function teamKeyFor(teamId){
+  const t = teamsById[teamId];
+  return t ? (t.gender+'|'+t.grade) : null;
+}
+function flash(msg, type){
+  el.status.textContent = msg;
+  el.status.className = 'status '+(type||'');
+  el.actionsBar.style.display = 'flex';
+  setTimeout(()=>{ el.status.textContent=''; el.status.className='status'; }, 4500);
+}
+
+// ============ AUTH ============
+async function init(){
+  // Handle invite/recovery links: Supabase puts the tokens in the URL hash
+  const hash = window.location.hash;
+  const isInviteOrRecovery = hash.includes('type=invite') || hash.includes('type=recovery');
+
+  const { data: { session: existingSession } } = await sb.auth.getSession();
+  session = existingSession;
+
+  if (isInviteOrRecovery && session) {
+    showSetPasswordScreen();
+    return;
+  }
+
+  if (session) {
+    await loadProfileAndStart();
+  } else {
+    showLoginScreen();
+  }
+
+  sb.auth.onAuthStateChange((event, newSession) => {
+    session = newSession;
+    if (event === 'SIGNED_OUT') {
+      teardown();
+      showLoginScreen();
+    }
+  });
+}
+
+function showLoginScreen(msg){
+  el.authArea.innerHTML = `
+    <div class="auth-screen">
+      <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
+      <h2>Sign in</h2>
+      <p class="hint">Use the email and password your director set up for you.</p>
+      <div class="field"><label>Email</label><input type="email" id="loginEmail"></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPassword"></div>
+      <button class="btn-primary" id="loginBtn">Sign in</button>
+      <button class="link-btn" id="forgotBtn">Forgot your password?</button>
+      ${msg ? `<div class="auth-msg err">${escSafe(msg)}</div>` : ''}
+      <p class="invite-note">Access is by invite only. If you don't have an account, ask your team's director to invite you.</p>
+    </div>`;
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('forgotBtn').addEventListener('click', doForgotPassword);
+  document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!email || !password){ showLoginScreen('Enter your email and password.'); return; }
+  const btn = document.getElementById('loginBtn'); btn.disabled = true; btn.textContent = 'Signing in…';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ showLoginScreen(error.message); return; }
+  session = data.session;
+  await loadProfileAndStart();
+}
+
+async function doForgotPassword(){
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email){ showLoginScreen('Enter your email above first, then tap "Forgot your password?" again.'); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
+  if(error){ showLoginScreen(error.message); return; }
+  showLoginScreen();
+  const msgBox = document.querySelector('.auth-screen');
+  msgBox.insertAdjacentHTML('beforeend', `<div class="auth-msg ok">Check your email for a password reset link.</div>`);
+}
+
+function showSetPasswordScreen(){
+  el.authArea.innerHTML = `
+    <div class="auth-screen">
+      <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
+      <h2>Set your password</h2>
+      <p class="hint">Welcome! Choose a password for your account.</p>
+      <div class="field"><label>New password</label><input type="password" id="newPassword"></div>
+      <div class="field"><label>Confirm password</label><input type="password" id="newPassword2"></div>
+      <button class="btn-primary" id="setPasswordBtn">Save password</button>
+      <div id="setPwMsg"></div>
+    </div>`;
+  document.getElementById('setPasswordBtn').addEventListener('click', async () => {
+    const p1 = document.getElementById('newPassword').value;
+    const p2 = document.getElementById('newPassword2').value;
+    const msgEl = document.getElementById('setPwMsg');
+    if(p1.length < 6){ msgEl.innerHTML = `<div class="auth-msg err">Password must be at least 6 characters.</div>`; return; }
+    if(p1 !== p2){ msgEl.innerHTML = `<div class="auth-msg err">Passwords don't match.</div>`; return; }
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if(error){ msgEl.innerHTML = `<div class="auth-msg err">${escSafe(error.message)}</div>`; return; }
+    history.replaceState(null, '', window.location.pathname);
+    await loadProfileAndStart();
+  });
+}
+
+async function loadProfileAndStart(){
+  el.authArea.innerHTML = `<div class="auth-screen"><p class="spinner-note">Loading your account&hellip;</p></div>`;
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user){ showLoginScreen(); return; }
+
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if(error || !profile){
+    el.authArea.innerHTML = `
+      <div class="auth-screen">
+        <h2>No role assigned yet</h2>
+        <p class="hint">Your account exists but doesn't have a team or director role set up. Contact your director to finish setting up your access.</p>
+        ${error ? `<p class="hint" style="color:#b0402a;font-family:monospace;font-size:12px;word-break:break-all;text-align:left;background:#fbe9e4;padding:10px;border-radius:8px;">${escSafe(error.message || JSON.stringify(error))}</p>` : ''}
+        <button class="btn-primary" id="stuckSignOut">Sign out</button>
+      </div>`;
+    document.getElementById('stuckSignOut').addEventListener('click', () => sb.auth.signOut());
+    return;
+  }
+  myProfile = profile;
+
+  await loadTeams();
+  await refreshBookings();
+  setupRealtime();
+
+  el.authArea.innerHTML = '';
+  el.signedInBar.style.display = 'flex';
+  el.viewTabs.style.display = 'flex';
+  el.pageFooter.style.display = 'block';
+  el.whoName.textContent = myProfile.role === 'admin'
+    ? 'Site Admin'
+    : myProfile.role === 'director'
+      ? `${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} Director`
+      : teamLabel(myProfile.gender, teamsById[myProfile.team_id]?.grade || '');
+  el.rolePill.textContent = myProfile.role;
+  if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = 'inline-block';
+
+  if(myProfile.role === 'coach'){
+    scheduleGender = myProfile.gender;
+    scheduleGrade = teamsById[myProfile.team_id]?.grade || null;
+    selectedField = 'seamans';
+  } else if(myProfile.role === 'director'){
+    scheduleGender = myProfile.gender;
+  } else {
+    scheduleGender = 'girls'; // admin: profile has no gender, default the schedule filter
+  }
+
+  switchView('schedule');
+}
+
+function teardown(){
+  if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+  myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = [];
+  el.signedInBar.style.display = 'none';
+  el.viewTabs.style.display = 'none';
+  el.pageFooter.style.display = 'none';
+  el.teamPicker.style.display = 'none';
+  el.lockedTeamBanner.style.display = 'none';
+  el.viewSchedule.style.display = 'none';
+  el.viewBook.style.display = 'none';
+  el.viewAdmin.style.display = 'none';
+}
+
+el.signOutBtn.addEventListener('click', () => sb.auth.signOut());
+
+// ============ DATA LOADING ============
+async function loadTeams(){
+  const { data, error } = await sb.from('teams').select('*');
+  if(error){ flash('Could not load teams: '+error.message, 'err'); return; }
+  teams = data;
+  teamsById = {}; teamsByKey = {};
+  teams.forEach(t => {
+    teamsById[t.id] = { gender: t.gender, grade: t.grade };
+    teamsByKey[t.gender+'|'+t.grade] = t.id;
+  });
+}
+
+async function refreshBookings(){
+  const { data, error } = await sb.from('bookings').select('*');
+  if(error){ flash('Could not load bookings: '+error.message, 'err'); return; }
+  bookingsCache = data;
+}
+
+function setupRealtime(){
+  realtimeChannel = sb.channel('bookings-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
+      await refreshBookings();
+      if(currentView === 'schedule') renderSchedule();
+      if(currentView === 'book') renderWeek();
+    })
+    .subscribe();
+}
+
+// ============ VIEW SWITCHING ============
+document.getElementById('viewTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.view-tab');
+  if(!tab || tab.style.display === 'none') return;
+  switchView(tab.dataset.view);
+});
+
+function switchView(view){
+  currentView = view;
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  el.viewSchedule.style.display = view === 'schedule' ? 'block' : 'none';
+  el.viewBook.style.display = view === 'book' ? 'block' : 'none';
+  el.viewFieldAvail.style.display = view === 'fieldavail' ? 'block' : 'none';
+  el.viewOpenWeek.style.display = view === 'openweek' ? 'block' : 'none';
+  el.viewAdmin.style.display = view === 'admin' ? 'block' : 'none';
+
+  if(view === 'schedule'){
+    el.lockedTeamBanner.style.display = 'none';
+    el.teamPicker.style.display = 'block';
+    el.pickerHeading.textContent = 'Filter by team';
+    document.querySelectorAll('.gtab').forEach(t => {
+      t.style.display = 'inline-block';
+      t.classList.toggle('active', t.dataset.g === scheduleGender);
+    });
+    buildGradeGrid();
+    renderSchedule();
+  } else if(view === 'book'){
+    if(myProfile.role === 'coach'){
+      el.teamPicker.style.display = 'none';
+      el.lockedTeamBanner.style.display = 'block';
+      const grade = teamsById[myProfile.team_id]?.grade || '';
+      el.lockedTeamBanner.textContent = `Booking for: ${teamLabel(myProfile.gender, grade)}`;
+      buildFieldChips(); buildRecurringUI(); renderWeek();
+    } else if(myProfile.role === 'admin'){
+      // admin: full pick of gender + grade, any of the 14 teams
+      el.lockedTeamBanner.style.display = 'none';
+      el.teamPicker.style.display = 'block';
+      el.pickerHeading.textContent = 'Book for which team?';
+      document.querySelectorAll('.gtab').forEach(g => { g.style.display = 'inline-block'; g.classList.toggle('active', g.dataset.g === bookAsGender); });
+      if(!bookAsGrade) bookAsGrade = GRADES[0];
+      buildGradeGrid(true);
+      buildFieldChips(); buildRecurringUI(); renderWeek();
+    } else {
+      // director: pick which of their gender's teams to book for
+      el.lockedTeamBanner.style.display = 'none';
+      el.teamPicker.style.display = 'block';
+      el.pickerHeading.textContent = `Book for which ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} team?`;
+      document.querySelectorAll('.gtab').forEach(g => g.style.display = 'none'); // gender fixed for director
+      if(!bookAsGrade) bookAsGrade = GRADES[0];
+      buildGradeGrid(true);
+      buildFieldChips(); buildRecurringUI(); renderWeek();
+    }
+  } else if(view === 'fieldavail'){
+    el.teamPicker.style.display = 'none';
+    el.lockedTeamBanner.style.display = 'none';
+    buildAvailFieldChips();
+    renderFieldAvailability();
+  } else if(view === 'openweek'){
+    el.teamPicker.style.display = 'none';
+    el.lockedTeamBanner.style.display = 'none';
+    renderOpenWeek();
+  } else if(view === 'admin'){
+    el.teamPicker.style.display = 'none';
+    el.lockedTeamBanner.style.display = 'none';
+    renderAdmin();
+  }
+}
+
+// ============ TEAM PICKER (dual purpose: schedule filter / director's book-as team) ============
+let bookAsGrade = null;
+let bookAsGender = 'girls'; // only used when myProfile.role === 'admin'
+
+function teamCounts(){
+  const c = {};
+  bookingsCache.forEach(b => { const k = teamKeyFor(b.team_id); if(k) c[k]=(c[k]||0)+1; });
+  return c;
+}
+
+function buildGradeGrid(forBooking){
+  el.gradeGrid.innerHTML = '';
+  const cnts = teamCounts();
+  const activeGrade = forBooking ? bookAsGrade : scheduleGrade;
+  const gender = forBooking ? (myProfile.role === 'admin' ? bookAsGender : myProfile.gender) : scheduleGender;
+  GRADES.forEach(g => {
+    const key = gender+'|'+g;
+    const n = cnts[key] || 0;
+    const b = document.createElement('button');
+    b.className = 'gcard' + (n===0?' zero':'') + (activeGrade===g?' active':'');
+    b.dataset.grade = g;
+    b.innerHTML = `<div class="grade">${g}</div><div class="cnt">${n} booking${n!==1?'s':''}</div>`;
+    el.gradeGrid.appendChild(b);
+  });
+}
+
+document.getElementById('genderTabs').addEventListener('click', e => {
+  if(!e.target.classList.contains('gtab')) return;
+  if(currentView === 'schedule'){
+    scheduleGender = e.target.dataset.g;
+    document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
+    buildGradeGrid();
+    renderSchedule();
+  } else if(currentView === 'book' && myProfile.role === 'admin'){
+    bookAsGender = e.target.dataset.g;
+    document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
+    buildGradeGrid(true);
+    renderWeek();
+  }
+});
+
+el.gradeGrid.addEventListener('click', e => {
+  const card = e.target.closest('.gcard'); if(!card) return;
+  if(currentView === 'schedule'){
+    scheduleGrade = (scheduleGrade === card.dataset.grade) ? null : card.dataset.grade;
+    buildGradeGrid();
+    renderSchedule();
+  } else if(currentView === 'book' && (myProfile.role === 'director' || myProfile.role === 'admin')){
+    bookAsGrade = card.dataset.grade;
+    buildGradeGrid(true);
+    renderWeek();
+  }
+});
+
+el.allBtn.addEventListener('click', () => { scheduleGrade = null; buildGradeGrid(); renderSchedule(); });
+
+// ============ SCHEDULE VIEW ============
+function renderSchedule(){
+  const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
+  const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
+  el.nowShowing.innerHTML = scheduleGrade ? `Showing <span class="tag">${label}</span>` : 'All teams';
+
+  const filtered = teamKey
+    ? bookingsCache.filter(b => teamKeyFor(b.team_id) === teamKey)
+    : bookingsCache;
+
+  if(!filtered.length){
+    if(!bookingsCache.length){
+      el.results.innerHTML = `<div class="empty-schedule"><b>No bookings yet for the 2027 season</b>Get started by booking your team's field slots.<br><button class="cta" onclick="switchView('book')">Go to booking &rarr;</button></div>`;
+    } else {
+      el.results.innerHTML = `<div class="empty-schedule"><b>No bookings for ${label}</b>This team hasn't booked any slots yet.<br><button class="cta" onclick="switchView('book')">Book a slot &rarr;</button></div>`;
+    }
+    el.count.innerHTML = '';
+    return;
+  }
+
+  const byField = {};
+  filtered.forEach(b => {
+    if(!byField[b.field_id]) byField[b.field_id] = {};
+    if(!byField[b.field_id][b.date]) byField[b.field_id][b.date] = [];
+    byField[b.field_id][b.date].push(b);
+  });
+
+  let html = '', totalSlots = 0, venuesShown = 0;
+  FIELDS.forEach(field => {
+    if(!byField[field.id]) return;
+    venuesShown++;
+    const dates = Object.keys(byField[field.id]).sort();
+    const cnt = dates.reduce((n,d)=>n+byField[field.id][d].length, 0);
+    totalSlots += cnt;
+    html += `<section class="venue"><div class="venue-head"><h3>${escSafe(field.name)}</h3><span class="n">${cnt} slot${cnt!==1?'s':''}</span></div>`;
+    if(field.note) html += `<div class="venue-note">${escSafe(field.note)}</div>`;
+    html += '<div class="rows">';
+    dates.forEach(date => {
+      const slots = byField[field.id][date].sort((a,b) => a.time.localeCompare(b.time));
+      html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}</div><div class="slots">`;
+      slots.forEach(s => {
+        const key = teamKeyFor(s.team_id);
+        const mine = teamKey && key === teamKey;
+        const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
+        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.subfield)}</span>${!teamKey?' &middot; '+escSafe(teamText):''}</span>`;
+      });
+      html += '</div></div>';
+    });
+    html += '</div></section>';
+  });
+
+  el.results.innerHTML = html;
+  el.count.innerHTML = teamKey
+    ? `<b>${totalSlots}</b> slot${totalSlots!==1?'s':''} for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}. Your slots are highlighted.`
+    : `Showing <b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}. Pick a team above to filter.`;
+}
+
+// ============ BOOK VIEW ============
+function buildFieldChips(){
+  el.fieldChips.innerHTML = '';
+  FIELDS.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'fchip' + (f.id===selectedField?' active':'');
+    b.dataset.id = f.id;
+    b.textContent = f.name;
+    el.fieldChips.appendChild(b);
+  });
+  const f = FIELD_MAP[selectedField];
+  el.fieldNote.textContent = f && f.note ? f.note : '';
+}
+el.fieldChips.addEventListener('click', e => {
+  if(!e.target.classList.contains('fchip')) return;
+  selectedField = e.target.dataset.id;
+  buildFieldChips();
+  recurringSelectedDays.clear();
+  buildRecurringUI();
+  renderWeek();
+});
+el.prevWeek.addEventListener('click', () => {
+  const next = addDays(currentWeekMonday, -7);
+  if(next >= mondayOf(SEASON_START)){ currentWeekMonday = next; renderWeek(); }
+});
+el.nextWeek.addEventListener('click', () => {
+  const next = addDays(currentWeekMonday, 7);
+  if(next <= SEASON_END){ currentWeekMonday = next; renderWeek(); }
+});
+el.bookModeToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mtab'); if(!btn) return;
+  bookViewMode = btn.dataset.mode;
+  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  renderWeek();
+});
+el.prevMonth.addEventListener('click', () => {
+  const next = addMonths(currentMonthFirst, -1);
+  if(next >= firstDayOfMonth(SEASON_START)){ currentMonthFirst = next; renderWeek(); }
+});
+el.nextMonth.addEventListener('click', () => {
+  const next = addMonths(currentMonthFirst, 1);
+  if(next <= SEASON_END){ currentMonthFirst = next; renderWeek(); }
+});
+
+function myBookingTeamId(){
+  if(myProfile.role === 'coach') return myProfile.team_id;
+  // director/admin: whichever gender+grade they've selected to book as
+  const grade = bookAsGrade || GRADES[0];
+  const gender = myProfile.role === 'admin' ? bookAsGender : myProfile.gender;
+  return teamsByKey[gender+'|'+grade];
+}
+
+function firstDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function lastDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+function addMonths(d, n){ return new Date(d.getFullYear(), d.getMonth()+n, 1); }
+
+function renderWeek(){
+  if(bookViewMode === 'season'){
+    el.calendarSection.style.display = 'none';
+    el.recurringCard.style.display = 'block';
+    return;
+  }
+  el.calendarSection.style.display = 'block';
+  el.recurringCard.style.display = 'none';
+
+  if(bookViewMode === 'month'){
+    const start = firstDayOfMonth(currentMonthFirst) < SEASON_START ? SEASON_START : firstDayOfMonth(currentMonthFirst);
+    const end = lastDayOfMonth(currentMonthFirst) > SEASON_END ? SEASON_END : lastDayOfMonth(currentMonthFirst);
+    el.weekNavBar.style.display = 'none';
+    el.monthNavBar.style.display = 'flex';
+    el.monthLabel.textContent = `${MONTHS[currentMonthFirst.getMonth()]} ${currentMonthFirst.getFullYear()}`;
+    el.prevMonth.disabled = addMonths(currentMonthFirst, -1) < firstDayOfMonth(SEASON_START);
+    el.nextMonth.disabled = addMonths(currentMonthFirst, 1) > SEASON_END;
+    renderBookRange(start, end, true);
+  } else {
+    const monday = currentWeekMonday;
+    const sunday = addDays(monday, 6);
+    el.weekNavBar.style.display = 'flex';
+    el.monthNavBar.style.display = 'none';
+    el.weekLabel.textContent = `${MONTHS[monday.getMonth()]} ${monday.getDate()} - ${MONTHS[sunday.getMonth()]} ${sunday.getDate()}, 2027`;
+    el.prevWeek.disabled = addDays(monday, -7) < mondayOf(SEASON_START);
+    el.nextWeek.disabled = addDays(monday, 7) > SEASON_END;
+    renderBookRange(monday, sunday, false);
+  }
+}
+
+function renderBookRange(rangeStart, rangeEnd, isMonthMode){
+  const field = FIELD_MAP[selectedField];
+  const myTeamId = myBookingTeamId();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = '', daysShown = 0;
+  let cursor = new Date(rangeStart);
+  while(cursor <= rangeEnd){
+    const date = new Date(cursor);
+    cursor = addDays(cursor, 1);
+    if(date < SEASON_START || date > SEASON_END) continue;
+    const dow = date.getDay();
+    const avail = field.availability.find(a => a.days.includes(dow));
+    if(!avail) continue;
+    daysShown++;
+    const dateStr = fmtDateISO(date);
+    const isPast = date < today;
+    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}</h3>`;
+    avail.times.forEach(time => {
+      html += `<div class="timerow"><div class="timelabel">${time}</div><div class="subrow">`;
+      avail.subfields.forEach(sub => {
+        const existing = bookingsCache.find(b => b.field_id===selectedField && b.date===dateStr && b.subfield===sub && b.time===time);
+        if(existing){
+          const isMine = existing.team_id === myTeamId;
+          const key = teamKeyFor(existing.team_id);
+          const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
+          html += `<span class="book-slot ${isMine?'mine':'booked'}"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}${isMine?` <button class="cancel" data-cancel="${existing.id}" title="Cancel booking">&times;</button>`:''}</span>`;
+        } else if(isPast){
+          html += `<span class="book-slot booked" style="opacity:.4"><span class="sub">${escSafe(sub)}:</span>&mdash;</span>`;
+        } else {
+          const payload = JSON.stringify({fieldId:selectedField, date:dateStr, subfield:sub, time});
+          html += `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="sub">${escSafe(sub)}:</span><span class="plus">+ Book</span></button>`;
+        }
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  }
+  if(!daysShown){
+    html = `<div class="empty-week">This field has no available days in the current ${isMonthMode?'month':'week'}. Try a different field${isMonthMode?' or another month':' or another week'}.</div>`;
+  }
+  el.weekGrid.innerHTML = html;
+}
+
+// ============ RECURRING PATTERN BOOKING ============
+const recurringSelectedDays = new Set();
+const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function pairsForDay(field, dayNum){
+  const avail = field.availability.find(a => a.days.includes(dayNum));
+  if(!avail) return null;
+  const pairs = [];
+  avail.subfields.forEach(sub => avail.times.forEach(time => pairs.push(sub+'||'+time)));
+  return pairs;
+}
+
+function buildRecurringUI(){
+  const field = FIELD_MAP[selectedField];
+  el.recurringFieldName.textContent = field.name;
+  el.recurringDays.innerHTML = '';
+  for(let d=0; d<7; d++){
+    const hasAny = !!field.availability.find(a => a.days.includes(d));
+    const btn = document.createElement('button');
+    btn.className = 'daytoggle' + (recurringSelectedDays.has(d) ? ' active' : '');
+    btn.textContent = DOW_SHORT[d];
+    btn.dataset.day = d;
+    btn.disabled = !hasAny;
+    el.recurringDays.appendChild(btn);
+  }
+  updateRecurringSlotOptions();
+}
+el.recurringDays.addEventListener('click', e => {
+  const btn = e.target.closest('.daytoggle'); if(!btn || btn.disabled) return;
+  const d = Number(btn.dataset.day);
+  if(recurringSelectedDays.has(d)) recurringSelectedDays.delete(d); else recurringSelectedDays.add(d);
+  btn.classList.toggle('active');
+  updateRecurringSlotOptions();
+});
+
+function updateRecurringSlotOptions(){
+  const field = FIELD_MAP[selectedField];
+  const days = [...recurringSelectedDays];
+  el.recurringResults.innerHTML = '';
+  if(!days.length){
+    el.recurringSlotSelect.innerHTML = `<option value="">Pick day(s) first</option>`;
+    el.recurringBookBtn.disabled = true;
+    return;
+  }
+  let common = null;
+  for(const d of days){
+    const pairs = pairsForDay(field, d);
+    if(!pairs){ common = new Set(); break; }
+    const set = new Set(pairs);
+    common = common === null ? set : new Set([...common].filter(x => set.has(x)));
+  }
+  if(!common || !common.size){
+    el.recurringSlotSelect.innerHTML = `<option value="">No common time slot across those days</option>`;
+    el.recurringBookBtn.disabled = true;
+    return;
+  }
+  el.recurringSlotSelect.innerHTML = [...common].map(pair => {
+    const [sub, time] = pair.split('||');
+    return `<option value="${escSafe(pair)}">${escSafe(sub)} at ${escSafe(time)}</option>`;
+  }).join('');
+  el.recurringBookBtn.disabled = false;
+}
+
+el.recurringBookBtn.addEventListener('click', async () => {
+  const pair = el.recurringSlotSelect.value;
+  if(!pair) return;
+  const [sub, time] = pair.split('||');
+  const days = [...recurringSelectedDays];
+  const teamId = myBookingTeamId();
+  if(!teamId){ el.recurringResults.innerHTML = `<div class="status err">Pick a team to book for first.</div>`; return; }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = today < SEASON_START ? SEASON_START : today;
+
+  const dates = [];
+  let d = new Date(start);
+  while(d <= SEASON_END){
+    if(days.includes(d.getDay())) dates.push(fmtDateISO(d));
+    d = addDays(d, 1);
+  }
+
+  if(!dates.length){
+    el.recurringResults.innerHTML = `<div class="status err">No matching dates remain in the season for those days.</div>`;
+    return;
+  }
+
+  el.recurringBookBtn.disabled = true;
+  el.recurringBookBtn.textContent = `Booking ${dates.length} date(s)…`;
+
+  const results = [];
+  for(const dateStr of dates){
+    const { error } = await sb.from('bookings').insert({
+      field_id: selectedField, date: dateStr, subfield: sub, time, team_id: teamId, booked_by: session.user.id,
+    });
+    if(error){
+      results.push({ dateStr, ok: false, msg: error.code === '23505' ? 'Already booked' : error.message });
+    } else {
+      results.push({ dateStr, ok: true, msg: 'Booked' });
+    }
+  }
+
+  const succeeded = results.filter(r => r.ok).length;
+  let html = `<p style="margin-top:12px;font-size:13px;color:var(--muted)"><b>${succeeded}</b> of ${results.length} date(s) booked.</p>`;
+  html += `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px"><thead><tr>
+    <th style="text-align:left;padding:6px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Date</th>
+    <th style="text-align:left;padding:6px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Result</th>
+  </tr></thead><tbody>`;
+  results.forEach(r => {
+    html += `<tr><td style="padding:6px;border-bottom:1px solid var(--line)">${dowOfISO(r.dateStr)}, ${fmtDateLong(r.dateStr)}</td><td style="padding:6px;border-bottom:1px solid var(--line);color:${r.ok?'var(--turf-deep)':'var(--danger)'};font-weight:${r.ok?400:700}">${escSafe(r.msg)}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  el.recurringResults.innerHTML = html;
+
+  el.recurringBookBtn.disabled = false;
+  el.recurringBookBtn.textContent = 'Book this pattern';
+
+  await refreshBookings();
+  renderWeek();
+});
+
+el.weekGrid.addEventListener('click', async e => {
+  const bookBtn = e.target.closest('[data-book]');
+  const cancelBtn = e.target.closest('[data-cancel]');
+  if(bookBtn){
+    const payload = JSON.parse(bookBtn.dataset.book);
+    const teamId = myBookingTeamId();
+    if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
+    bookBtn.disabled = true;
+    const { error } = await sb.from('bookings').insert({
+      field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
+      time: payload.time, team_id: teamId, booked_by: session.user.id,
+    });
+    if(error){
+      if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
+      else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
+      else flash('Booking failed: '+error.message, 'err');
+    } else {
+      flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+    }
+    await refreshBookings();
+    renderWeek();
+  } else if(cancelBtn){
+    if(!confirm('Cancel this booking?')) return;
+    const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();
+    if(error){ flash('Cancel failed: '+error.message, 'err'); }
+    else if(!data || !data.length){ flash('Could not cancel — you may not have permission.', 'err'); }
+    else { flash('Booking cancelled', 'ok'); }
+    await refreshBookings();
+    renderWeek();
+  }
+});
+
+// ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============
+let availField = 'seamans';
+let availWeekMonday = mondayOf(SEASON_START);
+
+function buildAvailFieldChips(){
+  el.availFieldChips.innerHTML = '';
+  FIELDS.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'fchip' + (f.id===availField?' active':'');
+    b.dataset.id = f.id;
+    b.textContent = f.name;
+    el.availFieldChips.appendChild(b);
+  });
+  const f = FIELD_MAP[availField];
+  el.availFieldNote.textContent = f && f.note ? f.note : '';
+}
+el.availFieldChips.addEventListener('click', e => {
+  if(!e.target.classList.contains('fchip')) return;
+  availField = e.target.dataset.id;
+  buildAvailFieldChips();
+  renderFieldAvailability();
+});
+el.availPrevWeek.addEventListener('click', () => {
+  const next = addDays(availWeekMonday, -7);
+  if(next >= mondayOf(SEASON_START)){ availWeekMonday = next; renderFieldAvailability(); }
+});
+el.availNextWeek.addEventListener('click', () => {
+  const next = addDays(availWeekMonday, 7);
+  if(next <= SEASON_END){ availWeekMonday = next; renderFieldAvailability(); }
+});
+
+function renderFieldAvailability(){
+  const monday = availWeekMonday;
+  const sunday = addDays(monday, 6);
+  el.availWeekLabel.textContent = `${MONTHS[monday.getMonth()]} ${monday.getDate()} - ${MONTHS[sunday.getMonth()]} ${sunday.getDate()}, 2027`;
+  el.availPrevWeek.disabled = addDays(monday, -7) < mondayOf(SEASON_START);
+  el.availNextWeek.disabled = addDays(monday, 7) > SEASON_END;
+
+  const field = FIELD_MAP[availField];
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  let html = '', daysShown = 0;
+  for(let i=0;i<7;i++){
+    const date = addDays(monday, i);
+    if(date < SEASON_START || date > SEASON_END) continue;
+    const dow = date.getDay();
+    const avail = field.availability.find(a => a.days.includes(dow));
+    if(!avail) continue;
+    daysShown++;
+    const dateStr = fmtDateISO(date);
+    const isPast = date < today;
+    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}</h3>`;
+    avail.times.forEach(time => {
+      html += `<div class="timerow"><div class="timelabel">${time}</div><div class="subrow">`;
+      avail.subfields.forEach(sub => {
+        const existing = bookingsCache.find(b => b.field_id===availField && b.date===dateStr && b.subfield===sub && b.time===time);
+        if(existing){
+          const key = teamKeyFor(existing.team_id);
+          const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
+          html += `<span class="book-slot booked"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}</span>`;
+        } else {
+          html += `<span class="book-slot" style="cursor:default;border-style:dashed"><span class="sub">${escSafe(sub)}:</span><span class="plus" style="color:var(--turf)">Open</span></span>`;
+        }
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  }
+  if(!daysShown){
+    html = `<div class="empty-week">This field has no available days in the current week. Try a different field or another week.</div>`;
+  }
+  el.availWeekGrid.innerHTML = html;
+}
+
+// ============ OPEN THIS WEEK VIEW (all fields, next 7 days, everyone) ============
+function renderOpenWeek(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = today < SEASON_START ? SEASON_START : today;
+  const cappedEnd = addDays(start, 6);
+  const end = cappedEnd > SEASON_END ? SEASON_END : cappedEnd;
+
+  const byDay = {};
+  let d = new Date(start);
+  while(d <= end){
+    const dow = d.getDay();
+    const dateStr = fmtDateISO(d);
+    FIELDS.forEach(field => {
+      const avail = field.availability.find(a => a.days.includes(dow));
+      if(!avail) return;
+      avail.times.forEach(time => {
+        avail.subfields.forEach(sub => {
+          const existing = bookingsCache.find(b => b.field_id===field.id && b.date===dateStr && b.subfield===sub && b.time===time);
+          if(!existing){
+            if(!byDay[dateStr]) byDay[dateStr] = [];
+            byDay[dateStr].push({ fieldName: field.name, sub, time });
+          }
+        });
+      });
+    });
+    d = addDays(d, 1);
+  }
+
+  const dates = Object.keys(byDay).sort();
+  let total = 0;
+  let html = '';
+  dates.forEach(dateStr => {
+    const slots = byDay[dateStr].sort((a,b) => a.fieldName.localeCompare(b.fieldName) || a.time.localeCompare(b.time));
+    total += slots.length;
+    const byField = {};
+    slots.forEach(s => { if(!byField[s.fieldName]) byField[s.fieldName] = []; byField[s.fieldName].push(s); });
+    html += `<section class="venue"><div class="venue-head"><h3>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</h3><span class="n">${slots.length} open</span></div><div class="rows">`;
+    Object.keys(byField).forEach(fieldName => {
+      const fieldSlots = byField[fieldName];
+      html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slots">`;
+      fieldSlots.forEach(s => {
+        html += `<span class="slot"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.sub)}</span></span>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div></section>`;
+  });
+
+  if(!total){
+    el.openWeekResults.innerHTML = `<div class="empty-schedule"><b>No open slots in the coming week</b>Everything's booked across all fields for the next 7 days.</div>`;
+    el.openWeekCount.innerHTML = '';
+    return;
+  }
+  el.openWeekResults.innerHTML = html;
+  el.openWeekCount.innerHTML = `<b>${total}</b> open slot${total!==1?'s':''} across all fields, ${MONTHS[start.getMonth()]} ${start.getDate()} through ${MONTHS[end.getMonth()]} ${end.getDate()}.`;
+}
+
+// ============ ADMIN VIEW ============
+function renderAdmin(){
+  if(myProfile.role === 'admin'){
+    el.adminHeading.textContent = 'Invite a director or coach';
+    el.adminHint.textContent = 'As admin you can invite directors (either gender) or coaches (any team). Each team can have more than one coach.';
+    el.inviteRoleField.style.display = 'block';
+    el.inviteRoleSelect.value = 'coach';
+    syncInviteFormFields();
+    populateTeamSelect(); // full 14, gender-labeled
+    el.userListLabel.textContent = 'Directors & coaches';
+    el.userListHead.innerHTML = '<tr><th>Role</th><th>Team</th><th>Email</th></tr>';
+  } else {
+    const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
+    el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
+    el.adminHint.textContent = `You can only invite coaches for ${genderLabel} teams. Each team can have more than one coach.`;
+    el.inviteRoleField.style.display = 'none';
+    el.inviteGenderField.style.display = 'none';
+    el.inviteTeamField.style.display = 'block';
+    el.inviteGrade.innerHTML = GRADES.map(g => {
+      const id = teamsByKey[myProfile.gender+'|'+g];
+      return `<option value="${id}">${g}</option>`;
+    }).join('');
+    el.userListLabel.textContent = 'Coaches on your teams';
+    el.userListHead.innerHTML = '<tr><th>Team</th><th>Coach email</th></tr>';
+  }
+  loadUserList();
+}
+
+function populateTeamSelect(){
+  // Full list of 14 teams, gender-labeled, for admin coach invites
+  el.inviteGrade.innerHTML = GRADES.map(g =>
+    `<option value="${teamsByKey['girls|'+g]}">Girls ${g}</option>`
+  ).join('') + GRADES.map(g =>
+    `<option value="${teamsByKey['boys|'+g]}">Boys ${g}</option>`
+  ).join('');
+}
+
+function syncInviteFormFields(){
+  if(myProfile.role !== 'admin') return;
+  const isDirector = el.inviteRoleSelect.value === 'director';
+  el.inviteGenderField.style.display = isDirector ? 'block' : 'none';
+  el.inviteTeamField.style.display = isDirector ? 'none' : 'block';
+}
+el.inviteRoleSelect.addEventListener('change', syncInviteFormFields);
+
+el.inviteBtn.addEventListener('click', async () => {
+  const email = el.inviteEmail.value.trim();
+  if(!email){ el.inviteStatus.innerHTML = `<span class="status err">Enter an email address.</span>`; return; }
+
+  const isAdmin = myProfile.role === 'admin';
+  const inviteRole = isAdmin ? el.inviteRoleSelect.value : 'coach';
+  const payload = { email, inviteRole };
+  if(inviteRole === 'director'){
+    payload.gender = el.inviteGenderSelect.value;
+  } else {
+    payload.teamId = el.inviteGrade.value;
+  }
+
+  el.inviteBtn.disabled = true; el.inviteBtn.textContent = 'Sending…';
+  el.inviteStatus.innerHTML = '';
+  try {
+    const res = await fetch(INVITE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    if(result.ok){
+      el.inviteStatus.innerHTML = `<span class="status ok">Invite sent to ${escSafe(email)}.</span>`;
+      el.inviteEmail.value = '';
+      loadUserList();
+    } else {
+      el.inviteStatus.innerHTML = `<span class="status err">${escSafe(result.error || 'Invite failed')}</span>`;
+    }
+  } catch(err) {
+    el.inviteStatus.innerHTML = `<span class="status err">Could not reach the invite service: ${escSafe(err.message)}</span>`;
+  }
+  el.inviteBtn.disabled = false; el.inviteBtn.textContent = 'Send invite';
+});
+
+async function loadUserList(){
+  const colspan = myProfile.role === 'admin' ? 3 : 2;
+  el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">Loading…</td></tr>`;
+
+  let query = sb.from('profiles').select('email, role, gender, team_id');
+  if(myProfile.role === 'admin'){
+    query = query.in('role', ['director','coach']);
+  } else {
+    query = query.eq('role', 'coach').eq('gender', myProfile.gender);
+  }
+  const { data, error } = await query;
+
+  if(error){
+    el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">Could not load users: ${escSafe(error.message)}</td></tr>`;
+    return;
+  }
+  if(!data.length){
+    el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">No one invited yet.</td></tr>`;
+    return;
+  }
+
+  if(myProfile.role === 'admin'){
+    // directors first, then coaches, each sorted by gender/grade for readability
+    const rows = data.slice().sort((a,b) => {
+      if(a.role !== b.role) return a.role === 'director' ? -1 : 1;
+      return (a.gender||'').localeCompare(b.gender||'');
+    });
+    el.coachListBody.innerHTML = rows.map(u => {
+      const teamText = u.role === 'director'
+        ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
+        : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
+      const roleLabel = u.role === 'director' ? 'Director' : 'Coach';
+      return `<tr><td>${escSafe(roleLabel)}</td><td>${escSafe(teamText)}</td><td>${escSafe(u.email)}</td></tr>`;
+    }).join('');
+  } else {
+    el.coachListBody.innerHTML = data.map(c => {
+      const grade = teamsById[c.team_id]?.grade || '(unknown)';
+      return `<tr><td>${escSafe(grade)}</td><td>${escSafe(c.email)}</td></tr>`;
+    }).join('');
+  }
+}
+
+// ============ BULK INVITE FROM SPREADSHEET ============
+el.bulkUploadBtn.addEventListener('click', async () => {
+  const file = el.bulkFileInput.files[0];
+  if(!file){ el.bulkResults.innerHTML = `<div class="status err">Choose a file first.</div>`; return; }
+
+  el.bulkUploadBtn.disabled = true; el.bulkUploadBtn.textContent = 'Reading file…';
+  el.bulkResults.innerHTML = '';
+
+  let rows;
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  } catch(err) {
+    el.bulkResults.innerHTML = `<div class="status err">Could not read that file: ${escSafe(err.message)}</div>`;
+    el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process file';
+    return;
+  }
+
+  const validRows = [];
+  const skipped = [];
+  rows.forEach(row => {
+    const name = String(row.Name || row.name || '').trim();
+    const email = String(row.Email || row.email || '').trim().toLowerCase();
+    const gender = String(row.Gender || row.gender || '').trim().toLowerCase();
+    const grade = String(row.Grade || row.grade || '').trim();
+    if(!email && !name) return; // fully blank row, skip silently
+    if(!email){ skipped.push({name, email, reason:'Missing email'}); return; }
+    if(gender !== 'girls' && gender !== 'boys'){ skipped.push({name, email, reason:`Invalid gender "${row.Gender||''}"`}); return; }
+    if(!GRADES.includes(grade)){ skipped.push({name, email, reason:`Invalid grade "${row.Grade||''}"`}); return; }
+    if(myProfile.role === 'director' && gender !== myProfile.gender){
+      skipped.push({name, email, reason:`You can only invite ${myProfile.gender} coaches`});
+      return;
+    }
+    const teamId = teamsByKey[gender+'|'+grade];
+    if(!teamId){ skipped.push({name, email, reason:'Could not match a team'}); return; }
+    validRows.push({ name, email, gender, grade, teamId });
+  });
+
+  if(!validRows.length && !skipped.length){
+    el.bulkResults.innerHTML = `<div class="status err">No rows found in that file.</div>`;
+    el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process file';
+    return;
+  }
+
+  el.bulkUploadBtn.textContent = `Sending ${validRows.length} invite(s)…`;
+  const sent = [];
+  for(const row of validRows){
+    try {
+      const res = await fetch(INVITE_FUNCTION_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+        body: JSON.stringify({ email: row.email, inviteRole: 'coach', teamId: row.teamId }),
+      });
+      const result = await res.json();
+      sent.push({ ...row, ok: result.ok, error: result.error });
+    } catch(err) {
+      sent.push({ ...row, ok: false, error: err.message });
+    }
+  }
+
+  let html = `<table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px">
+    <thead><tr>
+      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Name</th>
+      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Email</th>
+      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Team</th>
+      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Result</th>
+    </tr></thead><tbody>`;
+  sent.forEach(r => {
+    html += `<tr><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(r.name)}</td><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(r.email)}</td><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(teamLabel(r.gender, r.grade))}</td><td style="padding:7px;border-bottom:1px solid var(--line);color:${r.ok?'var(--turf-deep)':'var(--danger)'};font-weight:${r.ok?400:700}">${r.ok ? 'Invited' : escSafe(r.error||'Failed')}</td></tr>`;
+  });
+  skipped.forEach(s => {
+    html += `<tr><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(s.name||'—')}</td><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(s.email||'—')}</td><td style="padding:7px;border-bottom:1px solid var(--line)">—</td><td style="padding:7px;border-bottom:1px solid var(--line);color:var(--danger);font-weight:700">${escSafe(s.reason)}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  el.bulkResults.innerHTML = html;
+
+  el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process file';
+  el.bulkFileInput.value = '';
+  loadUserList();
+});
+
+// expose for inline onclick in empty-state buttons
+window.switchView = switchView;
+
+// ============ GO ============
+init();
+</script>
+</body>
+</html>

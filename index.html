@@ -319,6 +319,7 @@
 <div id="viewOpenWeek" style="display:none">
   <div class="wrap">
     <p class="count" id="openWeekCount"></p>
+    <p class="field-note" id="openWeekBookingAs" style="margin:-6px 0 14px"></p>
     <div id="openWeekResults"></div>
   </div>
 </div>
@@ -501,6 +502,7 @@ const el = {
   availNextWeek: document.getElementById('availNextWeek'),
   availWeekGrid: document.getElementById('availWeekGrid'),
   openWeekCount: document.getElementById('openWeekCount'),
+  openWeekBookingAs: document.getElementById('openWeekBookingAs'),
   openWeekResults: document.getElementById('openWeekResults'),
   adminHeading: document.getElementById('adminHeading'),
   adminHint: document.getElementById('adminHint'),
@@ -787,6 +789,7 @@ function switchView(view){
   } else if(view === 'openweek'){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
+    if((myProfile.role === 'director' || myProfile.role === 'admin') && !bookAsGrade) bookAsGrade = GRADES[0];
     renderOpenWeek();
   } else if(view === 'admin'){
     el.teamPicker.style.display = 'none';
@@ -1266,6 +1269,14 @@ function renderFieldAvailability(){
 
 // ============ OPEN THIS WEEK VIEW (all fields, next 7 days, everyone) ============
 function renderOpenWeek(){
+  const teamId = myBookingTeamId();
+  if(teamId){
+    const key = teamKeyFor(teamId);
+    el.openWeekBookingAs.textContent = key ? `Booking as: ${teamLabel(...key.split('|'))}` : '';
+  } else {
+    el.openWeekBookingAs.textContent = '';
+  }
+
   const today = new Date(); today.setHours(0,0,0,0);
   const start = today < SEASON_START ? SEASON_START : today;
   const cappedEnd = addDays(start, 6);
@@ -1284,7 +1295,7 @@ function renderOpenWeek(){
           const existing = bookingsCache.find(b => b.field_id===field.id && b.date===dateStr && b.subfield===sub && b.time===time);
           if(!existing){
             if(!byDay[dateStr]) byDay[dateStr] = [];
-            byDay[dateStr].push({ fieldName: field.name, sub, time });
+            byDay[dateStr].push({ fieldId: field.id, fieldName: field.name, sub, time });
           }
         });
       });
@@ -1305,7 +1316,8 @@ function renderOpenWeek(){
       const fieldSlots = byField[fieldName];
       html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slots">`;
       fieldSlots.forEach(s => {
-        html += `<span class="slot"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.sub)}</span></span>`;
+        const payload = JSON.stringify({fieldId:s.fieldId, date:dateStr, subfield:s.sub, time:s.time});
+        html += `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.sub)}</span><span class="plus">+ Book</span></button>`;
       });
       html += `</div></div>`;
     });
@@ -1320,6 +1332,28 @@ function renderOpenWeek(){
   el.openWeekResults.innerHTML = html;
   el.openWeekCount.innerHTML = `<b>${total}</b> open slot${total!==1?'s':''} across all fields, ${MONTHS[start.getMonth()]} ${start.getDate()} through ${MONTHS[end.getMonth()]} ${end.getDate()}.`;
 }
+
+el.openWeekResults.addEventListener('click', async e => {
+  const bookBtn = e.target.closest('[data-book]');
+  if(!bookBtn) return;
+  const payload = JSON.parse(bookBtn.dataset.book);
+  const teamId = myBookingTeamId();
+  if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
+  bookBtn.disabled = true;
+  const { error } = await sb.from('bookings').insert({
+    field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
+    time: payload.time, team_id: teamId, booked_by: session.user.id,
+  });
+  if(error){
+    if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
+    else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
+    else flash('Booking failed: '+error.message, 'err');
+  } else {
+    flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+  }
+  await refreshBookings();
+  renderOpenWeek();
+});
 
 // ============ ADMIN VIEW ============
 function renderAdmin(){

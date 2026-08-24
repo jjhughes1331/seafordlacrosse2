@@ -1503,12 +1503,12 @@ function renderFieldMonthGrid(){
             const key = teamKeyFor(existing.team_id);
             const teamText = key ? teamLabel(...key.split('|')) : '(unknown)';
             const isMine = existing.team_id === myTeamId;
-            slotsHtml += `<span class="cal-slot${isMine?' mine':''}" title="${escSafe(sub)}"><b>${escSafe(time)}</b> ${escSafe(teamText)}</span>`;
+            slotsHtml += `<span class="cal-slot${isMine?' mine':''}"><b>${escSafe(time)}</b> ${escSafe(sub)}: ${escSafe(teamText)}</span>`;
           } else if(isPast){
-            slotsHtml += `<span class="cal-slot" style="opacity:.4"><b>${escSafe(time)}</b> &mdash;</span>`;
+            slotsHtml += `<span class="cal-slot" style="opacity:.4"><b>${escSafe(time)}</b> ${escSafe(sub)}: &mdash;</span>`;
           } else {
             const payload = JSON.stringify({fieldId:availField, date:dateStr, subfield:sub, time});
-            slotsHtml += `<button class="cal-slot empty" data-fieldbook='${payload.replace(/'/g,"&#39;")}' title="${escSafe(sub)}"><b>${escSafe(time)}</b> Empty</button>`;
+            slotsHtml += `<button class="cal-slot empty" data-fieldbook='${payload.replace(/'/g,"&#39;")}'><b>${escSafe(time)}</b> Empty ${escSafe(sub)}</button>`;
           }
         });
       });

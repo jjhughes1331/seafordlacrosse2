@@ -44,6 +44,7 @@
 
   /* ===== Signed-in bar ===== */
   .signed-in { max-width: 1000px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: #fff; }
+  #lockBanner { background: #fbe9e4; color: var(--danger); text-align: center; padding: 10px 20px; font-weight: 700; font-size: 13.5px; border-bottom: 1.5px solid var(--danger); }
   .signed-in .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
   .signed-in .who { font-size: 15px; font-weight: 800; color: var(--turf-deep); }
   .signed-in .role-pill { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--turf-deep); color: #fff; padding: 3px 9px; border-radius: 20px; }
@@ -246,6 +247,8 @@
   <button class="signout-btn" id="signOutBtn">Sign out</button>
 </div>
 
+<div id="lockBanner" style="display:none"></div>
+
 <!-- ============ AUTH SCREENS ============ -->
 <div id="authArea">
   <div class="auth-screen" id="loadingScreen">
@@ -416,6 +419,45 @@
     </div>
     <div id="bulkResults"></div>
   </div>
+
+  <div class="admin-card" style="margin-top:16px">
+    <h3>Schedule lock</h3>
+    <p class="hint" id="lockHint">When locked, nobody — including admins and directors — can book or cancel anything until it's unlocked again.</p>
+    <button class="btn-primary" id="lockToggleBtn" style="width:auto;padding:11px 20px"></button>
+  </div>
+
+  <div class="admin-card" style="margin-top:16px">
+    <h3>Clear bookings</h3>
+    <p class="hint">This permanently deletes bookings and cannot be undone.</p>
+
+    <p class="section-label" style="margin-bottom:8px">Clear by team</p>
+    <div class="invite-form">
+      <div class="field" id="clearGenderField" style="display:none">
+        <label>Gender</label>
+        <select id="clearGenderSelect">
+          <option value="girls">Girls</option>
+          <option value="boys">Boys</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Team</label>
+        <select id="clearTeamSelect"></select>
+      </div>
+      <button id="clearTeamBtn">Clear this team</button>
+    </div>
+    <div id="clearTeamStatus" style="margin-bottom:20px"></div>
+
+    <p class="section-label" style="margin-bottom:8px">Clear by field</p>
+    <p class="hint" id="clearFieldHint" style="margin-top:-6px"></p>
+    <div class="invite-form">
+      <div class="field">
+        <label>Field</label>
+        <select id="clearFieldSelect"></select>
+      </div>
+      <button id="clearFieldBtn">Clear this field</button>
+    </div>
+    <div id="clearFieldStatus"></div>
+  </div>
 </div>
 
 <div class="actions" id="actionsBar" style="display:none">
@@ -496,6 +538,7 @@ const el = {
   viewTabs: document.getElementById('viewTabs'),
   adminTab: document.getElementById('adminTab'),
   signedInBar: document.getElementById('signedInBar'),
+  lockBanner: document.getElementById('lockBanner'),
   whoName: document.getElementById('whoName'),
   rolePill: document.getElementById('rolePill'),
   signOutBtn: document.getElementById('signOutBtn'),
@@ -569,6 +612,17 @@ const el = {
   bulkFileInput: document.getElementById('bulkFileInput'),
   bulkUploadBtn: document.getElementById('bulkUploadBtn'),
   bulkResults: document.getElementById('bulkResults'),
+  lockHint: document.getElementById('lockHint'),
+  lockToggleBtn: document.getElementById('lockToggleBtn'),
+  clearGenderField: document.getElementById('clearGenderField'),
+  clearGenderSelect: document.getElementById('clearGenderSelect'),
+  clearTeamSelect: document.getElementById('clearTeamSelect'),
+  clearTeamBtn: document.getElementById('clearTeamBtn'),
+  clearTeamStatus: document.getElementById('clearTeamStatus'),
+  clearFieldHint: document.getElementById('clearFieldHint'),
+  clearFieldSelect: document.getElementById('clearFieldSelect'),
+  clearFieldBtn: document.getElementById('clearFieldBtn'),
+  clearFieldStatus: document.getElementById('clearFieldStatus'),
   actionsBar: document.getElementById('actionsBar'),
   status: document.getElementById('status'),
   pageFooter: document.getElementById('pageFooter'),
@@ -707,6 +761,7 @@ async function loadProfileAndStart(){
 
   await loadTeams();
   await refreshBookings();
+  await refreshLockState();
   setupRealtime();
 
   el.authArea.innerHTML = '';
@@ -767,12 +822,33 @@ async function refreshBookings(){
   bookingsCache = data;
 }
 
+let scheduleLocked = false;
+async function refreshLockState(){
+  const { data, error } = await sb.from('app_settings').select('schedule_locked').eq('id', true).single();
+  if(error){ return; } // non-fatal — banner just won't show if this fails
+  scheduleLocked = !!data.schedule_locked;
+  renderLockBanner();
+}
+function renderLockBanner(){
+  el.lockBanner.style.display = scheduleLocked ? 'block' : 'none';
+  el.lockBanner.textContent = scheduleLocked ? '🔒 The schedule is locked — bookings and cancellations are paused right now.' : '';
+  if(myProfile && (myProfile.role === 'admin' || myProfile.role === 'director')) renderLockToggleButton();
+}
+
+function rerenderCurrentView(){
+  if(currentView === 'schedule') renderScheduleMode();
+  else if(currentView === 'book') renderWeek();
+  else if(currentView === 'openweek') renderOpenWeek();
+}
+
 function setupRealtime(){
   realtimeChannel = sb.channel('bookings-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
       await refreshBookings();
-      if(currentView === 'schedule') renderSchedule();
-      if(currentView === 'book') renderWeek();
+      rerenderCurrentView();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, async () => {
+      await refreshLockState();
     })
     .subscribe();
 }
@@ -1264,6 +1340,7 @@ function updateRecurringSlotOptions(){
 }
 
 el.recurringBookBtn.addEventListener('click', async () => {
+  if(scheduleLocked){ el.recurringResults.innerHTML = `<div class="status err">The schedule is currently locked — no bookings can be made right now.</div>`; return; }
   const pair = el.recurringSlotSelect.value;
   if(!pair) return;
   const [sub, time] = pair.split('||');
@@ -1323,6 +1400,7 @@ el.recurringBookBtn.addEventListener('click', async () => {
 el.weekGrid.addEventListener('click', async e => {
   const bookBtn = e.target.closest('[data-book]');
   const cancelBtn = e.target.closest('[data-cancel]');
+  if((bookBtn || cancelBtn) && scheduleLocked){ flash('The schedule is currently locked — no changes can be made right now.', 'err'); return; }
   if(bookBtn){
     const payload = JSON.parse(bookBtn.dataset.book);
     const teamId = myBookingTeamId();
@@ -1528,6 +1606,7 @@ el.availMonthGrid.addEventListener('click', e => handleFieldBookClick(e));
 async function handleFieldBookClick(e){
   const btn = e.target.closest('[data-fieldbook]');
   if(!btn) return;
+  if(scheduleLocked){ flash('The schedule is currently locked — no bookings can be made right now.', 'err'); return; }
   const payload = JSON.parse(btn.dataset.fieldbook);
   const teamId = myBookingTeamId();
   if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
@@ -1616,6 +1695,7 @@ function renderOpenWeek(){
 el.openWeekResults.addEventListener('click', async e => {
   const bookBtn = e.target.closest('[data-book]');
   if(!bookBtn) return;
+  if(scheduleLocked){ flash('The schedule is currently locked — no bookings can be made right now.', 'err'); return; }
   const payload = JSON.parse(bookBtn.dataset.book);
   const teamId = myBookingTeamId();
   if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
@@ -1661,7 +1741,89 @@ function renderAdmin(){
     el.userListHead.innerHTML = '<tr><th>Team</th><th>Coach email</th></tr>';
   }
   loadUserList();
+  renderLockToggleButton();
+  renderClearControls();
 }
+
+function renderLockToggleButton(){
+  if(scheduleLocked){
+    el.lockToggleBtn.textContent = 'Unlock schedule';
+    el.lockToggleBtn.style.background = 'var(--danger)';
+  } else {
+    el.lockToggleBtn.textContent = 'Lock schedule';
+    el.lockToggleBtn.style.background = '';
+  }
+}
+el.lockToggleBtn.addEventListener('click', async () => {
+  const goingTo = !scheduleLocked;
+  el.lockToggleBtn.disabled = true;
+  const { error } = await sb.from('app_settings').update({
+    schedule_locked: goingTo,
+    locked_by: goingTo ? session.user.id : null,
+    locked_at: goingTo ? new Date().toISOString() : null,
+  }).eq('id', true);
+  if(error){ flash('Could not change lock state: '+error.message, 'err'); }
+  else { scheduleLocked = goingTo; renderLockBanner(); flash(goingTo ? 'Schedule locked.' : 'Schedule unlocked.', 'ok'); }
+  el.lockToggleBtn.disabled = false;
+});
+
+function renderClearControls(){
+  // Clear by team: admin sees all 14, director sees only their own gender's 7
+  if(myProfile.role === 'admin'){
+    el.clearGenderField.style.display = 'none';
+    el.clearTeamSelect.innerHTML = GRADES.map(g =>
+      `<option value="${teamsByKey['girls|'+g]}">Girls ${g}</option>`
+    ).join('') + GRADES.map(g =>
+      `<option value="${teamsByKey['boys|'+g]}">Boys ${g}</option>`
+    ).join('');
+  } else {
+    el.clearGenderField.style.display = 'none';
+    el.clearTeamSelect.innerHTML = GRADES.map(g =>
+      `<option value="${teamsByKey[myProfile.gender+'|'+g]}">${g}</option>`
+    ).join('');
+  }
+
+  // Clear by field: same 6 fields for everyone with access to this tab
+  el.clearFieldSelect.innerHTML = FIELDS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  el.clearFieldHint.textContent = myProfile.role === 'director'
+    ? `As a director, this only clears ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} bookings at this field — any bookings for the other gender will remain.`
+    : '';
+}
+
+el.clearTeamBtn.addEventListener('click', async () => {
+  const teamId = el.clearTeamSelect.value;
+  const teamOpt = el.clearTeamSelect.selectedOptions ? el.clearTeamSelect.selectedOptions[0] : null;
+  const teamName = teamOpt ? teamOpt.textContent : 'this team';
+  const count = bookingsCache.filter(b => b.team_id === teamId).length;
+  if(!count){ el.clearTeamStatus.innerHTML = `<span class="status">No bookings found for ${escSafe(teamName)}.</span>`; return; }
+  if(!confirm(`This will permanently delete ${count} booking${count!==1?'s':''} for ${teamName}. This cannot be undone. Continue?`)) return;
+
+  el.clearTeamBtn.disabled = true;
+  const { data, error } = await sb.from('bookings').delete().eq('team_id', teamId).select();
+  el.clearTeamBtn.disabled = false;
+  if(error){ el.clearTeamStatus.innerHTML = `<span class="status err">Failed: ${escSafe(error.message)}</span>`; return; }
+  const deleted = data ? data.length : 0;
+  el.clearTeamStatus.innerHTML = `<span class="status ok">Deleted ${deleted} booking${deleted!==1?'s':''} for ${escSafe(teamName)}.</span>`;
+  await refreshBookings();
+  rerenderCurrentView();
+});
+
+el.clearFieldBtn.addEventListener('click', async () => {
+  const fieldId = el.clearFieldSelect.value;
+  const fieldName = FIELD_MAP[fieldId] ? FIELD_MAP[fieldId].name : fieldId;
+  const count = bookingsCache.filter(b => b.field_id === fieldId).length;
+  if(!count){ el.clearFieldStatus.innerHTML = `<span class="status">No bookings found at ${escSafe(fieldName)}.</span>`; return; }
+  if(!confirm(`This will permanently delete ${count} booking${count!==1?'s':''} at ${fieldName}. This cannot be undone. Continue?`)) return;
+
+  el.clearFieldBtn.disabled = true;
+  const { data, error } = await sb.from('bookings').delete().eq('field_id', fieldId).select();
+  el.clearFieldBtn.disabled = false;
+  if(error){ el.clearFieldStatus.innerHTML = `<span class="status err">Failed: ${escSafe(error.message)}</span>`; return; }
+  const deleted = data ? data.length : 0;
+  el.clearFieldStatus.innerHTML = `<span class="status ok">Deleted ${deleted} booking${deleted!==1?'s':''} at ${escSafe(fieldName)}.</span>`;
+  await refreshBookings();
+  rerenderCurrentView();
+});
 
 function populateTeamSelect(){
   // Full list of 14 teams, gender-labeled, for admin coach invites

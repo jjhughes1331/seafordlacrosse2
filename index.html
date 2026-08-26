@@ -5,11 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Seaford Lacrosse 2027 Field Schedule</title>
 <link rel="icon" href="seaford-lacrosse-logo.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
-    /* Palette pulled from the crest: dark green, black, silver/gray, white */
+    /* Core greens — from the lacrosse crest, used for functional UI (buttons, badges, highlights) */
     --turf-deep: #14371f;
     --turf: #1f5c38;
     --ink: #14201a;
@@ -21,26 +24,42 @@
     --card: #ffffff;
     --danger: #b0402a;
     --danger-bg: #fbe9e4;
-    --shadow: 0 1px 2px rgba(15,30,20,.06), 0 8px 24px rgba(15,30,20,.06);
+    --shadow: 0 1px 2px rgba(15,30,20,.05), 0 10px 28px rgba(15,30,20,.07);
+    --shadow-lift: 0 2px 6px rgba(15,30,20,.06), 0 18px 40px rgba(15,30,20,.10);
+    --radius: 12px;
+    /* Heritage accents — sampled from the 250th/25th anniversary crest (navy, parchment, brass) */
+    --navy: #1b2540;
+    --parchment: #f8f3e8;
+    --parchment-line: #e7dcc4;
+    --brass: #b8874f;
+    --brass-deep: #8f6635;
+    --font-display: "Fraunces", Georgia, serif;
+    --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: var(--ink); background: var(--chalk); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  body { font-family: var(--font-body); color: var(--ink); background: var(--chalk); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 80px; }
   a { color: var(--turf); }
 
   /* ===== Header ===== */
-  header { background: var(--card); border-bottom: 4px solid var(--turf-deep); padding: 22px 20px 0; }
-  .header-inner { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .header-inner img { width: 64px; height: auto; border-radius: 6px; }
-  .header-text { flex: 1; min-width: 200px; }
-  .eyebrow { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--silver-deep); font-weight: 700; margin-bottom: 2px; }
-  h1 { font-size: clamp(22px, 4.5vw, 32px); font-weight: 800; letter-spacing: -.5px; color: var(--turf-deep); }
-  .sub { color: var(--muted); margin-top: 2px; font-size: 14px; }
+  header {
+    background: linear-gradient(180deg, var(--parchment) 0%, #fdfbf6 100%);
+    border-bottom: 1px solid var(--brass);
+    box-shadow: inset 0 -3px 0 -1px var(--brass);
+    padding: 28px 20px 0;
+  }
+  .header-hero { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 40px); }
+  .header-logo-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+  .header-hero img { height: 68px; width: auto; display: block; filter: drop-shadow(0 2px 6px rgba(27,37,64,.12)); }
+  .header-text { text-align: center; }
+  .eyebrow { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--brass-deep); font-weight: 700; margin-bottom: 4px; }
+  h1 { font-family: var(--font-display); font-size: clamp(26px, 5vw, 40px); font-weight: 600; letter-spacing: -.3px; color: var(--navy); line-height: 1.1; }
+  .sub { color: var(--muted); margin-top: 4px; font-size: 14px; }
 
-  .view-tabs { display: flex; gap: 4px; margin-top: 18px; flex-wrap: wrap; }
-  .view-tab { border: none; background: transparent; color: var(--muted); padding: 11px 20px; font-size: 14px; font-weight: 700; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: 3px solid transparent; }
+  .view-tabs { display: flex; justify-content: center; gap: 4px; margin-top: 22px; flex-wrap: wrap; padding-bottom: 2px; }
+  .view-tab { border: none; background: transparent; color: var(--muted); padding: 12px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; }
   .view-tab:hover { color: var(--turf-deep); }
-  .view-tab.active { color: var(--turf-deep); border-bottom-color: var(--turf-deep); }
+  .view-tab.active { color: var(--navy); border-bottom-color: var(--brass); }
 
   /* ===== Signed-in bar ===== */
   .signed-in { max-width: 1000px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: #fff; }
@@ -54,7 +73,7 @@
   /* ===== Login / auth screens ===== */
   .auth-screen { max-width: 420px; margin: 60px auto; padding: 32px 28px; background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); text-align: center; }
   .auth-screen img { width: 90px; margin-bottom: 16px; }
-  .auth-screen h2 { font-size: 20px; color: var(--turf-deep); margin-bottom: 6px; font-weight: 800; }
+  .auth-screen h2 { font-family: var(--font-display); font-size: 22px; color: var(--navy); margin-bottom: 6px; font-weight: 600; }
   .auth-screen p.hint { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
   .field { text-align: left; margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
@@ -95,7 +114,7 @@
   .count b { color: var(--ink); }
   .venue { margin-bottom: 26px; }
   .venue-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; margin-bottom: 6px; border-bottom: 2px solid var(--turf-deep); }
-  .venue-head h3 { font-size: 17px; font-weight: 800; color: var(--turf-deep); }
+  .venue-head h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--turf-deep); }
   .venue-head .n { font-size: 12.5px; color: var(--muted); font-weight: 600; }
   .venue-note { font-size: 12.5px; color: var(--silver-deep); margin: 7px 0 12px; font-style: italic; }
   .rows { display: grid; gap: 7px; }
@@ -127,7 +146,7 @@
   .mtab:hover { border-color: var(--turf); color: var(--turf); }
   .mtab.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
   .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
-  .recurring-card h3 { color: var(--turf-deep); font-size: 15px; margin-bottom: 4px; font-weight: 800; }
+  .recurring-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: 17px; margin-bottom: 4px; font-weight: 600; }
   .recurring-card p.hint { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
@@ -177,7 +196,7 @@
 
   /* ===== Admin view ===== */
   .admin-card { max-width: 1000px; margin: 20px auto 0; padding: 20px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
-  .admin-card h3 { color: var(--turf-deep); font-size: 16px; margin-bottom: 4px; font-weight: 800; }
+  .admin-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: 18px; margin-bottom: 4px; font-weight: 600; }
   .admin-card p.hint { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
@@ -209,6 +228,9 @@
     .timelabel { padding-top: 0; }
     .view-tab { padding: 9px 14px; font-size: 13px; }
     .invite-form { flex-direction: column; align-items: stretch; }
+    .header-hero { gap: 10px; }
+    .header-hero img { height: 52px; }
+    .eyebrow { font-size: 9.5px; letter-spacing: 2px; white-space: nowrap; }
   }
 </style>
 </head>
@@ -226,16 +248,20 @@
 </script>
 
 <header>
-  <div class="header-inner">
-    <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
+  <div class="header-hero">
+    <div class="header-logo-col"><img src="seaford-vikings-anniversary-logo.jpg" alt="Seaford Vikings 250th and 25th anniversary"></div>
     <div class="header-text">
+      <div class="eyebrow">Seaford, New York</div>
       <h1>Seaford Lacrosse</h1>
     </div>
+    <div class="header-logo-col"><img src="seaford-lacrosse-badge.jpg" alt="Seaford Lacrosse"></div>
   </div>
   <nav class="view-tabs" id="viewTabs" style="display:none">
     <button class="view-tab active" data-view="schedule">View Schedule</button>
-    <button class="view-tab" data-view="book">Book a Slot</button>
-    <button class="view-tab" data-view="openweek">Open This Week</button>
+    <button class="view-tab" data-view="book">Book A Practice Time</button>
+    <button class="view-tab" data-view="openweek">Fields Open This Week</button>
+    <button class="view-tab" data-view="myteam" id="myTeamTab" style="display:none">My Team's Practices</button>
+    <button class="view-tab" data-view="league" id="leagueTab" style="display:none">League Overview</button>
     <button class="view-tab" data-view="admin" id="adminTab" style="display:none">Admin</button>
   </nav>
 </header>
@@ -360,6 +386,32 @@
     <p class="count" id="openWeekCount"></p>
     <p class="field-note" id="openWeekBookingAs" style="margin:-6px 0 14px"></p>
     <div id="openWeekResults"></div>
+  </div>
+</div>
+
+<!-- ============ MY TEAM'S PRACTICES (coaches only) ============ -->
+<div id="viewMyTeam" style="display:none">
+  <div class="toolbar">
+    <div class="now-showing" id="myTeamHeading"></div>
+    <button class="allbtn" id="myTeamExportCsvBtn">Export to CSV (TeamSnap)</button>
+    <button class="allbtn" id="myTeamExportIcsBtn">Add to Calendar</button>
+  </div>
+  <div class="wrap">
+    <p class="count" id="myTeamCount"></p>
+    <div id="myTeamResults"></div>
+  </div>
+</div>
+
+<!-- ============ LEAGUE OVERVIEW (directors and admin) ============ -->
+<div id="viewLeague" style="display:none">
+  <div class="mode-toggle" id="leagueGenderToggle">
+    <button class="mtab active" data-gender="all">All</button>
+    <button class="mtab" data-gender="girls">Girls Only</button>
+    <button class="mtab" data-gender="boys">Boys Only</button>
+  </div>
+  <div class="wrap">
+    <p class="count" id="leagueCount"></p>
+    <div id="leagueResults"></div>
   </div>
 </div>
 
@@ -537,6 +589,8 @@ const el = {
   loadingScreen: document.getElementById('loadingScreen'),
   viewTabs: document.getElementById('viewTabs'),
   adminTab: document.getElementById('adminTab'),
+  myTeamTab: document.getElementById('myTeamTab'),
+  leagueTab: document.getElementById('leagueTab'),
   signedInBar: document.getElementById('signedInBar'),
   lockBanner: document.getElementById('lockBanner'),
   whoName: document.getElementById('whoName'),
@@ -550,6 +604,8 @@ const el = {
   viewSchedule: document.getElementById('viewSchedule'),
   viewBook: document.getElementById('viewBook'),
   viewOpenWeek: document.getElementById('viewOpenWeek'),
+  viewMyTeam: document.getElementById('viewMyTeam'),
+  viewLeague: document.getElementById('viewLeague'),
   viewAdmin: document.getElementById('viewAdmin'),
   scheduleModeToggle: document.getElementById('scheduleModeToggle'),
   scheduleByTeam: document.getElementById('scheduleByTeam'),
@@ -595,6 +651,14 @@ const el = {
   openWeekCount: document.getElementById('openWeekCount'),
   openWeekBookingAs: document.getElementById('openWeekBookingAs'),
   openWeekResults: document.getElementById('openWeekResults'),
+  myTeamHeading: document.getElementById('myTeamHeading'),
+  myTeamExportCsvBtn: document.getElementById('myTeamExportCsvBtn'),
+  myTeamExportIcsBtn: document.getElementById('myTeamExportIcsBtn'),
+  myTeamCount: document.getElementById('myTeamCount'),
+  myTeamResults: document.getElementById('myTeamResults'),
+  leagueGenderToggle: document.getElementById('leagueGenderToggle'),
+  leagueCount: document.getElementById('leagueCount'),
+  leagueResults: document.getElementById('leagueResults'),
   adminHeading: document.getElementById('adminHeading'),
   adminHint: document.getElementById('adminHint'),
   inviteRoleField: document.getElementById('inviteRoleField'),
@@ -775,6 +839,8 @@ async function loadProfileAndStart(){
       : teamLabel(myProfile.gender, teamsById[myProfile.team_id]?.grade || '');
   el.rolePill.textContent = myProfile.role;
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = 'inline-block';
+  if(myProfile.role === 'coach') el.myTeamTab.style.display = 'inline-block';
+  if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
 
   if(myProfile.role === 'coach'){
     scheduleGender = myProfile.gender;
@@ -839,6 +905,8 @@ function rerenderCurrentView(){
   if(currentView === 'schedule') renderScheduleMode();
   else if(currentView === 'book') renderWeek();
   else if(currentView === 'openweek') renderOpenWeek();
+  else if(currentView === 'myteam') renderMyTeam();
+  else if(currentView === 'league') renderLeague();
 }
 
 function setupRealtime(){
@@ -866,6 +934,8 @@ function switchView(view){
   el.viewSchedule.style.display = view === 'schedule' ? 'block' : 'none';
   el.viewBook.style.display = view === 'book' ? 'block' : 'none';
   el.viewOpenWeek.style.display = view === 'openweek' ? 'block' : 'none';
+  el.viewMyTeam.style.display = view === 'myteam' ? 'block' : 'none';
+  el.viewLeague.style.display = view === 'league' ? 'block' : 'none';
   el.viewAdmin.style.display = view === 'admin' ? 'block' : 'none';
 
   if(view === 'schedule'){
@@ -901,6 +971,14 @@ function switchView(view){
     el.lockedTeamBanner.style.display = 'none';
     if((myProfile.role === 'director' || myProfile.role === 'admin') && !bookAsGrade) bookAsGrade = GRADES[0];
     renderOpenWeek();
+  } else if(view === 'myteam'){
+    el.teamPicker.style.display = 'none';
+    el.lockedTeamBanner.style.display = 'none';
+    renderMyTeam();
+  } else if(view === 'league'){
+    el.teamPicker.style.display = 'none';
+    el.lockedTeamBanner.style.display = 'none';
+    renderLeague();
   } else if(view === 'admin'){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
@@ -1018,12 +1096,15 @@ function parseTimeRangeForExport(range){
   };
 }
 
-function exportTeamScheduleCSV(){
-  const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
-  if(!teamKey) return;
-  const filtered = bookingsCache
+function getTeamBookingsSorted(teamKey){
+  return bookingsCache
     .filter(b => teamKeyFor(b.team_id) === teamKey)
     .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+}
+
+function exportTeamScheduleCSV(teamKey, teamLabelText){
+  if(!teamKey) return;
+  const filtered = getTeamBookingsSorted(teamKey);
 
   const rows = filtered.map(b => {
     const { startStr, durStr } = parseTimeRangeForExport(b.time);
@@ -1051,12 +1132,75 @@ function exportTeamScheduleCSV(){
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const fname = teamLabel(scheduleGender, scheduleGrade).replace(/\s+/g,'-').toLowerCase();
+  const fname = teamLabelText.replace(/\s+/g,'-').toLowerCase();
   a.href = url; a.download = `${fname}-teamsnap-import.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-el.exportCsvBtn.addEventListener('click', exportTeamScheduleCSV);
+el.exportCsvBtn.addEventListener('click', () => {
+  const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
+  if(!teamKey) return;
+  exportTeamScheduleCSV(teamKey, teamLabel(scheduleGender, scheduleGrade));
+});
+
+// ---- Calendar (.ics) export — works for Apple Calendar and Google Calendar ----
+// Uses "floating" local time (no timezone marker), which every calendar app
+// interprets as the viewer's own local time. That's correct here because
+// every field and every user is in the same real-world timezone.
+function icsEscape(v){
+  return String(v ?? '').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+function fmtICSDateTime(dateISO, hour24, minute){
+  const [y,m,d] = dateISO.split('-');
+  return `${y}${m}${d}T${String(hour24).padStart(2,'0')}${String(minute).padStart(2,'0')}00`;
+}
+function parseTimeRangeTo24h(range){
+  const m = range.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if(!m) return null;
+  const [, sh, sm, eh, em, endMeridiem] = m;
+  const to24 = (h, meridiem) => { let hh = parseInt(h,10) % 12; if(meridiem.toUpperCase()==='PM') hh += 12; return hh; };
+  const endHour24 = to24(eh, endMeridiem);
+  const endMinTotal = endHour24*60 + parseInt(em,10);
+  let startMeridiem = endMeridiem;
+  let startHour24 = to24(sh, startMeridiem);
+  let startMinTotal = startHour24*60 + parseInt(sm,10);
+  if(startMinTotal > endMinTotal){
+    startMeridiem = endMeridiem.toUpperCase()==='PM' ? 'AM' : 'PM';
+    startHour24 = to24(sh, startMeridiem);
+    startMinTotal = startHour24*60 + parseInt(sm,10);
+  }
+  return { startHour24, startMin: parseInt(sm,10), endHour24, endMin: parseInt(em,10) };
+}
+function exportTeamScheduleICS(teamKey, teamLabelText){
+  if(!teamKey) return;
+  const filtered = getTeamBookingsSorted(teamKey);
+  const nowStamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  let ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Seaford Lacrosse//Schedule//EN\r\nCALSCALE:GREGORIAN\r\n';
+  filtered.forEach(b => {
+    const parsed = parseTimeRangeTo24h(b.time);
+    if(!parsed) return;
+    const fieldName = FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id;
+    const dtstart = fmtICSDateTime(b.date, parsed.startHour24, parsed.startMin);
+    const dtend = fmtICSDateTime(b.date, parsed.endHour24, parsed.endMin);
+    ics += 'BEGIN:VEVENT\r\n';
+    ics += `UID:${b.id}@seafordlax.com\r\n`;
+    ics += `DTSTAMP:${nowStamp}\r\n`;
+    ics += `DTSTART:${dtstart}\r\n`;
+    ics += `DTEND:${dtend}\r\n`;
+    ics += `SUMMARY:${icsEscape('Practice - '+teamLabelText)}\r\n`;
+    ics += `LOCATION:${icsEscape(fieldName+(b.subfield?', '+b.subfield:''))}\r\n`;
+    ics += 'END:VEVENT\r\n';
+  });
+  ics += 'END:VCALENDAR\r\n';
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = teamLabelText.replace(/\s+/g,'-').toLowerCase();
+  a.href = url; a.download = `${fname}-practices.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
 
 el.scheduleModeToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
@@ -1089,6 +1233,39 @@ function renderScheduleMode(){
 }
 
 // ============ SCHEDULE VIEW ============
+function renderGroupedByFieldDate(filtered, highlightTeamKey){
+  const byField = {};
+  filtered.forEach(b => {
+    if(!byField[b.field_id]) byField[b.field_id] = {};
+    if(!byField[b.field_id][b.date]) byField[b.field_id][b.date] = [];
+    byField[b.field_id][b.date].push(b);
+  });
+  let html = '', totalSlots = 0, venuesShown = 0;
+  FIELDS.forEach(field => {
+    if(!byField[field.id]) return;
+    venuesShown++;
+    const dates = Object.keys(byField[field.id]).sort();
+    const cnt = dates.reduce((n,d)=>n+byField[field.id][d].length, 0);
+    totalSlots += cnt;
+    html += `<section class="venue"><div class="venue-head"><h3>${escSafe(field.name)}</h3><span class="n">${cnt} slot${cnt!==1?'s':''}</span></div>`;
+    if(field.note) html += `<div class="venue-note">${escSafe(field.note)}</div>`;
+    html += '<div class="rows">';
+    dates.forEach(date => {
+      const slots = byField[field.id][date].sort((a,b) => a.time.localeCompare(b.time));
+      html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}</div><div class="slots">`;
+      slots.forEach(s => {
+        const key = teamKeyFor(s.team_id);
+        const mine = highlightTeamKey && key === highlightTeamKey;
+        const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
+        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.subfield)}</span>${!highlightTeamKey?' &middot; '+escSafe(teamText):''}</span>`;
+      });
+      html += '</div></div>';
+    });
+    html += '</div></section>';
+  });
+  return { html, totalSlots, venuesShown };
+}
+
 function renderSchedule(){
   const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
   const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
@@ -1109,41 +1286,65 @@ function renderSchedule(){
     return;
   }
 
-  const byField = {};
-  filtered.forEach(b => {
-    if(!byField[b.field_id]) byField[b.field_id] = {};
-    if(!byField[b.field_id][b.date]) byField[b.field_id][b.date] = [];
-    byField[b.field_id][b.date].push(b);
-  });
-
-  let html = '', totalSlots = 0, venuesShown = 0;
-  FIELDS.forEach(field => {
-    if(!byField[field.id]) return;
-    venuesShown++;
-    const dates = Object.keys(byField[field.id]).sort();
-    const cnt = dates.reduce((n,d)=>n+byField[field.id][d].length, 0);
-    totalSlots += cnt;
-    html += `<section class="venue"><div class="venue-head"><h3>${escSafe(field.name)}</h3><span class="n">${cnt} slot${cnt!==1?'s':''}</span></div>`;
-    if(field.note) html += `<div class="venue-note">${escSafe(field.note)}</div>`;
-    html += '<div class="rows">';
-    dates.forEach(date => {
-      const slots = byField[field.id][date].sort((a,b) => a.time.localeCompare(b.time));
-      html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}</div><div class="slots">`;
-      slots.forEach(s => {
-        const key = teamKeyFor(s.team_id);
-        const mine = teamKey && key === teamKey;
-        const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
-        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.subfield)}</span>${!teamKey?' &middot; '+escSafe(teamText):''}</span>`;
-      });
-      html += '</div></div>';
-    });
-    html += '</div></section>';
-  });
-
+  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, teamKey);
   el.results.innerHTML = html;
   el.count.innerHTML = teamKey
     ? `<b>${totalSlots}</b> slot${totalSlots!==1?'s':''} for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}. Your slots are highlighted.`
     : `Showing <b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}. Pick a team above to filter.`;
+}
+
+// ============ MY TEAM'S PRACTICES (coaches) ============
+function renderMyTeam(){
+  const teamId = myProfile.team_id;
+  const key = teamKeyFor(teamId);
+  const label = key ? teamLabel(...key.split('|')) : '';
+  el.myTeamHeading.textContent = label;
+  const filtered = getTeamBookingsSorted(key);
+
+  if(!filtered.length){
+    el.myTeamResults.innerHTML = `<div class="empty-schedule"><b>No practices booked yet</b>Head to Book A Practice Time to get started.<br><button class="cta" onclick="switchView('book')">Book a practice &rarr;</button></div>`;
+    el.myTeamCount.innerHTML = '';
+    return;
+  }
+
+  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, key);
+  el.myTeamResults.innerHTML = html;
+  el.myTeamCount.innerHTML = `<b>${totalSlots}</b> practice${totalSlots!==1?'s':''} booked for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}.`;
+}
+el.myTeamExportCsvBtn.addEventListener('click', () => {
+  const key = teamKeyFor(myProfile.team_id);
+  if(!key) return;
+  exportTeamScheduleCSV(key, teamLabel(...key.split('|')));
+});
+el.myTeamExportIcsBtn.addEventListener('click', () => {
+  const key = teamKeyFor(myProfile.team_id);
+  if(!key) return;
+  exportTeamScheduleICS(key, teamLabel(...key.split('|')));
+});
+
+// ============ LEAGUE OVERVIEW (directors and admin) ============
+let leagueGenderFilter = 'all'; // 'all' | 'girls' | 'boys'
+el.leagueGenderToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mtab'); if(!btn) return;
+  leagueGenderFilter = btn.dataset.gender;
+  document.querySelectorAll('#leagueGenderToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  renderLeague();
+});
+function renderLeague(){
+  const filtered = leagueGenderFilter === 'all'
+    ? bookingsCache
+    : bookingsCache.filter(b => { const t = teamsById[b.team_id]; return t && t.gender === leagueGenderFilter; });
+  const label = leagueGenderFilter === 'all' ? 'all teams' : (leagueGenderFilter === 'girls' ? 'Girls teams' : 'Boys teams');
+
+  if(!filtered.length){
+    el.leagueResults.innerHTML = `<div class="empty-schedule"><b>No bookings yet</b>Nothing booked for ${escSafe(label)} so far this season.</div>`;
+    el.leagueCount.innerHTML = '';
+    return;
+  }
+
+  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, null);
+  el.leagueResults.innerHTML = html;
+  el.leagueCount.innerHTML = `<b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''} &mdash; ${escSafe(label)}.`;
 }
 
 // ============ BOOK VIEW ============

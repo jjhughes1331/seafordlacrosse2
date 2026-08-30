@@ -22,6 +22,11 @@
     /* Core greens — from the lacrosse crest, used for functional UI (buttons, badges, highlights) */
     --turf-deep: #14371f;
     --turf: #1f5c38;
+    /* Solid-fill buttons/chips need a color that holds 4.5:1+ against white text.
+       Text usages of --turf-deep don't have that constraint, so in dark mode
+       --turf-deep gets lightened for text-on-dark-background contrast while
+       --accent-fill stays independently tuned for white-on-top legibility. */
+    --accent-fill: #14371f;
     --ink: #14201a;
     --muted: #5c6b62;
     --line: #dde6de;
@@ -54,6 +59,7 @@
     :root:not([data-theme="light"]) {
       --turf-deep: #4fae76;
       --turf: #3f9563;
+      --accent-fill: #1f6e40; /* 6.25:1 against white — verified via WCAG contrast calc */
       --ink: #eef2ef;
       --muted: #9aa8a0;
       --line: #2a3630;
@@ -72,6 +78,12 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html { color-scheme: light dark; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important; scroll-behavior: auto !important;
+    }
+  }
   body { font-family: var(--font-body); color: var(--ink); background: var(--chalk); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 80px; }
   a { color: var(--turf); }
@@ -131,7 +143,7 @@
   #lockBanner.show { max-height: 60px; opacity: 1; padding: 10px 20px; }
   .signed-in .label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
   .signed-in .who { font-size: var(--fs-md); font-weight: 800; color: var(--turf-deep); }
-  .signed-in .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--turf-deep); color: #fff; padding: 3px 9px; border-radius: var(--radius-pill); }
+  .signed-in .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 3px 9px; border-radius: var(--radius-pill); }
   .signout-btn { margin-left: auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .signout-btn:hover { border-color: var(--danger); color: var(--danger); }
 
@@ -144,7 +156,7 @@
   .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
   .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 16px; }
   .field input:focus { outline: none; border-color: var(--turf); }
-  .btn-primary { width: 100%; background: var(--turf-deep); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
+  .btn-primary { width: 100%; background: var(--accent-fill); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
   .btn-primary:hover { background: var(--turf); }
   .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
   .link-btn { background: none; border: none; color: var(--turf); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; margin-top: 14px; text-decoration: underline; }
@@ -159,11 +171,11 @@
   .gender-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .gtab { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 18px; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
   .gtab:hover { border-color: var(--turf); color: var(--turf); }
-  .gtab.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
+  .gtab.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .grade-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 9px; }
   .gcard { border: 1.5px solid var(--line); background: var(--card); border-radius: var(--radius-card); padding: 12px 11px; cursor: pointer; text-align: left; transition: all .15s; box-shadow: var(--shadow); }
   .gcard:hover { border-color: var(--turf); transform: translateY(-1px); }
-  .gcard.active { border-color: var(--turf-deep); background: #eef3ef; box-shadow: 0 0 0 2px var(--turf-deep) inset; }
+  .gcard.active { border-color: var(--accent-fill); background: #eef3ef; box-shadow: 0 0 0 2px var(--turf-deep) inset; }
   .gcard .grade { font-size: var(--fs-md); font-weight: 800; color: var(--turf-deep); }
   .gcard .cnt { font-size: 11.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
   .gcard.zero { opacity: .5; }
@@ -198,7 +210,7 @@
   .empty-schedule b { color: var(--ink); display: block; font-size: var(--fs-md); margin-bottom: 4px; }
   .empty-schedule .cta {
     display: inline-block; margin-top: 16px; color: #fff; text-decoration: none; font-weight: 700;
-    padding: 12px 24px; border-radius: 10px; cursor: pointer; background: var(--turf-deep);
+    padding: 12px 24px; border-radius: 10px; cursor: pointer; background: var(--accent-fill);
     font-family: inherit; font-size: var(--fs-base); border: none; box-shadow: var(--shadow-turf);
   }
   .empty-schedule .cta:hover { background: var(--turf); transform: translateY(-1px); }
@@ -210,13 +222,13 @@
   .field-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
   .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--turf); color: var(--turf); }
-  .fchip.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; box-shadow: var(--shadow-turf); }
+  .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
   .field-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin-bottom: 14px; }
   .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
   .mode-toggle { display: flex; justify-content: center; gap: 6px; margin: 10px 0 14px; }
   .mtab { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .mtab:hover { border-color: var(--turf); color: var(--turf); }
-  .mtab.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; box-shadow: var(--shadow-turf); }
+  .mtab.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
   .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow); }
   .recurring-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
   .recurring-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 14px; }
@@ -254,7 +266,7 @@
   }
   .daytoggle { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .daytoggle:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
-  .daytoggle.active { background: var(--turf-deep); border-color: var(--turf-deep); color: #fff; }
+  .daytoggle.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .daytoggle:disabled { opacity: .3; cursor: not-allowed; }
   select {
     width: 100%; padding: 10px 36px 10px 12px; border: 1.5px solid var(--line); border-radius: 8px;
@@ -295,6 +307,8 @@
   .book-slot.mine .cancel::before { content: ''; position: absolute; inset: -9px; }
   .book-slot.mine .cancel:hover { background: rgba(0,0,0,.24); }
   .book-slot:disabled, .cal-slot.empty:disabled { opacity: .45; cursor: not-allowed; }
+  .book-slot.armed, .cal-slot.empty.armed { background: var(--accent-fill) !important; border-style: solid !important; border-color: var(--accent-fill) !important; color: #fff !important; font-weight: 700; }
+  .book-slot.mine .cancel.armed { background: var(--danger) !important; color: #fff !important; }
   .plus { color: var(--muted); font-weight: 700; }
   .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
 
@@ -305,7 +319,7 @@
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
   .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: var(--fs-base); background: var(--card); }
-  .invite-form button { background: var(--turf-deep); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
   .coach-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -847,6 +861,26 @@ function teamKeyFor(teamId){
   const t = teamsById[teamId];
   return t ? (t.gender+'|'+t.grade) : null;
 }
+// Two-tap confirm for irreversible actions (booking, cancelling) — replaces
+// native confirm() dialogs and instant-fire buttons with an inline "tap again"
+// state on the button itself. First tap arms it and shows armedHtml for 3s;
+// a second tap within that window proceeds. Returns true only on the second tap.
+function armTwoTap(btn, armedHtml){
+  if(btn.dataset.armed === '1'){
+    clearTimeout(btn._armTimer);
+    btn.dataset.armed = '';
+    return true;
+  }
+  btn.dataset.armed = '1';
+  btn.dataset.origHtml = btn.innerHTML;
+  btn.classList.add('armed');
+  btn.innerHTML = armedHtml;
+  btn._armTimer = setTimeout(() => {
+    if(btn.isConnected){ btn.innerHTML = btn.dataset.origHtml; btn.classList.remove('armed'); btn.dataset.armed = ''; }
+  }, 3000);
+  return false;
+}
+
 function flash(msg, type){
   el.status.textContent = msg;
   el.status.className = (type||'');
@@ -961,6 +995,23 @@ async function loadProfileAndStart(){
     <div class="skel-row"><div class="skel skel-date"></div><div class="skel skel-chip"></div><div class="skel skel-chip"></div></div>
     <div class="skel-row"><div class="skel skel-date"></div><div class="skel skel-chip"></div><div class="skel skel-chip"></div></div>
   </div>`;
+  try {
+    await loadProfileAndStartInner();
+  } catch (err) {
+    // Network calls above (auth, profile, teams, bookings) throw outright when
+    // truly offline — without this, the skeleton would spin forever instead of
+    // telling the user what's wrong.
+    el.authArea.innerHTML = `
+      <div class="auth-screen">
+        <h2>Can't connect</h2>
+        <p class="hint">Check your connection and try again. (${escSafe(err && err.message || 'network error')})</p>
+        <button class="btn-primary" id="retryConnectBtn">Retry</button>
+      </div>`;
+    document.getElementById('retryConnectBtn').addEventListener('click', loadProfileAndStart);
+  }
+}
+
+async function loadProfileAndStartInner(){
   const { data: { user } } = await sb.auth.getUser();
   if(!user){ showLoginScreen(); return; }
 
@@ -1766,9 +1817,10 @@ el.weekGrid.addEventListener('click', async e => {
   const cancelBtn = e.target.closest('[data-cancel]');
   if((bookBtn || cancelBtn) && scheduleLocked){ flash('The schedule is currently locked — no changes can be made right now.', 'err'); return; }
   if(bookBtn){
-    const payload = JSON.parse(bookBtn.dataset.book);
     const teamId = myBookingTeamId();
     if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
+    if(!armTwoTap(bookBtn, '<span class="plus">Tap again to book</span>')) return;
+    const payload = JSON.parse(bookBtn.dataset.book);
     bookBtn.disabled = true;
     const { error } = await sb.from('bookings').insert({
       field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
@@ -1784,7 +1836,7 @@ el.weekGrid.addEventListener('click', async e => {
     await refreshBookings();
     renderWeek();
   } else if(cancelBtn){
-    if(!confirm('Cancel this booking?')) return;
+    if(!armTwoTap(cancelBtn, '!')) return;
     const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();
     if(error){ flash('Cancel failed: '+error.message, 'err'); }
     else if(!data || !data.length){ flash('Could not cancel — you may not have permission.', 'err'); }
@@ -1971,9 +2023,10 @@ async function handleFieldBookClick(e){
   const btn = e.target.closest('[data-fieldbook]');
   if(!btn) return;
   if(scheduleLocked){ flash('The schedule is currently locked — no bookings can be made right now.', 'err'); return; }
-  const payload = JSON.parse(btn.dataset.fieldbook);
   const teamId = myBookingTeamId();
   if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
+  if(!armTwoTap(btn, btn.classList.contains('cal-slot') ? 'Tap again' : '<span class="plus">Tap again to book</span>')) return;
+  const payload = JSON.parse(btn.dataset.fieldbook);
   btn.disabled = true;
   const { error } = await sb.from('bookings').insert({
     field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,

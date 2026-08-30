@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You're offline — Seaford Lacrosse</title>
+<link rel="icon" href="seaford-lacrosse-logo.jpg">
+<style>
+  :root { color-scheme: light dark; --ink:#14201a; --muted:#5c6b62; --chalk:#fafcfa; --turf-deep:#14371f; --card:#fff; --line:#dde6de; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#eef2ef; --muted:#9aa8a0; --chalk:#121814; --turf-deep:#4fae76; --card:#1a2019; --line:#2a3630; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--chalk); color: var(--ink); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    max-width: 380px; text-align: center; background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 36px 28px;
+  }
+  .icon { font-size: 40px; margin-bottom: 14px; }
+  h1 { font-size: 20px; color: var(--turf-deep); margin-bottom: 8px; }
+  p { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
+  button {
+    background: var(--turf-deep); color: #fff; border: none; padding: 11px 22px;
+    border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🥍</div>
+    <h1>You're offline</h1>
+    <p>Seaford Lacrosse needs a connection to load the schedule and bookings. Reconnect and try again.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>

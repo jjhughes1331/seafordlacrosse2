@@ -2,8 +2,8 @@
 // Deliberately network-first and narrow in scope: it never touches
 // Supabase requests (bookings must always be live, never cached), and
 // only caches the static app shell as a fallback for brief offline blips.
-const CACHE_NAME = 'seaford-lax-shell-v1';
-const SHELL_FILES = ['./', './index.html', './manifest.json'];
+const CACHE_NAME = 'seaford-lax-shell-v2';
+const SHELL_FILES = ['./', './index.html', './manifest.json', './offline.html'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -36,6 +36,10 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() =>
+        caches.match(event.request).then(cached =>
+          cached || (event.request.mode === 'navigate' ? caches.match('./offline.html') : undefined)
+        )
+      )
   );
 });

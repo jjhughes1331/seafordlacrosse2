@@ -337,12 +337,14 @@
   .booking { max-width: 1000px; margin: 16px auto 0; padding: 0 20px; }
   .section-label { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; font-weight: 700; }
   .field-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+  .fchip-short { display: none; }
   @media (max-width: 480px) {
-    /* A wrapped chip row orphans a lone chip on its own line — a horizontal
-       scroll strip reads more intentional and never looks unbalanced. */
-    .field-chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
-    .field-chips::-webkit-scrollbar { display: none; }
-    .field-chips .fchip { flex: 0 0 auto; }
+    /* Shorter labels so all 5 fields wrap into two complete rows with nothing
+       cut off and no scrolling needed to find one — a scroll strip here (an
+       earlier attempt) just traded "orphan row" for "have to swipe to see
+       your field," which is worse. */
+    .fchip-full { display: none; }
+    .fchip-short { display: inline; }
   }
   .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--turf); color: var(--turf); }
@@ -717,7 +719,7 @@
   <nav class="view-tabs" id="viewTabs" style="display:none">
     <button class="view-tab active" data-view="schedule" data-short="Schedule">View Schedule</button>
     <button class="view-tab" data-view="book" data-short="Book">Book A Practice Time</button>
-    <button class="view-tab" data-view="openweek" data-short="Open Week">Fields Open This Week</button>
+    <button class="view-tab" data-view="openweek" data-short="Openings">Fields Open This Week</button>
     <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
     <button class="view-tab" data-view="league" id="leagueTab" data-short="League" style="display:none">League Overview</button>
     <button class="view-tab" data-view="admin" id="adminTab" data-short="Admin" style="display:none">Admin</button>
@@ -1014,19 +1016,19 @@ const SEASON_START = new Date(2027, 2, 1);
 const SEASON_END = new Date(2027, 5, 30);
 
 const FIELDS = [
-  { id:"sms", name:"Seaford Middle School",
+  { id:"sms", name:"Seaford Middle School", short:"Middle School",
     note:"Grass field. School teams have priority; permit starts at 5 PM.",
     availability:[
       { days:[1,2,3,4,5], subfields:["Half Field A","Half Field B"], times:["6:00-7:00 PM","7:30-9:00 PM"] },
       { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
     ]},
-  { id:"seamans", name:"Seamans Neck Park",
+  { id:"seamans", name:"Seamans Neck Park", short:"Seamans Neck",
     note:"Field A closest to parking, B mid field, C far end.",
     availability:[
       { days:[1,2,3,4,5], subfields:["Field A","Field B","Field C"], times:["5:00-6:30 PM","6:30-8:00 PM","8:00-10:00 PM"] },
       { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
     ]},
-  { id:"harbor", name:"Harbor School",
+  { id:"harbor", name:"Harbor School", short:"Harbor",
     note:"Field 1 inside track, Field 2 outside track.",
     availability:[
       { days:[1,2,3,4,5], subfields:["Field 1","Field 2"], times:["4:30-5:30 PM","5:30-6:30 PM","6:30-7:30 PM","7:30-8:30 PM"] },
@@ -2220,7 +2222,7 @@ function buildFieldChips(){
   el.fieldChips.innerHTML = FIELDS.map(f => `
     <button class="fchip${f.id===selectedField?' active':''}" data-id="${f.id}">
       <span class="fav-star${f.id===fav?' active':''}" data-favid="${f.id}" role="button" title="${f.id===fav?'Remove as favorite':'Set as favorite field'}" aria-label="Favorite">${STAR_SVG}</span>
-      ${escSafe(f.name)}
+      <span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span>
     </button>`).join('');
   el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
 }
@@ -2684,7 +2686,7 @@ function buildAvailFieldChips(){
   el.availFieldChips.innerHTML = FIELDS.map(f => `
     <button class="fchip${f.id===availField?' active':''}" data-id="${f.id}">
       <span class="fav-star${f.id===fav?' active':''}" data-favid="${f.id}" role="button" title="${f.id===fav?'Remove as favorite':'Set as favorite field'}" aria-label="Favorite">${STAR_SVG}</span>
-      ${escSafe(f.name)}
+      <span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span>
     </button>`).join('');
   el.availFieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[availField]);
   updateFieldBookingAsLabel();

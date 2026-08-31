@@ -75,9 +75,11 @@
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     --navbar-h: 60px;
+    --navbar-bg: rgba(255,255,255,.62);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
+      --navbar-bg: rgba(26,32,25,.62);
       --turf-deep: #4fae76;
       --turf: #3f9563;
       --accent-fill: #1f6e40; /* 6.25:1 against white — verified via WCAG contrast calc */
@@ -106,6 +108,7 @@
      Same values as the prefers-color-scheme block above; kept in sync by hand since
      CSS has no way to "call" one block from another. */
   :root[data-theme="dark"] {
+    --navbar-bg: rgba(26,32,25,.62);
     --turf-deep: #4fae76;
     --turf: #3f9563;
     --accent-fill: #1f6e40;
@@ -701,13 +704,13 @@
       display: flex; justify-content: space-around; align-items: stretch;
       height: calc(var(--navbar-h) + var(--safe-bottom));
       margin: 0; padding: 6px calc(4px + var(--safe-left)) calc(4px + var(--safe-bottom)) calc(4px + var(--safe-right));
-      background: var(--card); /* fallback for browsers without color-mix() */
-      background: color-mix(in srgb, var(--card) 68%, transparent);
+      background: var(--navbar-bg); /* plain rgba() via a themed token — no color-mix() dependency */
       backdrop-filter: blur(22px) saturate(1.6);
       -webkit-backdrop-filter: blur(22px) saturate(1.6);
-      border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+      border-top: 1px solid var(--line);
       box-shadow: 0 -8px 28px rgba(15,30,20,.08);
       transition: transform .28s var(--ease);
+      transform: translateY(0);
     }
     .view-tabs.nav-hidden { transform: translateY(100%); }
     .view-tab {
@@ -1422,25 +1425,22 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
 (function(){
   const nav = document.getElementById('viewTabs');
   if(!nav) return;
-  let lastY = window.scrollY;
-  let ticking = false;
+  let lastY = window.scrollY || window.pageYOffset || 0;
   function apply(){
-    const y = window.scrollY;
-    const delta = y - lastY;
-    if(isMobileViewport()){
-      if(y < 60) nav.classList.remove('nav-hidden');       // always visible near the top
-      else if(delta > 4) nav.classList.add('nav-hidden');   // scrolling down — slide away
-      else if(delta < -4) nav.classList.remove('nav-hidden'); // scrolling up — slide back in
-    } else {
+    const y = window.scrollY || window.pageYOffset || 0;
+    if(window.innerWidth > 700){
       nav.classList.remove('nav-hidden'); // desktop top-tabs bar is never fixed — never hide it
+    } else if(y < 40){
+      nav.classList.remove('nav-hidden'); // always visible near the top
+    } else if(y > lastY){
+      nav.classList.add('nav-hidden');    // scrolling down — slide away
+    } else if(y < lastY){
+      nav.classList.remove('nav-hidden'); // scrolling up — slide back in
     }
     lastY = y;
-    ticking = false;
   }
-  window.addEventListener('scroll', () => {
-    if(!ticking){ requestAnimationFrame(apply); ticking = true; }
-  }, { passive: true });
-  window.addEventListener('resize', () => { if(!isMobileViewport()) nav.classList.remove('nav-hidden'); });
+  window.addEventListener('scroll', apply, { passive: true });
+  window.addEventListener('resize', apply, { passive: true });
 })();
 
 // ============ HELPERS ============

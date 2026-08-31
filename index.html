@@ -219,6 +219,16 @@
   }
   .hamburger-menu button:hover { background: var(--chip-bg); }
   .hamburger-menu button.active { color: var(--turf-deep); background: var(--chip-bg); }
+  .hamburger-identity {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hamburger-identity .who { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hamburger-identity .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 3px 9px; border-radius: var(--radius-pill); flex: none; }
+  .hamburger-menu .hamburger-signout {
+    color: var(--danger); font-weight: 700; border-top: 1px solid var(--line); margin-top: 2px; padding-top: 12px; border-radius: 0 0 var(--radius-chip) var(--radius-chip);
+  }
+  .hamburger-menu .hamburger-signout:hover { background: var(--danger-bg); }
   .header-hero { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 40px); }
   .header-logo-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
   .header-hero img { height: 68px; width: auto; display: block; filter: drop-shadow(0 3px 8px rgba(20,55,31,.14)); }
@@ -267,10 +277,9 @@
   /* ===== Team picker (schedule filter) ===== */
   .picker { max-width: 1000px; margin: 22px auto 0; padding: 0 20px; }
   .picker h2 { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 12px; font-weight: 700; }
-  .gender-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-  .gtab { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 18px; border-radius: var(--radius-pill); font-size: var(--fs-sm); font-weight: 700; cursor: pointer; }
-  .gtab:hover { border-color: var(--turf); color: var(--turf); }
-  .gtab.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+  /* Gender picker now reuses the exact .mode-toggle sliding-pill look (see
+     below) instead of its own bordered-button style — same control, same
+     mental model, everywhere a girls/boys or 2-3-way choice appears. */
   .grade-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 9px; }
   @media (max-width: 700px) {
     /* Directors/admins hit this 7-card grid (3-4 stacked rows) before reaching
@@ -405,7 +414,7 @@
   /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
      button instead of each button separately swapping its own background — the
      iOS-native segmented-control look. */
-  .mode-toggle {
+  .mode-toggle, .gender-tabs {
     display: flex; width: fit-content; margin: 10px auto 14px; position: relative;
     background: var(--line); border-radius: var(--radius-pill); padding: 3px; gap: 0;
   }
@@ -415,14 +424,14 @@
     transition: transform .25s var(--ease), width .25s var(--ease);
     z-index: 0;
   }
-  .mtab {
+  .mtab, .gtab {
     position: relative; z-index: 1; border: none; background: none; color: var(--muted);
     padding: 7px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
     cursor: pointer; transition: color .2s var(--ease);
   }
-  .mtab:hover { color: var(--turf); }
-  .mtab.active { color: #fff; }
-  .mtab.active:hover { color: #fff; }
+  .mtab:hover, .gtab:hover { color: var(--turf); }
+  .mtab.active, .gtab.active { color: #fff; }
+  .mtab.active:hover, .gtab.active:hover { color: #fff; }
   .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
   .recurring-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
   .recurring-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 14px; }
@@ -747,6 +756,10 @@
     .view-tab:active { transform: scale(.94); }
     /* Keep the toast above the new bottom bar instead of colliding with it */
     .actions { bottom: calc(var(--navbar-h) + var(--safe-bottom) + 14px); }
+    /* Identity/sign-out moves into the hamburger menu on mobile — a bar that
+       permanently occupies a content row just to say "signed in as X" is
+       chrome nobody asked to see on every screen. */
+    .signed-in { display: none; }
     /* Not sticky — the header above already owns the sticky top slot and
        condenses on scroll; a second stacked sticky bar here would overlap it. */
   }
@@ -810,9 +823,10 @@
 <!-- ============ TEAM PICKER (schedule filter, or coach's locked team) ============ -->
 <div class="picker" id="teamPicker" style="display:none">
   <h2 id="pickerHeading">Filter by team</h2>
-  <div class="gender-tabs" id="genderTabs">
-    <button class="gtab active" data-g="girls">Girls</button>
-    <button class="gtab" data-g="boys">Boys</button>
+  <div class="gender-tabs mode-toggle" id="genderTabs">
+    <span class="mode-toggle-thumb"></span>
+    <button class="gtab mtab active" data-g="girls">Girls</button>
+    <button class="gtab mtab" data-g="boys">Boys</button>
   </div>
   <div class="grade-grid" id="gradeGrid"></div>
 </div>
@@ -1289,8 +1303,12 @@ const NAV_ICON_SVG = {
 function rebuildHamburgerMenu(){
   const menu = document.getElementById('hamburgerMenu');
   if(!menu) return;
+  const identity = myProfile ? `<div class="hamburger-identity">
+    <span class="who">${escSafe(el.whoName.textContent)}</span>
+    <span class="role-pill">${escSafe(el.rolePill.textContent)}</span>
+  </div>` : '';
   const visibleTabs = Array.from(document.querySelectorAll('#viewTabs .view-tab')).filter(t => t.style.display !== 'none');
-  menu.innerHTML = visibleTabs.map(t => {
+  const tabButtons = visibleTabs.map(t => {
     const view = t.dataset.view;
     const icon = NAV_ICON_SVG[view] || '';
     return `<button type="button" data-view="${view}" class="${t.classList.contains('active')?'active':''}">
@@ -1298,6 +1316,12 @@ function rebuildHamburgerMenu(){
       ${escSafe(t.textContent)}
     </button>`;
   }).join('');
+  const signOut = myProfile ? `<button type="button" class="hamburger-signout" id="hamburgerSignOutBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex:none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Sign out
+  </button>` : '';
+  menu.innerHTML = identity + tabButtons + signOut;
+  document.getElementById('hamburgerSignOutBtn')?.addEventListener('click', () => sb.auth.signOut());
 }
 function closeHamburgerMenu(){
   document.getElementById('hamburgerMenu')?.classList.remove('open');
@@ -1420,17 +1444,48 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
 })();
 
 // ============ HEADER CONDENSE-ON-SCROLL (iOS large-title style) ============
+// On mobile, the full hero (logo + big title + eyebrow) is only worth the
+// ~140px it costs on the very first view (Schedule). Every other view opens
+// already condensed — re-showing the full hero on every tab switch would
+// waste that space repeatedly for no reason once you're past the front door.
 (function(){
   const headerEl = document.querySelector('header');
   let ticking = false;
   function apply(){
-    headerEl.classList.toggle('scrolled', window.scrollY > 40);
+    const forceCondensed = isMobileViewport() && typeof currentView !== 'undefined' && currentView !== 'schedule';
+    headerEl.classList.toggle('scrolled', window.scrollY > 40 || forceCondensed);
     ticking = false;
   }
+  window.applyHeaderCondense = apply;
   window.addEventListener('scroll', () => {
     if(!ticking){ requestAnimationFrame(apply); ticking = true; }
   }, { passive: true });
+  window.addEventListener('resize', apply, { passive: true });
 })();
+
+// ============ SWIPEABLE CALENDAR NAV ============
+// A calendar grid is the single most swipeable UI pattern there is — making
+// week/month navigation tap-only text buttons ("← Prev week") ignores that.
+// This attaches a plain horizontal swipe gesture to a grid container; the
+// prev/next buttons stay in the DOM as the discoverable fallback/hit target,
+// this just adds the faster gesture on top.
+function attachSwipeNav(gridEl, getPrevBtn, getNextBtn){
+  if(!gridEl) return;
+  let startX = 0, startY = 0, tracking = false;
+  gridEl.addEventListener('touchstart', e => {
+    if(!e.touches.length) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
+  }, { passive: true });
+  gridEl.addEventListener('touchend', e => {
+    if(!tracking) return;
+    tracking = false;
+    const touch = e.changedTouches[0]; if(!touch) return;
+    const dx = touch.clientX - startX, dy = touch.clientY - startY;
+    if(Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return; // mostly-vertical or too short = a scroll, not a swipe
+    const btn = dx < 0 ? getNextBtn() : getPrevBtn();
+    if(btn && btn.offsetParent !== null){ haptic('light'); btn.click(); }
+  }, { passive: true });
+}
 
 // ============ HELPERS ============
 function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1701,12 +1756,11 @@ async function loadProfileAndStartInner(){
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
 
   if(myProfile.role === 'coach'){
-    // Land on the full town schedule (all teams, all genders) by default —
-    // same as admin/director already do — rather than pre-filtered to just
-    // their own team. Their own bookings still highlight via the "mine" style
-    // once a team filter is picked; this is just about what shows up first.
+    // Land straight on the coach's own team's schedule — the single most
+    // common thing a coach opens the app to check. "Show all teams" in the
+    // picker is one tap away for the full-town view.
     scheduleGender = myProfile.gender;
-    scheduleGrade = null;
+    scheduleGrade = teamsById[myProfile.team_id]?.grade || null;
     selectedField = 'seamans';
   } else if(myProfile.role === 'director'){
     scheduleGender = myProfile.gender;
@@ -1868,8 +1922,9 @@ function renderPriorityBookingGate(){
   if(!priorityBookingEnabled || !team){
     el.priorityLockedBanner.style.display = 'none';
     el.priorityFinishedRow.style.display = 'none';
-    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
+    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle')
       .forEach(el2 => el2.style.removeProperty('display'));
+    renderWeek(); // #calendarSection vs #recurringCard visibility depends on bookViewMode — let renderWeek own it, not a blanket removeProperty here
     return;
   }
   const unlocked = isTierUnlocked(team.grade);
@@ -1884,8 +1939,9 @@ function renderPriorityBookingGate(){
       .forEach(el2 => el2.style.display = 'none');
   } else {
     el.priorityLockedBanner.style.display = 'none';
-    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
+    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle')
       .forEach(el2 => el2.style.removeProperty('display'));
+    renderWeek(); // #calendarSection vs #recurringCard visibility depends on bookViewMode — let renderWeek own it, not a blanket removeProperty here
     if(team.priority_finished_at){
       el.priorityFinishedRow.innerHTML = `<span class="priority-finished-badge">&#10003; ${escSafe(teamLabelText)} marked finished booking</span>`;
     } else {
@@ -2007,6 +2063,7 @@ function switchView(view){
   currentView = view;
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   positionViewTabsThumb(view);
+  window.applyHeaderCondense?.();
   el.viewSchedule.style.display = view === 'schedule' ? 'block' : 'none';
   el.viewBook.style.display = view === 'book' ? 'block' : 'none';
   el.viewOpenWeek.style.display = view === 'openweek' ? 'block' : 'none';
@@ -2050,6 +2107,7 @@ function switchView(view){
       buildGradeGrid(true);
       buildFieldChips(); buildRecurringUI(); renderWeek();
     }
+    requestAnimationFrame(positionAllModeThumbs);
     renderPriorityBookingGate();
   } else if(view === 'openweek'){
     el.teamPicker.style.display = 'none';
@@ -2103,11 +2161,13 @@ document.getElementById('genderTabs').addEventListener('click', e => {
   if(currentView === 'schedule'){
     scheduleGender = e.target.dataset.g;
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
+    positionModeThumb(el.genderTabs);
     buildGradeGrid();
     renderSchedule();
   } else if(currentView === 'book' && myProfile.role === 'admin'){
     bookAsGender = e.target.dataset.g;
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
+    positionModeThumb(el.genderTabs);
     buildGradeGrid(true);
     renderWeek();
     renderPriorityBookingGate();
@@ -2572,6 +2632,9 @@ el.nextMonth.addEventListener('click', () => {
   const next = addMonths(currentMonthFirst, 1);
   if(next <= SEASON_END){ currentMonthFirst = next; renderWeek(); }
 });
+attachSwipeNav(el.weekGrid,
+  () => bookViewMode === 'month' ? el.prevMonth : el.prevWeek,
+  () => bookViewMode === 'month' ? el.nextMonth : el.nextWeek);
 el.dateJumpInput.min = fmtDateISO(SEASON_START);
 el.dateJumpInput.max = fmtDateISO(SEASON_END);
 el.dateJumpInput.addEventListener('change', () => {
@@ -2987,6 +3050,8 @@ el.availNextMonth.addEventListener('click', () => {
   const next = addMonths(availMonthFirst, 1);
   if(next <= SEASON_END){ availMonthFirst = next; renderFieldView(); }
 });
+attachSwipeNav(el.availWeekGrid, () => el.availPrevWeek, () => el.availNextWeek);
+attachSwipeNav(el.availMonthGrid, () => el.availPrevMonth, () => el.availNextMonth);
 
 function renderFieldView(){
   el.availWeekNavBar.style.display = fieldViewMode === 'week' ? 'flex' : 'none';

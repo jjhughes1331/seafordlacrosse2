@@ -302,6 +302,7 @@
   .priority-tier-row.active { background: var(--chip-bg); color: var(--turf-deep); }
   .priority-tier-row.done { background: var(--ok-bg); color: var(--turf-deep); opacity: .75; }
   .priority-tier-row.waiting { background: var(--chalk); color: var(--muted); }
+  .priority-tier-row.forced { background: var(--mine-bg); color: var(--mine-deep); }
 
   /* ===== Schedule view ===== */
   .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
@@ -986,7 +987,9 @@
     <p class="hint">When on, teams can only book once every older grade has finished — 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
     <button class="btn-primary" id="priorityToggleBtn" style="width:auto;padding:11px 20px"></button>
     <div id="priorityTierStatus" class="priority-tier-status"></div>
-    <button class="allbtn" id="priorityResetBtn" style="margin-top:12px">Reset all teams' finished status</button>
+    <button class="allbtn" id="priorityForceAdvanceBtn" style="margin-top:12px;display:none"></button>
+    <p class="hint" id="priorityForceHint" style="margin-top:8px"></p>
+    <button class="allbtn" id="priorityResetBtn" style="margin-top:12px">Reset all teams' finished &amp; overrides</button>
   </div>
 
   <div class="admin-card" style="margin-top:16px">
@@ -1212,6 +1215,8 @@ const el = {
   priorityFinishedRow: document.getElementById('priorityFinishedRow'),
   priorityTierStatus: document.getElementById('priorityTierStatus'),
   priorityResetBtn: document.getElementById('priorityResetBtn'),
+  priorityForceAdvanceBtn: document.getElementById('priorityForceAdvanceBtn'),
+  priorityForceHint: document.getElementById('priorityForceHint'),
   clearGenderField: document.getElementById('clearGenderField'),
   clearGenderSelect: document.getElementById('clearGenderSelect'),
   clearTeamSelect: document.getElementById('clearTeamSelect'),
@@ -1756,11 +1761,13 @@ function checkWaitlistOpenings(){
 
 let scheduleLocked = false;
 let priorityBookingEnabled = false;
+let priorityForcedRanks = new Set(); // grade ranks a director/admin has manually pushed through
 async function refreshLockState(){
-  const { data, error } = await sb.from('app_settings').select('schedule_locked, priority_booking_enabled').eq('id', true).single();
+  const { data, error } = await sb.from('app_settings').select('schedule_locked, priority_booking_enabled, priority_forced_ranks').eq('id', true).single();
   if(error){ return; } // non-fatal — banner just won't show if this fails
   scheduleLocked = !!data.schedule_locked;
   priorityBookingEnabled = !!data.priority_booking_enabled;
+  priorityForcedRanks = new Set(data.priority_forced_ranks || []);
   renderLockBanner();
 }
 
@@ -1776,6 +1783,7 @@ function isTierUnlocked(grade){
   if(!priorityBookingEnabled) return true;
   const rank = gradeRank(grade);
   for(let r = rank + 1; r <= 6; r++){
+    if(priorityForcedRanks.has(r)) continue; // director/admin pushed this tier through
     const olderTeams = teamsAtGradeRank(r);
     if(olderTeams.some(t => !t.priority_finished_at)) return false;
   }
@@ -1786,10 +1794,20 @@ function isTierUnlocked(grade){
 function blockingTeamsFor(grade){
   const rank = gradeRank(grade);
   for(let r = 6; r > rank; r--){
+    if(priorityForcedRanks.has(r)) continue;
     const pending = teamsAtGradeRank(r).filter(t => !t.priority_finished_at);
     if(pending.length) return pending;
   }
   return [];
+}
+// The single most-senior tier currently holding up the whole hierarchy — the
+// one a "force advance" would push through. Null if nothing is blocked.
+function currentBlockingRank(){
+  for(let r = 6; r >= 0; r--){
+    if(priorityForcedRanks.has(r)) continue;
+    if(teamsAtGradeRank(r).some(t => !t.priority_finished_at)) return r;
+  }
+  return null;
 }
 
 // Shows/hides the locked banner and "Finished booking" row in the Book view,
@@ -1863,6 +1881,8 @@ function setupRealtime(){
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, async () => {
       await refreshLockState();
+      if(currentView === 'book') renderPriorityBookingGate();
+      if(currentView === 'admin') renderPriorityTierStatus();
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist' }, async () => {
       await refreshWaitlist();
@@ -1871,6 +1891,8 @@ function setupRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
       await loadTeams();
       rerenderCurrentView();
+      if(currentView === 'book') renderPriorityBookingGate();
+      if(currentView === 'admin') renderPriorityTierStatus();
     })
     .subscribe();
 }
@@ -3245,7 +3267,12 @@ function renderPriorityToggleButton(){
   renderPriorityTierStatus();
 }
 function renderPriorityTierStatus(){
-  if(!priorityBookingEnabled){ el.priorityTierStatus.innerHTML = ''; return; }
+  if(!priorityBookingEnabled){
+    el.priorityTierStatus.innerHTML = '';
+    el.priorityForceAdvanceBtn.style.display = 'none';
+    el.priorityForceHint.textContent = '';
+    return;
+  }
   let html = '<p class="section-label" style="margin:16px 0 8px">Tier status (oldest first)</p>';
   for(let r = 6; r >= 0; r--){
     const grade = GRADES[r];
@@ -3254,11 +3281,25 @@ function renderPriorityTierStatus(){
     const doneCount = tierTeams.filter(t => t.priority_finished_at).length;
     const unlocked = isTierUnlocked(grade);
     const allDone = doneCount === tierTeams.length;
-    const stateLabel = allDone ? 'Finished' : unlocked ? 'Booking now' : 'Waiting';
-    const stateClass = allDone ? 'done' : unlocked ? 'active' : 'waiting';
+    const forced = priorityForcedRanks.has(r) && !allDone;
+    const stateLabel = allDone ? 'Finished' : forced ? 'Forced through by director' : unlocked ? 'Booking now' : 'Waiting';
+    const stateClass = allDone ? 'done' : forced ? 'forced' : unlocked ? 'active' : 'waiting';
     html += `<div class="priority-tier-row ${stateClass}"><span>${escSafe(grade)}</span><span>${doneCount}/${tierTeams.length} teams &middot; ${stateLabel}</span></div>`;
   }
   el.priorityTierStatus.innerHTML = html;
+
+  const blockingRank = currentBlockingRank();
+  if(blockingRank === null){
+    el.priorityForceAdvanceBtn.style.display = 'none';
+    el.priorityForceHint.textContent = '';
+  } else {
+    const blockingGrade = GRADES[blockingRank];
+    const pending = teamsAtGradeRank(blockingRank).filter(t => !t.priority_finished_at);
+    const nextGrade = blockingRank > 0 ? GRADES[blockingRank - 1] : null;
+    el.priorityForceAdvanceBtn.style.display = 'inline-block';
+    el.priorityForceAdvanceBtn.textContent = `Override: push past ${blockingGrade}${nextGrade ? ` so ${nextGrade} can book` : ''}`;
+    el.priorityForceHint.textContent = `Still waiting on: ${pending.map(t => teamLabel(t.gender, t.grade)).join(', ')}. This doesn't mark them finished — it just stops them from blocking the next grade.`;
+  }
 }
 el.priorityToggleBtn.addEventListener('click', async () => {
   const goingTo = !priorityBookingEnabled;
@@ -3271,10 +3312,30 @@ el.priorityToggleBtn.addEventListener('click', async () => {
 el.priorityResetBtn.addEventListener('click', async () => {
   if(!armTwoTap(el.priorityResetBtn, 'Tap again to confirm reset')) return;
   el.priorityResetBtn.disabled = true;
-  const { error } = await sb.from('teams').update({ priority_finished_at: null }).not('id', 'is', null);
+  const [{ error: teamsErr }, { error: settingsErr }] = await Promise.all([
+    sb.from('teams').update({ priority_finished_at: null }).not('id', 'is', null),
+    sb.from('app_settings').update({ priority_forced_ranks: [] }).eq('id', true),
+  ]);
+  const error = teamsErr || settingsErr;
   if(error){ flash('Could not reset: '+error.message, 'err'); }
-  else { await loadTeams(); renderPriorityTierStatus(); flash("Reset every team's finished status.", 'ok'); }
+  else { await loadTeams(); await refreshLockState(); renderPriorityTierStatus(); flash("Reset every team's finished status and cleared overrides.", 'ok'); }
   el.priorityResetBtn.disabled = false;
+});
+el.priorityForceAdvanceBtn.addEventListener('click', async () => {
+  const blockingRank = currentBlockingRank();
+  if(blockingRank === null) return;
+  if(!armTwoTap(el.priorityForceAdvanceBtn, 'Tap again to confirm override')) return;
+  el.priorityForceAdvanceBtn.disabled = true;
+  const newRanks = Array.from(new Set([...priorityForcedRanks, blockingRank]));
+  const { error } = await sb.from('app_settings').update({ priority_forced_ranks: newRanks }).eq('id', true);
+  if(error){ flash('Could not override: '+error.message, 'err'); }
+  else {
+    priorityForcedRanks = new Set(newRanks);
+    haptic('success');
+    flash(`Pushed past ${GRADES[blockingRank]} — the next grade can book now.`, 'ok');
+    renderPriorityTierStatus();
+  }
+  el.priorityForceAdvanceBtn.disabled = false;
 });
 
 function renderClearControls(){

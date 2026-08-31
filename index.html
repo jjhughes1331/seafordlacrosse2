@@ -573,6 +573,7 @@
   .admin-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 16px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
+  .invite-form .bulk-file-field { flex-basis: 260px; }
   .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: var(--fs-base); background: var(--card); }
   .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
@@ -652,7 +653,11 @@
     .timerow { grid-template-columns: 1fr; gap: 6px; padding: 8px 0; }
     .timelabel { padding-top: 0; font-size: var(--fs-base); }
     .timerow + .timerow { padding-top: 12px; margin-top: 4px; }
+    /* flex-basis 220px on .invite-form .field was written for row layout
+       (width); switching to column here without resetting it made every
+       field claim 220px of HEIGHT instead — huge dead gaps between fields. */
     .invite-form { flex-direction: column; align-items: stretch; }
+    .invite-form .field { flex: none; }
     /* Left-only padding so the centered hero row's box itself starts clear of
        the fixed hamburger button — symmetric padding wouldn't shift a
        already-centered flex group, so this trades perfect optical centering
@@ -959,7 +964,7 @@
       Directors can only upload coaches for their own gender; other rows are skipped.
     </p>
     <div class="invite-form">
-      <div class="field" style="flex:1 1 260px">
+      <div class="field bulk-file-field">
         <label>Spreadsheet file</label>
         <input type="file" id="bulkFileInput" accept=".xlsx,.xls">
       </div>

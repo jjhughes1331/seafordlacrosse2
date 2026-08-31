@@ -277,9 +277,9 @@
        any real content — collapse it to one scrollable row so mobile reaches
        the schedule/booking content much faster, without losing the per-team
        booking counts each card shows. */
-    .grade-grid { display: flex; grid-template-columns: none; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    .grade-grid { display: flex; grid-template-columns: none; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; scroll-snap-type: x proximity; mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%); }
     .grade-grid::-webkit-scrollbar { display: none; }
-    .gcard { flex: 0 0 128px; }
+    .gcard { flex: 0 0 128px; scroll-snap-align: start; }
   }
   .gcard { border: 1.5px solid var(--line); background: var(--card); border-radius: var(--radius-card); padding: 12px 11px; cursor: pointer; text-align: left; transition: all .15s; box-shadow: var(--shadow-card); }
   .gcard:hover { border-color: var(--turf); transform: translateY(-1px); box-shadow: var(--shadow-card-hover); }

@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#fafcfa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121814" media="(prefers-color-scheme: dark)">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Seaford Lax">
@@ -402,7 +402,8 @@
     transition: opacity .22s var(--ease), transform .22s var(--ease);
   }
   .actions.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
-  #status { color: #fff; font-size: var(--fs-sm); font-weight: 600; }
+  .actions.swiping { transition: none; }
+  #status { color: #fff; font-size: var(--fs-sm); font-weight: 600; display: flex; align-items: center; gap: 8px; }
   #statusClose {
     background: rgba(255,255,255,.12); border: none; color: #fff; font-size: 15px; line-height: 1;
     cursor: pointer; border-radius: 6px; width: 26px; height: 26px; flex: none;
@@ -411,9 +412,12 @@
   #statusClose::before { content: ''; position: absolute; inset: -9px; } /* real 44px hit area */
   #statusClose:hover { background: rgba(255,255,255,.22); }
   #status.ok { color: #bfe8cf; }
-  #status.ok::before { content: '✓ '; font-weight: 900; }
   #status.err { color: #f7c9bd; }
-  #status.err::before { content: '⚠ '; font-weight: 900; }
+  .toast-icon { width: 19px; height: 19px; flex: none; }
+  .toast-icon-ring { stroke-dasharray: 63; stroke-dashoffset: 63; animation: toastRing .35s var(--ease) forwards; }
+  .toast-icon-check { stroke-dasharray: 12; stroke-dashoffset: 12; animation: toastCheck .25s var(--ease) .3s forwards; }
+  @keyframes toastRing { to { stroke-dashoffset: 0; } }
+  @keyframes toastCheck { to { stroke-dashoffset: 0; } }
   .status.ok { color: var(--turf-deep); font-weight: 700; }
   .status.err { color: var(--danger); font-weight: 700; }
   .spinner-note { color: var(--muted); font-size: var(--fs-sm); text-align: center; padding: 30px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
@@ -1001,6 +1005,7 @@ function armTwoTap(btn, armedHtml){
     btn.dataset.armed = '';
     return true;
   }
+  haptic('light');
   btn.dataset.armed = '1';
   btn.dataset.origHtml = btn.innerHTML;
   btn.classList.add('armed');
@@ -1011,10 +1016,28 @@ function armTwoTap(btn, armedHtml){
   return false;
 }
 
+// ============ HAPTICS ============
+// Vibration API — supported on Android Chrome, silently a no-op everywhere
+// else (iOS Safari, desktop). Never throws, never blocks.
+function haptic(kind){
+  if(!navigator.vibrate) return;
+  try {
+    if(kind === 'success') navigator.vibrate([10, 30, 10]);
+    else if(kind === 'error') navigator.vibrate([15, 40, 15, 40, 15]);
+    else navigator.vibrate(10); // 'light' — tab switches, arming a two-tap confirm
+  } catch(e) {}
+}
+
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="toast-icon"><circle class="toast-icon-ring" cx="12" cy="12" r="10"/><path class="toast-icon-check" d="m8 12.5 2.5 2.5L16 9"/></svg>';
+const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="toast-icon"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+
 function flash(msg, type){
-  el.status.textContent = msg;
+  const icon = type === 'ok' ? ICON_CHECK : type === 'err' ? ICON_WARN : '';
+  el.status.innerHTML = icon + '<span>' + escSafe(msg) + '</span>';
   el.status.className = (type||'');
+  el.actionsBar.classList.remove('swiping'); el.actionsBar.style.transform = '';
   el.actionsBar.classList.add('show');
+  if(type === 'ok') haptic('success'); else if(type === 'err') haptic('error');
   clearTimeout(flash._t);
   // Longer messages (and errors) get more time to read, not a flat 4s for everything.
   const base = type === 'err' ? 5500 : 4000;
@@ -1026,6 +1049,27 @@ document.getElementById('statusClose').addEventListener('click', () => {
   clearTimeout(flash._t);
   el.actionsBar.classList.remove('show');
 });
+
+// Swipe the toast sideways to dismiss it — the standard mobile notification gesture.
+(function(){
+  const bar = el.actionsBar;
+  let startX = null, dx = 0;
+  bar.addEventListener('touchstart', e => { startX = e.touches[0].clientX; dx = 0; bar.classList.add('swiping'); }, { passive: true });
+  bar.addEventListener('touchmove', e => {
+    if(startX == null) return;
+    dx = e.touches[0].clientX - startX;
+    bar.style.transform = `translateX(calc(-50% + ${dx}px))`;
+    bar.style.opacity = Math.max(0.15, 1 - Math.abs(dx) / 140);
+  }, { passive: true });
+  bar.addEventListener('touchend', () => {
+    if(Math.abs(dx) > 80){
+      clearTimeout(flash._t);
+      bar.classList.remove('show');
+    }
+    bar.classList.remove('swiping'); bar.style.transform = ''; bar.style.opacity = '';
+    startX = null;
+  });
+})();
 
 // ============ AUTH ============
 async function init(){
@@ -1327,6 +1371,7 @@ document.getElementById('viewTabs').addEventListener('click', e => {
 });
 
 function switchView(view){
+  if(view !== currentView) haptic('light');
   currentView = view;
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   el.viewSchedule.style.display = view === 'schedule' ? 'block' : 'none';

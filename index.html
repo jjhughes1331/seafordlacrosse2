@@ -319,6 +319,17 @@
   }
   .waitlist-btn:hover { background: var(--mine-bg); }
   .waitlist-btn.on { border-style: solid; background: var(--mine-bg); }
+  .usage-section { margin-bottom: 20px; }
+  .usage-section:last-child { margin-bottom: 0; }
+  .usage-section h4 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .usage-row { display: grid; grid-template-columns: 140px 1fr 110px; gap: 10px; align-items: center; margin-bottom: 6px; }
+  .usage-label { font-size: var(--fs-xs); font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .usage-track { background: var(--line); border-radius: var(--radius-chip); height: 10px; overflow: hidden; }
+  .usage-fill { background: var(--accent-fill); height: 100%; border-radius: var(--radius-chip); transition: width .3s var(--ease); }
+  .usage-value { font-size: var(--fs-2xs); color: var(--muted); font-weight: 600; text-align: right; white-space: nowrap; }
+  @media (max-width: 560px) {
+    .usage-row { grid-template-columns: 90px 1fr 90px; gap: 6px; }
+  }
   .weather-badge {
     display: inline-block; font-size: var(--fs-2xs); font-weight: 700; color: var(--danger);
     background: var(--danger-bg); padding: 2px 7px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
@@ -588,6 +599,12 @@
 
 <!-- ============ ADMIN VIEW ============ -->
 <div id="viewAdmin" style="display:none">
+  <div class="admin-card" id="usageDashboardCard">
+    <h3>Usage &amp; analytics</h3>
+    <p class="hint" id="usageHint"></p>
+    <div id="usageDashboard"></div>
+  </div>
+
   <div class="admin-card">
     <h3 id="adminHeading">Invite a coach</h3>
     <p class="hint" id="adminHint"></p>
@@ -835,6 +852,8 @@ const el = {
   leagueGenderToggle: document.getElementById('leagueGenderToggle'),
   leagueCount: document.getElementById('leagueCount'),
   leagueResults: document.getElementById('leagueResults'),
+  usageHint: document.getElementById('usageHint'),
+  usageDashboard: document.getElementById('usageDashboard'),
   adminHeading: document.getElementById('adminHeading'),
   adminHint: document.getElementById('adminHint'),
   inviteRoleField: document.getElementById('inviteRoleField'),
@@ -2327,6 +2346,83 @@ function renderAdmin(){
   loadUserList();
   renderLockToggleButton();
   renderClearControls();
+  renderUsageDashboard();
+}
+
+// ============ USAGE & ANALYTICS DASHBOARD (admin/director) ============
+// Total bookable slots per field across the whole season, used as the
+// denominator for utilization % — computed from FIELDS' availability rules,
+// not stored anywhere, so it always matches what booking actually allows.
+function computeFieldSeasonCapacity(){
+  const cap = {};
+  FIELDS.forEach(f => cap[f.id] = 0);
+  let cursor = new Date(SEASON_START);
+  while(cursor <= SEASON_END){
+    const dow = cursor.getDay();
+    FIELDS.forEach(f => {
+      const avail = f.availability.find(a => a.days.includes(dow));
+      if(avail) cap[f.id] += avail.times.length * avail.subfields.length;
+    });
+    cursor = addDays(cursor, 1);
+  }
+  return cap;
+}
+
+function usageBarRow(label, pct, sub){
+  const clamped = Math.max(0, Math.min(100, pct));
+  return `<div class="usage-row">
+    <div class="usage-label">${escSafe(label)}</div>
+    <div class="usage-track"><div class="usage-fill" style="width:${clamped}%"></div></div>
+    <div class="usage-value">${escSafe(sub)}</div>
+  </div>`;
+}
+
+function renderUsageDashboard(){
+  const isAdmin = myProfile.role === 'admin';
+  el.usageHint.textContent = isAdmin
+    ? 'Season-to-date booking activity across every field and team.'
+    : `Season-to-date booking activity across every field, and your ${myProfile.gender==='girls'?'Girls':'Boys'} teams.`;
+
+  // Field utilization
+  const capacity = computeFieldSeasonCapacity();
+  const bookedByField = {};
+  FIELDS.forEach(f => bookedByField[f.id] = 0);
+  bookingsCache.forEach(b => { if(bookedByField[b.field_id] != null) bookedByField[b.field_id]++; });
+  const fieldRows = FIELDS.map(f => {
+    const total = capacity[f.id] || 0;
+    const booked = bookedByField[f.id] || 0;
+    const pct = total ? Math.round((booked/total)*100) : 0;
+    return { label: f.name, booked, total, pct };
+  }).sort((a,b) => b.pct - a.pct);
+
+  // Team bookings, scoped like the rest of the admin tab (director sees only their gender)
+  const cnts = teamCounts();
+  const gendersToShow = isAdmin ? ['girls','boys'] : [myProfile.gender];
+  const teamRows = [];
+  gendersToShow.forEach(g => GRADES.forEach(grade => {
+    teamRows.push({ label: teamLabel(g, grade), booked: cnts[g+'|'+grade] || 0 });
+  }));
+  teamRows.sort((a,b) => a.booked - b.booked); // least-booked (the actionable ones) first
+  const maxTeamBooked = Math.max(1, ...teamRows.map(r => r.booked));
+
+  // Busiest days of the week
+  const dowCounts = [0,0,0,0,0,0,0];
+  bookingsCache.forEach(b => { const d = parseISO(b.date).getDay(); dowCounts[d]++; });
+  const maxDow = Math.max(1, ...dowCounts);
+
+  let html = '<div class="usage-section"><h4>Field utilization</h4>';
+  html += fieldRows.map(r => usageBarRow(r.label, r.pct, `${r.booked}/${r.total} slots · ${r.pct}%`)).join('');
+  html += '</div>';
+
+  html += `<div class="usage-section"><h4>Team bookings (least-booked first)</h4>`;
+  html += teamRows.map(r => usageBarRow(r.label, (r.booked/maxTeamBooked)*100, `${r.booked} slot${r.booked!==1?'s':''}`)).join('');
+  html += '</div>';
+
+  html += '<div class="usage-section"><h4>Busiest days of the week</h4>';
+  html += DOW_FULL.map((name,i) => usageBarRow(name, (dowCounts[i]/maxDow)*100, `${dowCounts[i]} slot${dowCounts[i]!==1?'s':''}`)).join('');
+  html += '</div>';
+
+  el.usageDashboard.innerHTML = bookingsCache.length ? html : '<p class="hint">No bookings yet this season.</p>';
 }
 
 function renderLockToggleButton(){

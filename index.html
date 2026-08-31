@@ -1776,6 +1776,15 @@ async function loadProfileAndStartInner(){
   }
   myProfile = profile;
 
+  // Tag this browser's push subscription with the signed-in user's id, so
+  // server-side triggers (waitlist slot opens, priority tier unlocks) can
+  // target specific people via OneSignal's external_id instead of only
+  // being able to broadcast to everyone.
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal) => {
+    try { await OneSignal.login(myProfile.id); } catch (e) { /* push not supported/blocked — non-fatal */ }
+  });
+
   await loadTeams();
   await refreshBookings();
   await refreshWaitlist();
@@ -1816,6 +1825,13 @@ async function loadProfileAndStartInner(){
 
 function teardown(){
   if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+  // Detach this browser's push subscription from the signed-out user's id —
+  // otherwise a shared/reused device would keep getting that person's
+  // targeted notifications after someone else signs in on it.
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal) => {
+    try { await OneSignal.logout(); } catch (e) { /* non-fatal */ }
+  });
   myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';

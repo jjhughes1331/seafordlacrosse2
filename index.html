@@ -877,6 +877,8 @@
 <!-- ============ OPEN THIS WEEK VIEW ============ -->
 <div id="viewOpenWeek" style="display:none">
   <div class="wrap">
+    <p class="section-label">Filter by field</p>
+    <div class="field-chips" id="openWeekFieldChips"></div>
     <p class="count" id="openWeekCount"></p>
     <p class="field-note" id="openWeekBookingAs" style="margin:-6px 0 14px"></p>
     <div id="openWeekResults"></div>
@@ -1172,6 +1174,7 @@ const el = {
   availNextMonth: document.getElementById('availNextMonth'),
   availWeekGrid: document.getElementById('availWeekGrid'),
   availMonthGrid: document.getElementById('availMonthGrid'),
+  openWeekFieldChips: document.getElementById('openWeekFieldChips'),
   openWeekCount: document.getElementById('openWeekCount'),
   openWeekBookingAs: document.getElementById('openWeekBookingAs'),
   openWeekResults: document.getElementById('openWeekResults'),
@@ -2997,7 +3000,21 @@ async function handleFieldBookClick(e){
 }
 
 // ============ OPEN THIS WEEK VIEW (all fields, next 7 days, everyone) ============
+let openWeekField = null; // null = all fields
+function buildOpenWeekFieldChips(){
+  const chipsHtml = [`<button class="fchip${openWeekField===null?' active':''}" data-id="">All fields</button>`]
+    .concat(FIELDS.map(f => `<button class="fchip${f.id===openWeekField?' active':''}" data-id="${f.id}"><span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span></button>`));
+  el.openWeekFieldChips.innerHTML = chipsHtml.join('');
+}
+el.openWeekFieldChips.addEventListener('click', e => {
+  const chip = e.target.closest('.fchip'); if(!chip) return;
+  openWeekField = chip.dataset.id || null;
+  buildOpenWeekFieldChips();
+  renderOpenWeek();
+});
+
 function renderOpenWeek(){
+  buildOpenWeekFieldChips();
   const teamId = myBookingTeamId();
   if(teamId){
     const key = teamKeyFor(teamId);
@@ -3016,7 +3033,7 @@ function renderOpenWeek(){
   while(d <= end){
     const dow = d.getDay();
     const dateStr = fmtDateISO(d);
-    FIELDS.forEach(field => {
+    FIELDS.filter(f => !openWeekField || f.id === openWeekField).forEach(field => {
       const avail = field.availability.find(a => a.days.includes(dow));
       if(!avail) return;
       avail.times.forEach(time => {
@@ -3054,12 +3071,14 @@ function renderOpenWeek(){
   });
 
   if(!total){
-    el.openWeekResults.innerHTML = `<div class="empty-schedule"><b>No open slots in the coming week</b>Everything's booked across all fields for the next 7 days.</div>`;
+    const emptyFieldLabel = openWeekField ? FIELD_MAP[openWeekField].name : 'all fields';
+    el.openWeekResults.innerHTML = `<div class="empty-schedule"><b>No open slots in the coming week</b>Everything's booked across ${escSafe(emptyFieldLabel)} for the next 7 days.</div>`;
     el.openWeekCount.innerHTML = '';
     return;
   }
   el.openWeekResults.innerHTML = html;
-  el.openWeekCount.innerHTML = `<b>${total}</b> open slot${total!==1?'s':''} across all fields, ${MONTHS[start.getMonth()]} ${start.getDate()} through ${MONTHS[end.getMonth()]} ${end.getDate()}.`;
+  const fieldLabel = openWeekField ? FIELD_MAP[openWeekField].name : 'all fields';
+  el.openWeekCount.innerHTML = `<b>${total}</b> open slot${total!==1?'s':''} across ${escSafe(fieldLabel)}, ${MONTHS[start.getMonth()]} ${start.getDate()} through ${MONTHS[end.getMonth()]} ${end.getDate()}.`;
 }
 
 el.openWeekResults.addEventListener('click', async e => {

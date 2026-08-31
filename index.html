@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Seaford Lacrosse 2027 Field Schedule</title>
-<link rel="icon" href="seaford-lacrosse-logo.jpg">
+<link rel="icon" href="seaford-lacrosse-badge.png" type="image/png">
 <link rel="manifest" href="manifest.json">
 <!-- Managed entirely by JS (theme-toggle.js logic below) once a manual light/dark
      override is possible — a single mutable tag is far more reliable across
@@ -49,7 +49,9 @@
     --shadow-card-hover: 0 2px 4px rgba(15,30,20,.06), 0 10px 24px -6px rgba(15,30,20,.14);
     --radius-pill: 20px;
     --radius-card: 12px;
+    --radius-md: 10px;
     --radius-chip: 8px;
+    --radius-sm: 6px;
     --font-display: "Quicksand", "Trebuchet MS", sans-serif;
     --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
     /* Spacing scale — consistent rhythm instead of ad-hoc values */
@@ -133,7 +135,7 @@
   html { scrollbar-width: thin; scrollbar-color: var(--silver-deep) transparent; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--silver-deep); border-radius: 8px; border: 2px solid var(--chalk); background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb { background: var(--silver-deep); border-radius: var(--radius-chip); border: 2px solid var(--chalk); background-clip: padding-box; }
   ::-webkit-scrollbar-thumb:hover { background: var(--turf); background-clip: padding-box; }
   html, body { overscroll-behavior-y: contain; } /* no rubber-band-into-browser-chrome on mobile */
   .cal-slots { overscroll-behavior: contain; } /* nested scroll areas don't chain into the page scroll */
@@ -193,7 +195,7 @@
   }
   #hamburgerBtn {
     position: fixed; top: 14px; left: 16px; z-index: 610;
-    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    width: 36px; height: 36px; border-radius: var(--radius-md); border: 1px solid var(--line);
     background: var(--card); color: var(--ink); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: background-color .15s var(--ease), border-color .15s var(--ease);
@@ -210,7 +212,7 @@
   .hamburger-menu button {
     display: flex; align-items: center; gap: 10px; text-align: left; border: none; background: none;
     color: var(--ink); font-family: inherit; font-size: var(--fs-base); font-weight: 600;
-    padding: 10px 12px; border-radius: 8px; cursor: pointer; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius-chip); cursor: pointer; width: 100%;
   }
   .hamburger-menu button:hover { background: var(--chip-bg); }
   .hamburger-menu button.active { color: var(--turf-deep); background: var(--chip-bg); }
@@ -223,7 +225,7 @@
   .sub { color: var(--muted); margin-top: 4px; font-size: var(--fs-base); }
 
   .view-tabs { position: relative; z-index: 1; display: flex; justify-content: center; gap: 4px; margin-top: 22px; flex-wrap: wrap; padding-bottom: 2px; }
-  .view-tab { border: none; background: transparent; color: var(--muted); padding: 12px 18px; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; border-radius: 8px 8px 0 0; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; }
+  .view-tab { border: none; background: transparent; color: var(--muted); padding: 12px 18px; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; border-radius: var(--radius-chip) var(--radius-chip) 0 0; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; }
   .view-tab:hover { color: var(--turf-deep); }
   .view-tab.active { color: var(--turf-deep); border-bottom-color: var(--turf); }
 
@@ -238,7 +240,7 @@
   .signed-in .label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
   .signed-in .who { font-size: var(--fs-md); font-weight: 800; color: var(--turf-deep); }
   .signed-in .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 3px 9px; border-radius: var(--radius-pill); }
-  .signout-btn { margin-left: auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .signout-btn { margin-left: auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 6px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .signout-btn:hover { border-color: var(--danger); color: var(--danger); }
 
   /* ===== Login / auth screens ===== */
@@ -248,13 +250,13 @@
   .auth-screen p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 20px; }
   .field { text-align: left; margin-bottom: 14px; }
   .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
-  .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: 16px; }
+  .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; }
   .field input:focus { outline: none; border-color: var(--turf); }
-  .btn-primary { width: 100%; background: var(--accent-fill); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
+  .btn-primary { width: 100%; background: var(--accent-fill); color: #fff; border: none; padding: 12px; border-radius: var(--radius-chip); font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
   .btn-primary:hover { background: var(--turf); }
   .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
   .link-btn { background: none; border: none; color: var(--turf); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; margin-top: 14px; text-decoration: underline; }
-  .auth-msg { font-size: var(--fs-sm); margin-top: 12px; padding: 10px; border-radius: 8px; }
+  .auth-msg { font-size: var(--fs-sm); margin-top: 12px; padding: 10px; border-radius: var(--radius-chip); }
   .auth-msg.err { background: var(--danger-bg); color: var(--danger); }
   .auth-msg.ok { background: var(--ok-bg); color: var(--turf-deep); }
   .invite-note { font-size: var(--fs-xs); color: var(--muted); margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
@@ -304,7 +306,7 @@
   .slots { display: flex; flex-wrap: wrap; gap: 6px; }
   .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 9px; color: var(--turf-deep); }
   .slots .slot.mine { background: var(--mine-bg); border-color: var(--mine); color: var(--mine-deep); font-weight: 700; }
-  .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 900; margin-right: 3px; }
+  .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 800; margin-right: 3px; }
   .slots .slot .time { color: var(--muted); font-weight: 600; }
   .slots .slot.mine .time { color: var(--mine-deep); }
   .slots .slot .sub { font-weight: 700; }
@@ -319,7 +321,7 @@
   .empty-schedule b { color: var(--ink); display: block; font-size: var(--fs-md); margin-bottom: 4px; }
   .empty-schedule .cta {
     display: inline-block; margin-top: 16px; color: #fff; text-decoration: none; font-weight: 700;
-    padding: 12px 24px; border-radius: 10px; cursor: pointer; background: var(--accent-fill);
+    padding: 12px 24px; border-radius: var(--radius-md); cursor: pointer; background: var(--accent-fill);
     font-family: inherit; font-size: var(--fs-base); border: none; box-shadow: var(--shadow-turf);
   }
   .empty-schedule .cta:hover { background: var(--turf); transform: translateY(-1px); }
@@ -342,7 +344,7 @@
     .field-chips::-webkit-scrollbar { display: none; }
     .field-chips .fchip { flex: 0 0 auto; }
   }
-  .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--turf); color: var(--turf); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
   .fchip { display: inline-flex; align-items: center; gap: 6px; }
@@ -373,7 +375,7 @@
   .date-jump-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
   .date-jump-label { display: flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
   #dateJumpInput {
-    border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px;
+    border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: var(--radius-chip);
     padding: 6px 8px; font-size: var(--fs-xs); font-family: inherit; color-scheme: light dark;
   }
   #dateJumpInput:hover, #dateJumpInput:focus { border-color: var(--turf); outline: none; }
@@ -408,7 +410,7 @@
   .book-month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 4px; }
   .book-month-dow { text-align: center; font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; padding-bottom: 4px; }
   .book-month-cell {
-    background: var(--card); border: 1px solid var(--line); border-radius: 8px; min-height: 54px;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-chip); min-height: 54px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     font-family: inherit; cursor: pointer; padding: 4px 2px;
   }
@@ -418,14 +420,14 @@
   .book-month-cell.past { opacity: .55; }
   .book-month-daynum { font-size: var(--fs-xs); font-weight: 800; color: var(--ink); }
   .book-month-cell.closed .book-month-daynum { color: var(--muted); }
-  .book-month-badge { font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 6px; line-height: 1.5; white-space: nowrap; }
+  .book-month-badge { font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: var(--radius-sm); line-height: 1.5; white-space: nowrap; }
   .book-month-badge.open { background: var(--chip-bg); color: var(--turf-deep); }
   .book-month-badge.full { background: var(--danger-bg); color: var(--danger); }
   .book-month-badge.mine { background: var(--mine-bg); color: var(--mine-deep); }
   .book-month-badge.past { background: none; color: var(--muted); font-weight: 600; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
   .cal-dow { text-align: center; font-size: var(--fs-2xs); font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-bottom: 4px; }
-  .cal-cell { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px; min-height: 92px; display: flex; flex-direction: column; }
+  .cal-cell { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 6px; min-height: 92px; display: flex; flex-direction: column; }
   .cal-cell.pad { background: transparent; border: none; }
   .cal-cell.closed { background: var(--chalk); }
   .cal-daynum { font-size: var(--fs-xs); font-weight: 800; color: var(--turf-deep); margin-bottom: 4px; flex: none; }
@@ -454,12 +456,12 @@
     .cal-slot { font-size: var(--fs-xs); padding: 8px 10px; min-height: 40px; display: flex; align-items: center; gap: 5px; }
     .cal-slot.empty { justify-content: flex-start; }
   }
-  .daytoggle { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .daytoggle { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .daytoggle:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
   .daytoggle.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .daytoggle:disabled { opacity: .3; cursor: not-allowed; }
   select {
-    width: 100%; padding: 10px 36px 10px 12px; border: 1.5px solid var(--line); border-radius: 8px;
+    width: 100%; padding: 10px 36px 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip);
     font-size: 16px; background: var(--card); color: var(--ink); font-family: inherit;
     appearance: none; -webkit-appearance: none; cursor: pointer;
     background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
@@ -470,7 +472,7 @@
   select:hover { border-color: var(--turf); }
   select:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
   .field select { width: 100%; }
-  .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 7px 13px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
+  .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
   .weeknav button:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
   .weeknav button:disabled { opacity: .35; cursor: not-allowed; }
   @media (max-width: 420px) {
@@ -481,7 +483,7 @@
   .day { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 13px; margin-bottom: 11px; box-shadow: var(--shadow-card); }
   .day h3 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 9px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
   .day h3 .past { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 6px; }
-  .timerow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 5px 8px; align-items: start; border-radius: 8px; }
+  .timerow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 5px 8px; align-items: start; border-radius: var(--radius-chip); }
   /* Every open slot looked identical regardless of time — nothing to latch onto
      while scanning a day. Zebra-striping alternate time groups gives the eye
      a pattern to scan by by without reading every label. */
@@ -489,14 +491,14 @@
   .timerow + .timerow { border-top: 1px dashed var(--line); padding-top: 7px; margin-top: 3px; }
   .timelabel { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); padding-top: 6px; }
   .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
-  .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
+  .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
   .book-slot:hover { border-style: solid; border-color: var(--turf); color: var(--turf); background: var(--chip-hover-bg); }
   .book-slot .sub { font-weight: 700; color: var(--ink); }
   .book-slot.booked { border-style: solid; border-color: var(--line); background: var(--chip-bg); color: var(--turf-deep); cursor: default; }
   .book-slot.booked:hover { background: var(--chip-bg); }
   .book-slot.mine { border-style: solid; border-color: var(--mine); background: var(--mine-bg); color: var(--mine-deep); font-weight: 700; }
   .book-slot.mine .cancel {
-    background: rgba(0,0,0,.12); border: none; color: var(--mine-deep); font-weight: 900; border-radius: 6px;
+    background: rgba(0,0,0,.12); border: none; color: var(--mine-deep); font-weight: 800; border-radius: var(--radius-sm);
     cursor: pointer; font-size: var(--fs-sm); margin-left: 2px;
     /* visually small, but a real 44px touch target via padding, not size */
     width: 26px; height: 26px; min-width: 26px; display: inline-flex; align-items: center; justify-content: center;
@@ -552,8 +554,8 @@
   .admin-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 16px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
-  .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; font-size: var(--fs-base); background: var(--card); }
-  .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: var(--fs-base); background: var(--card); }
+  .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
   .coach-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
@@ -577,7 +579,7 @@
   #status { color: #fff; font-size: var(--fs-sm); font-weight: 600; display: flex; align-items: center; gap: 8px; }
   #statusClose {
     background: rgba(255,255,255,.12); border: none; color: #fff; font-size: 15px; line-height: 1;
-    cursor: pointer; border-radius: 6px; width: 26px; height: 26px; flex: none;
+    cursor: pointer; border-radius: var(--radius-sm); width: 26px; height: 26px; flex: none;
     display: inline-flex; align-items: center; justify-content: center; position: relative;
   }
   #statusClose::before { content: ''; position: absolute; inset: -9px; } /* real 44px hit area */
@@ -607,6 +609,7 @@
   @keyframes viewFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   footer { max-width: 1000px; margin: 20px auto 0; padding: 20px; color: var(--muted); font-size: var(--fs-xs); border-top: 1px solid var(--line); }
+  .footer-anniversary-badge { display: block; height: 84px; width: auto; margin: 0 auto 16px; filter: drop-shadow(0 3px 8px rgba(20,55,31,.14)); }
   footer p { margin-bottom: 14px; }
   #themeToggleBtn {
     display: inline-flex; align-items: center; gap: 8px;
@@ -658,7 +661,7 @@
     }
     .view-tab {
       flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 1px; padding: 4px 2px; border-radius: 12px; border-bottom: none;
+      gap: 1px; padding: 4px 2px; border-radius: var(--radius-card); border-bottom: none;
       font-size: 0; /* hides the full desktop label text (kept in the DOM for screen readers) */
       font-weight: 700; white-space: nowrap; line-height: 1.1; color: var(--muted);
     }
@@ -705,7 +708,6 @@
 <div id="pullRefreshIndicator" class="pull-refresh-indicator"><div class="spinner" id="pullRefreshSpinner"></div></div>
 <header>
   <div class="header-hero">
-    <div class="header-logo-col"><img src="seaford-vikings-anniversary-logo.png" alt="Seaford Vikings 250th and 25th anniversary"></div>
     <div class="header-text">
       <div class="eyebrow">Seaford, New York</div>
       <h1>Seaford Lacrosse</h1>
@@ -991,6 +993,7 @@
 </div>
 
 <footer id="pageFooter" style="display:none">
+  <img src="seaford-vikings-anniversary-logo.png" alt="Seaford Vikings 250th and 25th anniversary" class="footer-anniversary-badge">
   <p>Access is by invite only. Directors invite coaches from the Admin tab; each coach can only book their own team's slots. Bookings sync live across every signed-in device.</p>
   <button id="themeToggleBtn" type="button">
     <svg class="inline-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>

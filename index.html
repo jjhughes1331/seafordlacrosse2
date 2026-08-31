@@ -385,6 +385,27 @@
   .recurring-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
   .recurring-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 14px; }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  /* Compact month overview (mobile Book view) — a real calendar grid, never an
+     agenda list, unlike .cal-grid which intentionally collapses to a list at
+     small widths. Cells only ever show a count badge, never live buttons. */
+  .book-month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 4px; }
+  .book-month-dow { text-align: center; font-size: 10px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; padding-bottom: 4px; }
+  .book-month-cell {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; min-height: 54px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font-family: inherit; cursor: pointer; padding: 4px 2px;
+  }
+  .book-month-cell:hover { border-color: var(--turf); }
+  .book-month-cell.pad { visibility: hidden; }
+  .book-month-cell.closed { background: var(--chalk); color: var(--muted); cursor: default; }
+  .book-month-cell.past { opacity: .55; }
+  .book-month-daynum { font-size: var(--fs-xs); font-weight: 800; color: var(--ink); }
+  .book-month-cell.closed .book-month-daynum { color: var(--muted); }
+  .book-month-badge { font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 6px; line-height: 1.5; white-space: nowrap; }
+  .book-month-badge.open { background: var(--chip-bg); color: var(--turf-deep); }
+  .book-month-badge.full { background: var(--danger-bg); color: var(--danger); }
+  .book-month-badge.mine { background: var(--mine-bg); color: var(--mine-deep); }
+  .book-month-badge.past { background: none; color: var(--muted); font-weight: 600; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
   .cal-dow { text-align: center; font-size: var(--fs-2xs); font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-bottom: 4px; }
   .cal-cell { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px; min-height: 92px; display: flex; flex-direction: column; }
@@ -1291,6 +1312,14 @@ function positionAllModeThumbs(){
   document.querySelectorAll('.mode-toggle').forEach(positionModeThumb);
 }
 window.addEventListener('resize', () => { clearTimeout(positionAllModeThumbs._t); positionAllModeThumbs._t = setTimeout(positionAllModeThumbs, 120); });
+// Re-render if a resize crosses the mobile breakpoint while viewing the Book
+// month mode, so rotating a tablet or resizing a window swaps grid<->agenda correctly.
+window.addEventListener('resize', () => {
+  clearTimeout(window._bookMonthResizeT);
+  window._bookMonthResizeT = setTimeout(() => {
+    if(myProfile && currentView === 'book' && bookViewMode === 'month') renderWeek();
+  }, 150);
+});
 
 // ============ HAPTICS ============
 // Vibration API — supported on Android Chrome, silently a no-op everywhere
@@ -2217,6 +2246,50 @@ function firstDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); 
 function lastDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
 function addMonths(d, n){ return new Date(d.getFullYear(), d.getMonth()+n, 1); }
 
+function isMobileViewport(){ return window.matchMedia('(max-width: 700px)').matches; }
+
+// Compact month overview for mobile Book view — day cells with an open-slot
+// count, not full agenda listings. Tapping a day jumps to the Weekly agenda
+// for that date (see the data-jumpdate handler on el.weekGrid) rather than
+// booking directly from the grid, so no new booking code path exists here.
+function renderBookMonthGridMobile(monthFirst){
+  const field = FIELD_MAP[selectedField];
+  const myTeamId = myBookingTeamId();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const first = firstDayOfMonth(monthFirst);
+  const last = lastDayOfMonth(monthFirst);
+  let html = '<div class="book-month-grid">';
+  DOW_SHORT.forEach(d => html += `<div class="book-month-dow">${d}</div>`);
+  for(let i=0;i<first.getDay();i++) html += '<div class="book-month-cell pad"></div>';
+  let cursor = new Date(first);
+  while(cursor <= last){
+    const dateStr = fmtDateISO(cursor);
+    const inSeason = cursor >= SEASON_START && cursor <= SEASON_END;
+    const avail = inSeason ? field.availability.find(a => a.days.includes(cursor.getDay())) : null;
+    if(!avail){
+      html += `<div class="book-month-cell closed"><span class="book-month-daynum">${cursor.getDate()}</span></div>`;
+    } else {
+      let bookedCount = 0, mineCount = 0, totalSlots = 0;
+      avail.times.forEach(time => avail.subfields.forEach(sub => {
+        totalSlots++;
+        const existing = bookingsCache.find(b => b.field_id===selectedField && b.date===dateStr && b.subfield===sub && b.time===time);
+        if(existing){ bookedCount++; if(myTeamId && existing.team_id===myTeamId) mineCount++; }
+      }));
+      const openCount = totalSlots - bookedCount;
+      const isPast = cursor < today;
+      let badgeHtml;
+      if(isPast) badgeHtml = `<span class="book-month-badge past">past</span>`;
+      else if(mineCount > 0) badgeHtml = `<span class="book-month-badge mine">${mineCount} mine</span>`;
+      else if(openCount <= 0) badgeHtml = `<span class="book-month-badge full">Full</span>`;
+      else badgeHtml = `<span class="book-month-badge open">${openCount} open</span>`;
+      html += `<button class="book-month-cell${isPast?' past':''}" data-jumpdate="${dateStr}"><span class="book-month-daynum">${cursor.getDate()}</span>${badgeHtml}</button>`;
+    }
+    cursor = addDays(cursor, 1);
+  }
+  html += '</div>';
+  el.weekGrid.innerHTML = html;
+}
+
 function renderWeek(){
   if(bookViewMode === 'season'){
     el.calendarSection.style.display = 'none';
@@ -2234,7 +2307,12 @@ function renderWeek(){
     el.monthLabel.textContent = `${MONTHS[currentMonthFirst.getMonth()]} ${currentMonthFirst.getFullYear()}`;
     el.prevMonth.disabled = addMonths(currentMonthFirst, -1) < firstDayOfMonth(SEASON_START);
     el.nextMonth.disabled = addMonths(currentMonthFirst, 1) > SEASON_END;
-    renderBookRange(start, end, true);
+    // Rendering every day of the month as a full agenda (9+ buttons × 20+ days) is
+    // an unusable wall of buttons on a phone — mobile gets a real compact calendar
+    // grid instead; tapping a day jumps into the normal weekly agenda for it.
+    // Desktop keeps the agenda-per-day view, which works fine at that width.
+    if(isMobileViewport()) renderBookMonthGridMobile(currentMonthFirst);
+    else renderBookRange(start, end, true);
   } else {
     const monday = currentWeekMonday;
     const sunday = addDays(monday, 6);
@@ -2421,6 +2499,19 @@ el.recurringBookBtn.addEventListener('click', async () => {
 });
 
 el.weekGrid.addEventListener('click', async e => {
+  const jumpBtn = e.target.closest('[data-jumpdate]');
+  if(jumpBtn){
+    // Mobile month-grid cell tapped — jump into the normal weekly agenda for
+    // that date. Reuses the exact same rendering/booking code path as the
+    // Weekly tab; the grid is purely a navigation aid, never books directly.
+    bookViewMode = 'week';
+    document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
+    positionModeThumb(el.bookModeToggle);
+    currentWeekMonday = mondayOf(parseISO(jumpBtn.dataset.jumpdate));
+    haptic('light');
+    renderWeek();
+    return;
+  }
   const bookBtn = e.target.closest('[data-book]');
   const cancelBtn = e.target.closest('[data-cancel]');
   const joinWaitBtn = e.target.closest('[data-joinwait]');

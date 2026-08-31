@@ -319,6 +319,10 @@
   }
   .waitlist-btn:hover { background: var(--mine-bg); }
   .waitlist-btn.on { border-style: solid; background: var(--mine-bg); }
+  .weather-badge {
+    display: inline-block; font-size: var(--fs-2xs); font-weight: 700; color: var(--danger);
+    background: var(--danger-bg); padding: 2px 7px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
+  }
   .book-slot.mine .cancel.armed { background: var(--danger) !important; color: #fff !important; }
   .plus { color: var(--muted); font-weight: 700; }
   .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
@@ -742,6 +746,7 @@ let teamsByKey = {};             // "girls|3rd Grade" -> id
 let bookingsCache = [];          // in-memory copy of all bookings, refreshed on load + realtime
 let waitlistCache = [];          // in-memory copy of all waitlist entries, refreshed on load + realtime
 let waitlistNotified = new Set(); // waitlist entry ids we've already flashed "it opened up!" for, this session
+let weatherCache = {};           // dateStr -> { precip: number 0-100, code: number } — populated once on load, best-effort
 let realtimeChannel = null;
 
 let currentView = 'schedule';
@@ -1049,6 +1054,7 @@ async function loadProfileAndStartInner(){
   await refreshWaitlist();
   await refreshLockState();
   setupRealtime();
+  loadWeather(); // fire-and-forget — never block sign-in on a third-party API
 
   el.authArea.innerHTML = '';
   el.signedInBar.style.display = 'flex';
@@ -1109,6 +1115,38 @@ async function refreshBookings(){
   if(error){ flash('Could not load bookings: '+error.message, 'err'); return; }
   bookingsCache = data;
   checkWaitlistOpenings();
+}
+
+// ============ WEATHER (rainout risk) ============
+// Open-Meteo — free, no API key, CORS-enabled, exactly the kind of public
+// API meant for direct browser calls. Seaford, NY coords cover every field
+// closely enough (all within a few miles) that one shared forecast is fine.
+const WEATHER_LAT = 40.6634, WEATHER_LON = -73.4849;
+async function loadWeather(){
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&daily=precipitation_probability_max,weathercode&timezone=America%2FNew_York&forecast_days=16`;
+    const res = await fetch(url);
+    if(!res.ok) return; // best-effort — no badge is fine, a broken page is not
+    const data = await res.json();
+    const days = data.daily?.time || [];
+    days.forEach((dateStr, i) => {
+      weatherCache[dateStr] = {
+        precip: data.daily.precipitation_probability_max[i],
+        code: data.daily.weathercode[i],
+      };
+    });
+    rerenderCurrentView();
+  } catch (err) {
+    // Offline, blocked, or Open-Meteo down — silently skip. This is a nice-to-have,
+    // never something that should surface an error to a coach trying to book a field.
+  }
+}
+// Returns a small inline badge for a date if there's meaningful rain risk in the
+// 16-day forecast window; empty string otherwise (past the window, or low risk).
+function weatherBadge(dateStr){
+  const w = weatherCache[dateStr];
+  if(!w || w.precip == null || w.precip < 50) return '';
+  return ` <span class="weather-badge" title="Open-Meteo forecast: ${w.precip}% chance of precipitation">🌧️ ${w.precip}%</span>`;
 }
 
 async function refreshWaitlist(){
@@ -1510,7 +1548,7 @@ function renderGroupedByFieldDate(filtered, highlightTeamKey){
     html += '<div class="rows">';
     dates.forEach(date => {
       const slots = byField[field.id][date].sort((a,b) => a.time.localeCompare(b.time));
-      html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}</div><div class="slots">`;
+      html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}${weatherBadge(date)}</div><div class="slots">`;
       slots.forEach(s => {
         const key = teamKeyFor(s.team_id);
         const mine = highlightTeamKey && key === highlightTeamKey;
@@ -1756,7 +1794,7 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
     daysShown++;
     const dateStr = fmtDateISO(date);
     const isPast = date < today;
-    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}</h3>`;
+    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}${weatherBadge(dateStr)}</h3>`;
     avail.times.forEach(time => {
       html += `<div class="timerow"><div class="timelabel">${time}</div><div class="subrow">`;
       avail.subfields.forEach(sub => {
@@ -2063,7 +2101,7 @@ function renderFieldAvailability(){
     daysShown++;
     const dateStr = fmtDateISO(date);
     const isPast = date < today;
-    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}</h3>`;
+    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}${weatherBadge(dateStr)}</h3>`;
     avail.times.forEach(time => {
       html += `<div class="timerow"><div class="timelabel">${time}</div><div class="subrow">`;
       avail.subfields.forEach(sub => {

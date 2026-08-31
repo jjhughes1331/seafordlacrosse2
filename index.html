@@ -764,7 +764,7 @@
     <div class="header-logo-col"><img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse"></div>
   </div>
   <nav class="view-tabs" id="viewTabs" style="display:none">
-    <button class="view-tab active" data-view="schedule" data-short="Schedule">View Schedule</button>
+    <button class="view-tab active" data-view="schedule" data-short="Schedule">View Full Schedule</button>
     <button class="view-tab" data-view="book" data-short="Book">Book A Practice Time</button>
     <button class="view-tab" data-view="openweek" data-short="Openings">Fields Open This Week</button>
     <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
@@ -1684,8 +1684,12 @@ async function loadProfileAndStartInner(){
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
 
   if(myProfile.role === 'coach'){
+    // Land on the full town schedule (all teams, all genders) by default —
+    // same as admin/director already do — rather than pre-filtered to just
+    // their own team. Their own bookings still highlight via the "mine" style
+    // once a team filter is picked; this is just about what shows up first.
     scheduleGender = myProfile.gender;
-    scheduleGrade = teamsById[myProfile.team_id]?.grade || null;
+    scheduleGrade = null;
     selectedField = 'seamans';
   } else if(myProfile.role === 'director'){
     scheduleGender = myProfile.gender;
@@ -2252,7 +2256,13 @@ function renderScheduleMode(){
 }
 
 // ============ SCHEDULE VIEW ============
-function renderGroupedByFieldDate(filtered, highlightTeamKey){
+// highlightTeamKey: which team gets the gold "mine" styling (independent of
+// what's being shown — a coach should see their own bookings highlighted
+// even while browsing the full town schedule, not just when filtered to
+// just their team). filterKey: pass the active filter separately so the
+// per-slot team-name label only gets suppressed when actually filtered to
+// one team (defaults to highlightTeamKey for callers that don't need the split).
+function renderGroupedByFieldDate(filtered, highlightTeamKey, filterKey = highlightTeamKey){
   const byField = {};
   filtered.forEach(b => {
     if(!byField[b.field_id]) byField[b.field_id] = {};
@@ -2276,7 +2286,7 @@ function renderGroupedByFieldDate(filtered, highlightTeamKey){
         const key = teamKeyFor(s.team_id);
         const mine = highlightTeamKey && key === highlightTeamKey;
         const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
-        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.subfield)}</span>${!highlightTeamKey?' &middot; '+escSafe(teamText):''}</span>`;
+        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.subfield)}</span>${!filterKey?' &middot; '+escSafe(teamText):''}</span>`;
       });
       html += '</div></div>';
     });
@@ -2287,6 +2297,7 @@ function renderGroupedByFieldDate(filtered, highlightTeamKey){
 
 function renderSchedule(){
   const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
+  const myTeamKey = myProfile.role === 'coach' ? teamKeyFor(myProfile.team_id) : null;
   const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
   el.nowShowing.innerHTML = scheduleGrade ? `Showing <span class="tag">${label}</span>` : 'All teams';
   el.exportCsvBtn.style.display = teamKey ? 'inline-block' : 'none';
@@ -2305,11 +2316,15 @@ function renderSchedule(){
     return;
   }
 
-  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, teamKey);
+  // Highlight the viewer's own team whenever they're a coach, independent of
+  // the filter — so "mine" styling works even while browsing the full town
+  // schedule, not just when narrowed down to just their own team.
+  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, myTeamKey, teamKey);
   el.results.innerHTML = html;
+  const mineNote = myTeamKey ? ' Your slots are highlighted.' : '';
   el.count.innerHTML = teamKey
-    ? `<b>${totalSlots}</b> slot${totalSlots!==1?'s':''} for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}. Your slots are highlighted.`
-    : `Showing <b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}. Pick a team above to filter.`;
+    ? `<b>${totalSlots}</b> slot${totalSlots!==1?'s':''} for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}.${mineNote}`
+    : `Showing <b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}.${mineNote} Pick a team above to filter.`;
 }
 
 // ============ MY TEAM'S PRACTICES (coaches) ============

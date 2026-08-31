@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Seaford Lacrosse 2027 Field Schedule</title>
 <link rel="icon" href="seaford-lacrosse-logo.jpg">
 <link rel="manifest" href="manifest.json">
@@ -54,6 +54,12 @@
     --mine: #b8860b;
     --mine-deep: #8a6508;
     --mine-bg: #fdf3dc;
+    /* Notch / home-indicator safe areas (iPhone) — 0px on devices without them */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --navbar-h: 60px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -412,13 +418,53 @@
     .allbtn { margin-left: 0; }
     .timerow { grid-template-columns: 1fr; }
     .timelabel { padding-top: 0; }
-    .view-tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-left: 4px; }
-    .view-tabs::-webkit-scrollbar { display: none; }
-    .view-tab { padding: 9px 14px; font-size: var(--fs-sm); white-space: nowrap; flex: 0 0 auto; }
     .invite-form { flex-direction: column; align-items: stretch; }
     .header-hero { gap: 10px; }
     .header-hero img { height: 52px; }
     .eyebrow { font-size: 9.5px; letter-spacing: 2px; white-space: nowrap; }
+  }
+
+  /* ===== Mobile app shell: bottom tab bar instead of a scrolling top strip ===== */
+  @media (max-width: 700px) {
+    body { padding-bottom: calc(var(--navbar-h) + var(--safe-bottom) + 10px); }
+    header::after { display: none; } /* the gradient rule line reads as clutter once the top tabs move to the bottom */
+    .view-tabs {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 700;
+      display: flex; justify-content: space-around; align-items: stretch;
+      height: calc(var(--navbar-h) + var(--safe-bottom));
+      margin: 0; padding: 6px calc(4px + var(--safe-left)) calc(4px + var(--safe-bottom)) calc(4px + var(--safe-right));
+      background: var(--card); /* fallback for browsers without color-mix() */
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+      backdrop-filter: blur(18px) saturate(1.4);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border-top: 1px solid var(--line);
+      box-shadow: 0 -8px 28px rgba(15,30,20,.10);
+    }
+    .view-tab {
+      flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1px; padding: 4px 2px; border-radius: 12px; border-bottom: none;
+      font-size: 0; /* hides the full desktop label text (kept in the DOM for screen readers) */
+      font-weight: 700; white-space: nowrap; line-height: 1.1; color: var(--muted);
+    }
+    .view-tab::before { content: ''; display: block; font-size: 20px; line-height: 1; margin-bottom: 2px; }
+    .view-tab::after { content: attr(data-short); display: block; font-size: 9.5px; }
+    .view-tab[data-view="schedule"]::before { content: '🗓️'; }
+    .view-tab[data-view="book"]::before { content: '➕'; }
+    .view-tab[data-view="openweek"]::before { content: '🕓'; }
+    .view-tab[data-view="myteam"]::before { content: '👥'; }
+    .view-tab[data-view="league"]::before { content: '🏆'; }
+    .view-tab[data-view="admin"]::before { content: '⚙️'; }
+    .view-tab.active { color: var(--turf-deep); background: var(--mine-bg); }
+    .view-tab:active { transform: scale(.94); }
+    /* Keep the toast above the new bottom bar instead of colliding with it */
+    .actions { bottom: calc(var(--navbar-h) + var(--safe-bottom) + 14px); }
+    /* Signed-in bar reads as a second header on a small screen — give it the same glass treatment */
+    .signed-in {
+      position: sticky; top: 0; z-index: 600;
+      background: var(--card);
+      background: color-mix(in srgb, var(--card) 90%, transparent);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    }
   }
 </style>
 </head>
@@ -445,12 +491,12 @@
     <div class="header-logo-col"><img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse"></div>
   </div>
   <nav class="view-tabs" id="viewTabs" style="display:none">
-    <button class="view-tab active" data-view="schedule">View Schedule</button>
-    <button class="view-tab" data-view="book">Book A Practice Time</button>
-    <button class="view-tab" data-view="openweek">Fields Open This Week</button>
-    <button class="view-tab" data-view="myteam" id="myTeamTab" style="display:none">My Team's Practices</button>
-    <button class="view-tab" data-view="league" id="leagueTab" style="display:none">League Overview</button>
-    <button class="view-tab" data-view="admin" id="adminTab" style="display:none">Admin</button>
+    <button class="view-tab active" data-view="schedule" data-short="Schedule">View Schedule</button>
+    <button class="view-tab" data-view="book" data-short="Book">Book A Practice Time</button>
+    <button class="view-tab" data-view="openweek" data-short="Open Week">Fields Open This Week</button>
+    <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
+    <button class="view-tab" data-view="league" id="leagueTab" data-short="League" style="display:none">League Overview</button>
+    <button class="view-tab" data-view="admin" id="adminTab" data-short="Admin" style="display:none">Admin</button>
   </nav>
 </header>
 

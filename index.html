@@ -330,6 +330,15 @@
   @media (max-width: 560px) {
     .usage-row { grid-template-columns: 90px 1fr 90px; gap: 6px; }
   }
+  .field-map-toggle {
+    display: inline-block; margin: 6px 8px 0 0; border: 1px dashed var(--line); background: none;
+    color: var(--turf); font-size: var(--fs-2xs); font-weight: 700; padding: 3px 9px; font-style: normal;
+    border-radius: var(--radius-chip); cursor: pointer; font-family: inherit;
+  }
+  .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--turf); background: #f0f6f1; }
+  .field-map-directions { display: inline-block; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 700; font-style: normal; }
+  .field-map-box { margin-top: 10px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--line); }
+  .field-map-box iframe { width: 100%; height: 220px; border: 0; display: block; }
   .weather-badge {
     display: inline-block; font-size: var(--fs-2xs); font-weight: 700; color: var(--danger);
     background: var(--danger-bg); padding: 2px 7px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
@@ -1663,6 +1672,32 @@ function renderLeague(){
 }
 
 // ============ BOOK VIEW ============
+// ============ FIELD MAP & DIRECTIONS ============
+// No API key needed: Google Maps resolves a plain place-name search fine for
+// well-known local landmarks, both for the embed (?output=embed, the classic
+// key-less embed trick) and for the directions deep link (opens the Maps app
+// on mobile, falls back to maps.google.com on desktop).
+function fieldMapQuery(f){ return encodeURIComponent(f.name + ', Seaford, NY'); }
+function fieldNoteHTML(f){
+  if(!f) return '';
+  const q = fieldMapQuery(f);
+  return `${f.note ? escSafe(f.note) : ''}
+    <button class="field-map-toggle" data-mapfor="${f.id}" type="button">📍 Map &amp; directions</button>
+    <a class="field-map-directions" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Directions ↗</a>
+    <div class="field-map-box" id="mapbox-${f.id}" style="display:none">
+      <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${q}&output=embed"></iframe>
+    </div>`;
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.field-map-toggle');
+  if(!btn) return;
+  const box = document.getElementById('mapbox-' + btn.dataset.mapfor);
+  if(!box) return;
+  const showing = box.style.display !== 'none';
+  box.style.display = showing ? 'none' : 'block';
+  btn.classList.toggle('open', !showing);
+});
+
 function buildFieldChips(){
   el.fieldChips.innerHTML = '';
   FIELDS.forEach(f => {
@@ -1672,8 +1707,7 @@ function buildFieldChips(){
     b.textContent = f.name;
     el.fieldChips.appendChild(b);
   });
-  const f = FIELD_MAP[selectedField];
-  el.fieldNote.textContent = f && f.note ? f.note : '';
+  el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
 }
 el.fieldChips.addEventListener('click', e => {
   if(!e.target.classList.contains('fchip')) return;
@@ -2057,8 +2091,7 @@ function buildAvailFieldChips(){
     b.textContent = f.name;
     el.availFieldChips.appendChild(b);
   });
-  const f = FIELD_MAP[availField];
-  el.availFieldNote.textContent = f && f.note ? f.note : '';
+  el.availFieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[availField]);
   updateFieldBookingAsLabel();
 }
 el.availFieldChips.addEventListener('click', e => {

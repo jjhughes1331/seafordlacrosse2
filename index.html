@@ -300,7 +300,13 @@
   .slots .slot.mine .time { color: var(--mine-deep); }
   .slots .slot .sub { font-weight: 700; }
   .empty-schedule { text-align: center; padding: 45px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
-  .empty-schedule::before { content: '🥍'; display: block; font-size: 32px; margin-bottom: 10px; opacity: .7; }
+  .empty-schedule::before {
+    content: ''; display: block; width: 32px; height: 32px; margin: 0 auto 10px; opacity: .5;
+    background-color: var(--muted);
+    -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMnY0Ii8+PHBhdGggZD0iTTE2IDJ2NCIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiLz48cGF0aCBkPSJNMyAxMGgxOCIvPjwvc3ZnPg==);
+    mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMnY0Ii8+PHBhdGggZD0iTTE2IDJ2NCIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiLz48cGF0aCBkPSJNMyAxMGgxOCIvPjwvc3ZnPg==);
+    -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+  }
   .empty-schedule b { color: var(--ink); display: block; font-size: var(--fs-md); margin-bottom: 4px; }
   .empty-schedule .cta {
     display: inline-block; margin-top: 16px; color: #fff; text-decoration: none; font-weight: 700;
@@ -308,12 +314,25 @@
     font-family: inherit; font-size: var(--fs-base); border: none; box-shadow: var(--shadow-turf);
   }
   .empty-schedule .cta:hover { background: var(--turf); transform: translateY(-1px); }
-  .empty-week::before { content: '📅'; display: block; font-size: 28px; margin-bottom: 8px; opacity: .7; }
+  .empty-week::before {
+    content: ''; display: block; width: 28px; height: 28px; margin: 0 auto 8px; opacity: .5;
+    background-color: var(--muted);
+    -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMnY0Ii8+PHBhdGggZD0iTTE2IDJ2NCIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiLz48cGF0aCBkPSJNMyAxMGgxOCIvPjwvc3ZnPg==);
+    mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMnY0Ii8+PHBhdGggZD0iTTE2IDJ2NCIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiLz48cGF0aCBkPSJNMyAxMGgxOCIvPjwvc3ZnPg==);
+    -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;
+  }
 
   /* ===== Book view ===== */
   .booking { max-width: 1000px; margin: 16px auto 0; padding: 0 20px; }
   .section-label { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; font-weight: 700; }
   .field-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
+  @media (max-width: 480px) {
+    /* A wrapped chip row orphans a lone chip on its own line — a horizontal
+       scroll strip reads more intentional and never looks unbalanced. */
+    .field-chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    .field-chips::-webkit-scrollbar { display: none; }
+    .field-chips .fchip { flex: 0 0 auto; }
+  }
   .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--turf); color: var(--turf); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
@@ -407,6 +426,10 @@
   .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 7px 13px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
   .weeknav button:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
   .weeknav button:disabled { opacity: .35; cursor: not-allowed; }
+  @media (max-width: 420px) {
+    .weeknav button .navlabel { display: none; } /* arrow-only — "Prev month" was wrapping mid-word on narrow phones */
+    .weeknav button { padding: 9px 14px; font-size: var(--fs-md); }
+  }
   .weeknav .label { flex: 1; text-align: center; font-weight: 800; font-size: var(--fs-base); color: var(--ink); }
   .day { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 13px; margin-bottom: 11px; box-shadow: var(--shadow-card); }
   .day h3 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 9px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
@@ -550,8 +573,12 @@
     .row .date { border-bottom: 1px dashed var(--line); padding-bottom: 6px; }
     .toolbar { flex-direction: column; align-items: flex-start; }
     .allbtn { margin-left: 0; }
-    .timerow { grid-template-columns: 1fr; }
-    .timelabel { padding-top: 0; }
+    /* Stacked mode had a bigger gap *within* a time group (label→buttons) than
+       *between* groups — inverting the visual hierarchy, so nothing read as
+       grouped. Tightened internal gap, widened the between-group divider. */
+    .timerow { grid-template-columns: 1fr; gap: 6px; padding: 8px 0; }
+    .timelabel { padding-top: 0; font-size: var(--fs-base); }
+    .timerow + .timerow { padding-top: 12px; margin-top: 4px; }
     .invite-form { flex-direction: column; align-items: stretch; }
     /* Left-only padding so the centered hero row's box itself starts clear of
        the fixed hamburger button — symmetric padding wouldn't shift a
@@ -705,14 +732,14 @@
     </div>
 
     <div class="weeknav" id="availWeekNavBar" style="display:none">
-      <button id="availPrevWeek">&larr; Prev week</button>
+      <button id="availPrevWeek">&larr; <span class="navlabel">Prev week</span></button>
       <span class="label" id="availWeekLabel"></span>
-      <button id="availNextWeek">Next week &rarr;</button>
+      <button id="availNextWeek"><span class="navlabel">Next week</span> &rarr;</button>
     </div>
     <div class="weeknav" id="availMonthNavBar">
-      <button id="availPrevMonth">&larr; Prev month</button>
+      <button id="availPrevMonth">&larr; <span class="navlabel">Prev month</span></button>
       <span class="label" id="availMonthLabel"></span>
-      <button id="availNextMonth">Next month &rarr;</button>
+      <button id="availNextMonth"><span class="navlabel">Next month</span> &rarr;</button>
     </div>
 
     <div id="availWeekGrid"></div>
@@ -737,14 +764,14 @@
 
   <div id="calendarSection">
     <div class="weeknav" id="weekNavBar" style="display:none">
-      <button id="prevWeek">&larr; Prev week</button>
+      <button id="prevWeek">&larr; <span class="navlabel">Prev week</span></button>
       <span class="label" id="weekLabel"></span>
-      <button id="nextWeek">Next week &rarr;</button>
+      <button id="nextWeek"><span class="navlabel">Next week</span> &rarr;</button>
     </div>
     <div class="weeknav" id="monthNavBar">
-      <button id="prevMonth">&larr; Prev month</button>
+      <button id="prevMonth">&larr; <span class="navlabel">Prev month</span></button>
       <span class="label" id="monthLabel"></span>
-      <button id="nextMonth">Next month &rarr;</button>
+      <button id="nextMonth"><span class="navlabel">Next month</span> &rarr;</button>
     </div>
 
     <div id="weekGrid"></div>

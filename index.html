@@ -702,12 +702,14 @@
       height: calc(var(--navbar-h) + var(--safe-bottom));
       margin: 0; padding: 6px calc(4px + var(--safe-left)) calc(4px + var(--safe-bottom)) calc(4px + var(--safe-right));
       background: var(--card); /* fallback for browsers without color-mix() */
-      background: color-mix(in srgb, var(--card) 88%, transparent);
-      backdrop-filter: blur(18px) saturate(1.4);
-      -webkit-backdrop-filter: blur(18px) saturate(1.4);
-      border-top: 1px solid var(--line);
-      box-shadow: 0 -8px 28px rgba(15,30,20,.10);
+      background: color-mix(in srgb, var(--card) 68%, transparent);
+      backdrop-filter: blur(22px) saturate(1.6);
+      -webkit-backdrop-filter: blur(22px) saturate(1.6);
+      border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+      box-shadow: 0 -8px 28px rgba(15,30,20,.08);
+      transition: transform .28s var(--ease);
     }
+    .view-tabs.nav-hidden { transform: translateY(100%); }
     .view-tab {
       flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 1px; padding: 4px 2px; border-radius: var(--radius-card); border-bottom: none;
@@ -1414,6 +1416,31 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
   window.addEventListener('scroll', () => {
     if(!ticking){ requestAnimationFrame(apply); ticking = true; }
   }, { passive: true });
+})();
+
+// ============ BOTTOM NAV AUTO-HIDE ON SCROLL (Instagram-style slide) ============
+(function(){
+  const nav = document.getElementById('viewTabs');
+  if(!nav) return;
+  let lastY = window.scrollY;
+  let ticking = false;
+  function apply(){
+    const y = window.scrollY;
+    const delta = y - lastY;
+    if(isMobileViewport()){
+      if(y < 60) nav.classList.remove('nav-hidden');       // always visible near the top
+      else if(delta > 4) nav.classList.add('nav-hidden');   // scrolling down — slide away
+      else if(delta < -4) nav.classList.remove('nav-hidden'); // scrolling up — slide back in
+    } else {
+      nav.classList.remove('nav-hidden'); // desktop top-tabs bar is never fixed — never hide it
+    }
+    lastY = y;
+    ticking = false;
+  }
+  window.addEventListener('scroll', () => {
+    if(!ticking){ requestAnimationFrame(apply); ticking = true; }
+  }, { passive: true });
+  window.addEventListener('resize', () => { if(!isMobileViewport()) nav.classList.remove('nav-hidden'); });
 })();
 
 // ============ HELPERS ============

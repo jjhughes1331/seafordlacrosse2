@@ -695,24 +695,24 @@
     .eyebrow { font-size: 9.5px; letter-spacing: 2px; white-space: nowrap; }
   }
 
-  /* ===== Mobile app shell: bottom tab bar instead of a scrolling top strip ===== */
+  /* ===== Mobile app shell: floating pill tab bar instead of a scrolling top strip ===== */
   @media (max-width: 700px) {
-    body { padding-bottom: calc(var(--navbar-h) + var(--safe-bottom) + 10px); }
+    body { padding-bottom: calc(var(--navbar-h) + var(--safe-bottom) + 26px); }
     header::after { display: none; } /* the gradient rule line reads as clutter once the top tabs move to the bottom */
     .view-tabs {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 700;
+      position: fixed; z-index: 700;
+      left: calc(16px + var(--safe-left)); right: calc(16px + var(--safe-right));
+      bottom: calc(12px + var(--safe-bottom));
       display: flex; justify-content: space-around; align-items: stretch;
-      height: calc(var(--navbar-h) + var(--safe-bottom));
-      margin: 0; padding: 6px calc(4px + var(--safe-left)) calc(4px + var(--safe-bottom)) calc(4px + var(--safe-right));
+      height: var(--navbar-h);
+      margin: 0; padding: 6px 8px;
+      border-radius: 999px; /* true stadium/capsule end-caps (clamps to half the bar's height), not edge-to-edge */
       background: var(--navbar-bg); /* plain rgba() via a themed token — no color-mix() dependency */
       backdrop-filter: blur(22px) saturate(1.6);
       -webkit-backdrop-filter: blur(22px) saturate(1.6);
-      border-top: 1px solid var(--line);
-      box-shadow: 0 -8px 28px rgba(15,30,20,.08);
-      transition: transform .28s var(--ease);
-      transform: translateY(0);
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 28px rgba(15,30,20,.16), 0 2px 8px rgba(15,30,20,.10);
     }
-    .view-tabs.nav-hidden { transform: translateY(100%); }
     .view-tab {
       flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 1px; padding: 4px 2px; border-radius: var(--radius-card); border-bottom: none;
@@ -737,9 +737,9 @@
        its own background instantly — this is what makes the drag-across
        gesture read as one continuous glide instead of a jump-cut per icon. */
     .view-tabs-thumb {
-      position: absolute; top: 6px; left: 0; z-index: 0;
-      height: calc(var(--navbar-h) - 12px); border-radius: var(--radius-card);
-      background: var(--mine-bg); transition: transform .22s var(--ease), width .22s var(--ease);
+      position: absolute; top: 50%; left: 0; z-index: 0;
+      height: calc(var(--navbar-h) - 16px); width: 56px; border-radius: var(--radius-pill);
+      background: var(--mine-bg); transition: transform .22s var(--ease);
       pointer-events: none;
     }
     .view-tab { position: relative; z-index: 1; }
@@ -1432,28 +1432,6 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
   }, { passive: true });
 })();
 
-// ============ BOTTOM NAV AUTO-HIDE ON SCROLL (Instagram-style slide) ============
-(function(){
-  const nav = document.getElementById('viewTabs');
-  if(!nav) return;
-  let lastY = window.scrollY || window.pageYOffset || 0;
-  function apply(){
-    const y = window.scrollY || window.pageYOffset || 0;
-    if(window.innerWidth > 700){
-      nav.classList.remove('nav-hidden'); // desktop top-tabs bar is never fixed — never hide it
-    } else if(y < 40){
-      nav.classList.remove('nav-hidden'); // always visible near the top
-    } else if(y > lastY){
-      nav.classList.add('nav-hidden');    // scrolling down — slide away
-    } else if(y < lastY){
-      nav.classList.remove('nav-hidden'); // scrolling up — slide back in
-    }
-    lastY = y;
-  }
-  window.addEventListener('scroll', apply, { passive: true });
-  window.addEventListener('resize', apply, { passive: true });
-})();
-
 // ============ HELPERS ============
 function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -2019,8 +1997,9 @@ function positionViewTabsThumb(view){
   if(!thumb) return;
   const tab = document.querySelector(`.view-tab[data-view="${view}"]`);
   if(!tab || tab.style.display === 'none') return;
-  thumb.style.width = tab.offsetWidth + 'px';
-  thumb.style.transform = `translateX(${tab.offsetLeft}px)`;
+  const thumbWidth = thumb.offsetWidth || 56;
+  const center = tab.offsetLeft + tab.offsetWidth / 2;
+  thumb.style.transform = `translate(${center - thumbWidth / 2}px, -50%)`;
 }
 
 function switchView(view){

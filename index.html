@@ -59,6 +59,11 @@
     --mine: #b8860b;
     --mine-deep: #8a6508;
     --mine-bg: #fdf3dc;
+    /* Tinted chip/highlight backgrounds — MUST be tokens, not raw hex, or they
+       stay light in dark mode while their text color goes light-on-light. */
+    --chip-bg: #eef3ef;
+    --chip-hover-bg: #f0f6f1;
+    --ok-bg: #e6f2ea;
     /* Notch / home-indicator safe areas (iPhone) — 0px on devices without them */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -83,6 +88,9 @@
       --mine: #e0b23a;
       --mine-deep: #f3c757;
       --mine-bg: #3a3116;
+      --chip-bg: rgba(79,174,118,.16);
+      --chip-hover-bg: rgba(79,174,118,.26);
+      --ok-bg: rgba(79,174,118,.2);
       --shadow: 0 1px 2px rgba(0,0,0,.3);
       --shadow-turf: 0 4px 14px rgba(79,174,118,.22);
       --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 8px 20px -4px rgba(0,0,0,.4);
@@ -163,7 +171,7 @@
   /* ===== Signed-in bar ===== */
   .signed-in { max-width: 1000px; margin: 0 auto; padding: 12px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--line); background: var(--card); }
   #lockBanner {
-    background: #fbe9e4; color: var(--danger); text-align: center; padding: 0 20px; font-weight: 700; font-size: var(--fs-sm);
+    background: var(--danger-bg); color: var(--danger); text-align: center; padding: 0 20px; font-weight: 700; font-size: var(--fs-sm);
     border-bottom: 1.5px solid var(--danger); overflow: hidden; max-height: 0; opacity: 0;
     transition: max-height .22s var(--ease), opacity .22s var(--ease), padding .22s var(--ease);
   }
@@ -189,7 +197,7 @@
   .link-btn { background: none; border: none; color: var(--turf); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; margin-top: 14px; text-decoration: underline; }
   .auth-msg { font-size: var(--fs-sm); margin-top: 12px; padding: 10px; border-radius: 8px; }
   .auth-msg.err { background: var(--danger-bg); color: var(--danger); }
-  .auth-msg.ok { background: #e6f2ea; color: var(--turf-deep); }
+  .auth-msg.ok { background: var(--ok-bg); color: var(--turf-deep); }
   .invite-note { font-size: var(--fs-xs); color: var(--muted); margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
 
   /* ===== Team picker (schedule filter) ===== */
@@ -202,11 +210,11 @@
   .grade-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 9px; }
   .gcard { border: 1.5px solid var(--line); background: var(--card); border-radius: var(--radius-card); padding: 12px 11px; cursor: pointer; text-align: left; transition: all .15s; box-shadow: var(--shadow-card); }
   .gcard:hover { border-color: var(--turf); transform: translateY(-1px); box-shadow: var(--shadow-card-hover); }
-  .gcard.active { border-color: var(--accent-fill); background: #eef3ef; box-shadow: 0 0 0 2px var(--turf-deep) inset; }
+  .gcard.active { border-color: var(--accent-fill); background: var(--chip-bg); box-shadow: 0 0 0 2px var(--turf-deep) inset; }
   .gcard .grade { font-size: var(--fs-md); font-weight: 800; color: var(--turf-deep); }
   .gcard .cnt { font-size: 11.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
   .gcard.zero { opacity: .5; }
-  .locked-team-banner { background: #eef3ef; border: 1.5px solid var(--turf-deep); border-radius: var(--radius-card); padding: 12px 16px; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); margin: 0 auto 18px; max-width: 1000px; }
+  .locked-team-banner { background: var(--chip-bg); border: 1.5px solid var(--turf-deep); border-radius: var(--radius-card); padding: 12px 16px; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); margin: 0 auto 18px; max-width: 1000px; }
 
   /* ===== Schedule view ===== */
   .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
@@ -226,7 +234,7 @@
   .row .date { font-weight: 700; font-size: var(--fs-sm); color: var(--ink); }
   .row .date .dow { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
   .slots { display: flex; flex-wrap: wrap; gap: 6px; }
-  .slots .slot { font-size: var(--fs-xs); background: #eef3ef; border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 9px; color: var(--turf-deep); }
+  .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 9px; color: var(--turf-deep); }
   .slots .slot.mine { background: var(--mine-bg); border-color: var(--mine); color: var(--mine-deep); font-weight: 700; }
   .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 900; margin-right: 3px; }
   .slots .slot .time { color: var(--muted); font-weight: 600; }
@@ -252,10 +260,27 @@
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
   .field-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin-bottom: 14px; }
   .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
-  .mode-toggle { display: flex; justify-content: center; gap: 6px; margin: 10px 0 14px; }
-  .mtab { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
-  .mtab:hover { border-color: var(--turf); color: var(--turf); }
-  .mtab.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
+  /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
+     button instead of each button separately swapping its own background — the
+     iOS-native segmented-control look. */
+  .mode-toggle {
+    display: flex; width: fit-content; margin: 10px auto 14px; position: relative;
+    background: var(--line); border-radius: var(--radius-pill); padding: 3px; gap: 0;
+  }
+  .mode-toggle-thumb {
+    position: absolute; top: 3px; left: 3px; height: calc(100% - 6px);
+    background: var(--accent-fill); border-radius: var(--radius-pill); box-shadow: var(--shadow-turf);
+    transition: transform .25s var(--ease), width .25s var(--ease);
+    z-index: 0;
+  }
+  .mtab {
+    position: relative; z-index: 1; border: none; background: none; color: var(--muted);
+    padding: 7px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
+    cursor: pointer; transition: color .2s var(--ease);
+  }
+  .mtab:hover { color: var(--turf); }
+  .mtab.active { color: #fff; }
+  .mtab.active:hover { color: #fff; }
   .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
   .recurring-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
   .recurring-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 14px; }
@@ -267,7 +292,7 @@
   .cal-cell.closed { background: var(--chalk); }
   .cal-daynum { font-size: var(--fs-xs); font-weight: 800; color: var(--turf-deep); margin-bottom: 4px; flex: none; }
   .cal-slots { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; max-height: 100px; }
-  .cal-slot { font-size: 10.5px; padding: 2px 5px; border-radius: var(--radius-chip); background: #eef3ef; color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
+  .cal-slot { font-size: 10.5px; padding: 2px 5px; border-radius: var(--radius-chip); background: var(--chip-bg); color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
   .cal-slot.empty { background: none; border: 1px dashed var(--line); color: var(--muted); cursor: pointer; width: 100%; }
   .cal-slot.empty:hover { border-color: var(--turf); color: var(--turf); }
   .cal-slot.mine { background: var(--mine-bg); color: var(--mine-deep); font-weight: 700; border: 1px solid var(--mine); }
@@ -319,10 +344,10 @@
   .timelabel { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); padding-top: 6px; }
   .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
   .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
-  .book-slot:hover { border-style: solid; border-color: var(--turf); color: var(--turf); background: #f0f6f1; }
+  .book-slot:hover { border-style: solid; border-color: var(--turf); color: var(--turf); background: var(--chip-hover-bg); }
   .book-slot .sub { font-weight: 700; color: var(--ink); }
-  .book-slot.booked { border-style: solid; border-color: var(--line); background: #eef3ef; color: var(--turf-deep); cursor: default; }
-  .book-slot.booked:hover { background: #eef3ef; }
+  .book-slot.booked { border-style: solid; border-color: var(--line); background: var(--chip-bg); color: var(--turf-deep); cursor: default; }
+  .book-slot.booked:hover { background: var(--chip-bg); }
   .book-slot.mine { border-style: solid; border-color: var(--mine); background: var(--mine-bg); color: var(--mine-deep); font-weight: 700; }
   .book-slot.mine .cancel {
     background: rgba(0,0,0,.12); border: none; color: var(--mine-deep); font-weight: 900; border-radius: 6px;
@@ -362,7 +387,7 @@
     color: var(--turf); font-size: var(--fs-2xs); font-weight: 700; padding: 3px 9px; font-style: normal;
     border-radius: var(--radius-chip); cursor: pointer; font-family: inherit;
   }
-  .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--turf); background: #f0f6f1; }
+  .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--turf); background: var(--chip-hover-bg); }
   .field-map-directions { display: inline-block; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 700; font-style: normal; }
   .inline-icon { width: 14px; height: 14px; vertical-align: -2.5px; flex: none; }
   .field-map-box { margin-top: 10px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--line); }
@@ -559,6 +584,7 @@
 <!-- ============ SCHEDULE VIEW ============ -->
 <div id="viewSchedule" style="display:none">
   <div class="mode-toggle" id="scheduleModeToggle">
+    <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-mode="team">By Team</button>
     <button class="mtab" data-mode="field">By Field</button>
   </div>
@@ -582,6 +608,7 @@
     <p class="field-note" id="fieldBookingAs" style="margin:-4px 0 14px"></p>
 
     <div class="mode-toggle" id="fieldModeToggle">
+      <span class="mode-toggle-thumb"></span>
       <button class="mtab" data-mode="week">Weekly</button>
       <button class="mtab active" data-mode="month">Monthly</button>
     </div>
@@ -611,6 +638,7 @@
 
   <p class="section-label">Book timing</p>
   <div class="mode-toggle" id="bookModeToggle">
+    <span class="mode-toggle-thumb"></span>
     <button class="mtab" data-mode="week">Weekly</button>
     <button class="mtab active" data-mode="month">Monthly</button>
     <button class="mtab" data-mode="season">Season</button>
@@ -669,6 +697,7 @@
 <!-- ============ LEAGUE OVERVIEW (directors and admin) ============ -->
 <div id="viewLeague" style="display:none">
   <div class="mode-toggle" id="leagueGenderToggle">
+    <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-gender="all">All</button>
     <button class="mtab" data-gender="girls">Girls Only</button>
     <button class="mtab" data-gender="boys">Boys Only</button>
@@ -1016,6 +1045,22 @@ function armTwoTap(btn, armedHtml){
   return false;
 }
 
+// ============ SEGMENTED CONTROL THUMB ============
+// Slides the pill behind whichever .mtab has .active, inside the given
+// .mode-toggle container. Re-run after any active-class change, and on
+// resize since button widths can change (e.g. font-size shifts).
+function positionModeThumb(container){
+  const thumb = container.querySelector('.mode-toggle-thumb');
+  const activeBtn = container.querySelector('.mtab.active');
+  if(!thumb || !activeBtn) return;
+  thumb.style.width = activeBtn.offsetWidth + 'px';
+  thumb.style.transform = `translateX(${activeBtn.offsetLeft - 3}px)`;
+}
+function positionAllModeThumbs(){
+  document.querySelectorAll('.mode-toggle').forEach(positionModeThumb);
+}
+window.addEventListener('resize', () => { clearTimeout(positionAllModeThumbs._t); positionAllModeThumbs._t = setTimeout(positionAllModeThumbs, 120); });
+
 // ============ HAPTICS ============
 // Vibration API — supported on Android Chrome, silently a no-op everywhere
 // else (iOS Safari, desktop). Never throws, never blocks.
@@ -1195,7 +1240,7 @@ async function loadProfileAndStartInner(){
       <div class="auth-screen">
         <h2>No role assigned yet</h2>
         <p class="hint">Your account exists but doesn't have a team or director role set up. Contact your director to finish setting up your access.</p>
-        ${error ? `<p class="hint" style="color:#b0402a;font-family:monospace;font-size:12px;word-break:break-all;text-align:left;background:#fbe9e4;padding:10px;border-radius:8px;">${escSafe(error.message || JSON.stringify(error))}</p>` : ''}
+        ${error ? `<p class="hint" style="color:var(--danger);font-family:monospace;font-size:12px;word-break:break-all;text-align:left;background:var(--danger-bg);padding:10px;border-radius:8px;">${escSafe(error.message || JSON.stringify(error))}</p>` : ''}
         <button class="btn-primary" id="stuckSignOut">Sign out</button>
       </div>`;
     document.getElementById('stuckSignOut').addEventListener('click', () => sb.auth.signOut());
@@ -1435,6 +1480,7 @@ function switchView(view){
     el.lockedTeamBanner.style.display = 'none';
     renderAdmin();
   }
+  requestAnimationFrame(positionAllModeThumbs);
 }
 
 // ============ TEAM PICKER (dual purpose: schedule filter / director's book-as team) ============
@@ -1657,6 +1703,7 @@ el.scheduleModeToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
   scheduleMode = btn.dataset.mode;
   document.querySelectorAll('#scheduleModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  positionModeThumb(el.scheduleModeToggle);
   renderScheduleMode();
 });
 
@@ -1681,6 +1728,7 @@ function renderScheduleMode(){
     buildAvailFieldChips();
     renderFieldView();
   }
+  requestAnimationFrame(positionAllModeThumbs);
 }
 
 // ============ SCHEDULE VIEW ============
@@ -1779,6 +1827,7 @@ el.leagueGenderToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
   leagueGenderFilter = btn.dataset.gender;
   document.querySelectorAll('#leagueGenderToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  positionModeThumb(el.leagueGenderToggle);
   renderLeague();
 });
 function renderLeague(){
@@ -1904,6 +1953,7 @@ el.bookModeToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
   bookViewMode = btn.dataset.mode;
   document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  positionModeThumb(el.bookModeToggle);
   renderWeek();
 });
 el.prevMonth.addEventListener('click', () => {
@@ -2231,6 +2281,7 @@ el.fieldModeToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
   fieldViewMode = btn.dataset.mode;
   document.querySelectorAll('#fieldModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  positionModeThumb(el.fieldModeToggle);
   renderFieldView();
 });
 el.availPrevWeek.addEventListener('click', () => {

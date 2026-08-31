@@ -1963,6 +1963,35 @@ document.getElementById('viewTabs').addEventListener('click', e => {
   switchView(tab.dataset.view);
 });
 
+// ============ DRAG ACROSS THE BOTTOM BAR TO SWITCH TABS ============
+// Press down on any tab and drag across the others — the view switches live
+// as your finger passes over each icon, the same "drag across the tab bar"
+// gesture iOS/Android system UIs use. A plain tap still works via the click
+// handler above (a tap has no meaningful movement, so this never fires for it).
+(function(){
+  const nav = document.getElementById('viewTabs');
+  if(!nav) return;
+  let dragging = false;
+  let lastSwitched = null;
+  nav.addEventListener('touchstart', () => {
+    dragging = true;
+    lastSwitched = currentView;
+  }, { passive: true });
+  nav.addEventListener('touchmove', e => {
+    if(!dragging || !e.touches.length) return;
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    const tab = target && target.closest ? target.closest('.view-tab') : null;
+    if(tab && tab.style.display !== 'none' && tab.dataset.view !== lastSwitched){
+      lastSwitched = tab.dataset.view;
+      haptic('light');
+      switchView(tab.dataset.view);
+    }
+  }, { passive: true });
+  nav.addEventListener('touchend', () => { dragging = false; }, { passive: true });
+  nav.addEventListener('touchcancel', () => { dragging = false; }, { passive: true });
+})();
+
 function switchView(view){
   if(view !== currentView) haptic('light');
   currentView = view;

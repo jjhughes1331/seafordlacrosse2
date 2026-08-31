@@ -366,7 +366,7 @@
     .cal-cell.closed { display: none; }
     .cal-daynum { flex: 0 0 34px; font-size: var(--fs-sm); margin-bottom: 0; padding-top: 2px; }
     .cal-slots { flex: 1; max-height: none; gap: 6px; }
-    .cal-slot { font-size: var(--fs-xs); padding: 8px 10px; min-height: 40px; display: flex; align-items: center; }
+    .cal-slot { font-size: var(--fs-xs); padding: 8px 10px; min-height: 40px; display: flex; align-items: center; gap: 5px; }
     .cal-slot.empty { justify-content: flex-start; }
   }
   .daytoggle { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
@@ -905,9 +905,6 @@ const SEASON_START = new Date(2027, 2, 1);
 const SEASON_END = new Date(2027, 5, 30);
 
 const FIELDS = [
-  { id:"manor", name:"Manor Soccer Fields",
-    note:"Small field, not full-size. Weekends only.",
-    availability:[ { days:[0,6], subfields:["Small Field"], times:["5:00-8:00 PM"] } ]},
   { id:"sms", name:"Seaford Middle School",
     note:"Grass field. School teams have priority; permit starts at 5 PM.",
     availability:[
@@ -2472,7 +2469,11 @@ function renderFieldView(){
   el.availWeekNavBar.style.display = fieldViewMode === 'week' ? 'flex' : 'none';
   el.availMonthNavBar.style.display = fieldViewMode === 'month' ? 'flex' : 'none';
   el.availWeekGrid.style.display = fieldViewMode === 'week' ? 'block' : 'none';
-  el.availMonthGrid.style.display = fieldViewMode === 'month' ? 'grid' : 'none';
+  // Empty string (not 'grid') when showing — lets the stylesheet's own
+  // .cal-grid rules decide the display value, including the mobile media
+  // queries that switch it to a single-column agenda list on small screens.
+  // A hardcoded inline 'grid' here would out-rank all of those unconditionally.
+  el.availMonthGrid.style.display = fieldViewMode === 'month' ? '' : 'none';
   if(fieldViewMode === 'week') renderFieldAvailability();
   else renderFieldMonthGrid();
 }

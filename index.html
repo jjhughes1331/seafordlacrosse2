@@ -1118,20 +1118,14 @@ const MONTHS = ["January","February","March","April","May","June","July","August
 const SEASON_START = new Date(2027, 2, 1);
 const SEASON_END = new Date(2027, 5, 30);
 
+// Alphabetical by display name, and names are consistently "Seaford <X>" /
+// full proper names throughout — no more mixing "Harbor" with "Seaford HS"
+// with "Middle School" depending on which label happened to render.
 const FIELDS = [
-  { id:"sms", name:"Seaford Middle School", short:"Middle School",
-    note:"Grass field. School teams have priority; permit starts at 5 PM.",
-    availability:[
-      { days:[1,2,3,4,5], subfields:["Half Field A","Half Field B"], times:["6:00-7:00 PM","7:30-9:00 PM"] },
-      { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
-    ]},
-  { id:"seamans", name:"Seamans Neck Park", short:"Seamans Neck",
-    note:"Field A closest to parking, B mid field, C far end.",
-    availability:[
-      { days:[1,2,3,4,5], subfields:["Field A","Field B","Field C"], times:["5:00-6:30 PM","6:30-8:00 PM","8:00-10:00 PM"] },
-      { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
-    ]},
-  { id:"harbor", name:"Harbor School", short:"Harbor",
+  { id:"cedarcreek", name:"Cedar Creek",
+    note:"East Field, Tuesday and Thursday only. Half field only (shared with soccer and Wantagh Lax).",
+    availability:[ { days:[2,4], subfields:["1/2 Field"], times:["4:30-5:30 PM","5:30-6:30 PM","6:30-8:00 PM"] } ]},
+  { id:"harbor", name:"Seaford Harbor",
     note:"Field 1 inside track, Field 2 outside track.",
     availability:[
       { days:[1,2,3,4,5], subfields:["Field 1","Field 2"], times:["4:30-5:30 PM","5:30-6:30 PM","6:30-7:30 PM","7:30-8:30 PM"] },
@@ -1143,9 +1137,18 @@ const FIELDS = [
       { days:[1,2,3,4,5], subfields:["Half Field A (North)","Half Field B (South)"], times:["7:15-9:00 PM"] },
       { days:[6], subfields:["Half Field A (North)","Half Field B (South)"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM","6:00-7:00 PM"] },
     ]},
-  { id:"cedarcreek", name:"Cedar Creek",
-    note:"East Field, Tuesday and Thursday only. Half field only (shared with soccer and Wantagh Lax).",
-    availability:[ { days:[2,4], subfields:["1/2 Field"], times:["4:30-5:30 PM","5:30-6:30 PM","6:30-8:00 PM"] } ]},
+  { id:"sms", name:"Seaford MS",
+    note:"Grass field. School teams have priority; permit starts at 5 PM.",
+    availability:[
+      { days:[1,2,3,4,5], subfields:["Half Field A","Half Field B"], times:["6:00-7:00 PM","7:30-9:00 PM"] },
+      { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
+    ]},
+  { id:"seamans", name:"Seamans Neck Park", short:"Seamans Neck",
+    note:"Field A closest to parking, B mid field, C far end.",
+    availability:[
+      { days:[1,2,3,4,5], subfields:["Field A","Field B","Field C"], times:["5:00-6:30 PM","6:30-8:00 PM","8:00-10:00 PM"] },
+      { days:[6], subfields:["Half Field A","Half Field B"], times:["1:00-2:00 PM","2:00-3:00 PM","3:00-4:00 PM","4:00-5:00 PM","5:00-6:00 PM"] },
+    ]},
 ];
 const FIELD_MAP = Object.fromEntries(FIELDS.map(f => [f.id, f]));
 
@@ -2186,7 +2189,8 @@ function buildGradeGrid(forBooking){
   // yet — the whole point is making it obvious at a glance that this is a
   // tappable dropdown, not a static label.
   const showPlaceholder = forBooking ? !activeGrade : (!activeGrade && !scheduleGradeTouched);
-  let html = `<option value="__placeholder__" disabled ${showPlaceholder ? 'selected' : ''}>Select Your Team</option>`;
+  const placeholderText = forBooking ? 'Select Team' : 'Select Your Team';
+  let html = `<option value="__placeholder__" disabled ${showPlaceholder ? 'selected' : ''}>${placeholderText}</option>`;
   if(!forBooking) html += `<option value="">All teams</option>`;
   html += GRADES.map(g => {
     const key = gender+'|'+g;

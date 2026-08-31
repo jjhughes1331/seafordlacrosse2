@@ -360,6 +360,23 @@
   .fchip.active .fav-star.active svg { fill: #ffd76a; }
   .field-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin-bottom: 14px; }
   .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
+  .pull-refresh-indicator {
+    position: fixed; top: 0; left: 50%; z-index: 800;
+    transform: translate(-50%, -60px); opacity: 0; pointer-events: none;
+    background: var(--card); border: 1px solid var(--line); border-radius: 50%;
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-card-hover); transition: transform .25s var(--ease), opacity .25s var(--ease);
+  }
+  .pull-refresh-indicator .spinner { width: 20px; height: 20px; border-width: 2.5px; animation: none; }
+  .pull-refresh-indicator.ready .spinner { border-top-color: var(--turf); }
+  .pull-refresh-indicator.refreshing .spinner { animation: spin .7s linear infinite; }
+  .date-jump-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
+  .date-jump-label { display: flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
+  #dateJumpInput {
+    border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px;
+    padding: 6px 8px; font-size: var(--fs-xs); font-family: inherit; color-scheme: light dark;
+  }
+  #dateJumpInput:hover, #dateJumpInput:focus { border-color: var(--turf); outline: none; }
   /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
      button instead of each button separately swapping its own background — the
      iOS-native segmented-control look. */
@@ -685,6 +702,7 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
 </button>
 <nav id="hamburgerMenu" class="hamburger-menu"></nav>
+<div id="pullRefreshIndicator" class="pull-refresh-indicator"><div class="spinner" id="pullRefreshSpinner"></div></div>
 <header>
   <div class="header-hero">
     <div class="header-logo-col"><img src="seaford-vikings-anniversary-logo.png" alt="Seaford Vikings 250th and 25th anniversary"></div>
@@ -797,6 +815,10 @@
   </div>
 
   <div id="calendarSection">
+    <div class="date-jump-row">
+      <label for="dateJumpInput" class="date-jump-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-icon"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg> Jump to date</label>
+      <input type="date" id="dateJumpInput">
+    </div>
     <div class="weeknav" id="weekNavBar" style="display:none">
       <button id="prevWeek">&larr; <span class="navlabel">Prev week</span></button>
       <span class="label" id="weekLabel"></span>
@@ -1088,6 +1110,7 @@ const el = {
   bookModeToggle: document.getElementById('bookModeToggle'),
   calendarSection: document.getElementById('calendarSection'),
   recurringCard: document.getElementById('recurringCard'),
+  dateJumpInput: document.getElementById('dateJumpInput'),
   weekNavBar: document.getElementById('weekNavBar'),
   monthNavBar: document.getElementById('monthNavBar'),
   monthLabel: document.getElementById('monthLabel'),
@@ -1207,6 +1230,58 @@ document.addEventListener('click', e => {
   if(!e.target.closest('#hamburgerMenu') && !e.target.closest('#hamburgerBtn')) closeHamburgerMenu();
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburgerMenu(); });
+
+// ============ PULL-TO-REFRESH ============
+// Realtime already keeps bookings/waitlist/lock state live, so this is mostly
+// the expected native gesture rather than a functional necessity — but every
+// major mobile app supports it, and its absence reads as "just a website."
+(function(){
+  const indicator = document.getElementById('pullRefreshIndicator');
+  if(!indicator) return;
+  const THRESHOLD = 70;
+  let startY = null, pulling = false, refreshing = false;
+
+  document.addEventListener('touchstart', e => {
+    if(refreshing || window.scrollY > 0 || !myProfile) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if(!pulling || startY == null) return;
+    const delta = e.touches[0].clientY - startY;
+    if(delta <= 0) return;
+    const dist = Math.min(delta * 0.45, 70);
+    indicator.style.transition = 'none';
+    indicator.style.transform = `translate(-50%, ${dist - 60}px)`;
+    indicator.style.opacity = String(Math.min(dist / 40, 1));
+    indicator.classList.toggle('ready', delta * 0.45 >= THRESHOLD);
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if(!pulling) return;
+    pulling = false;
+    const wasReady = indicator.classList.contains('ready');
+    indicator.style.transition = '';
+    indicator.classList.remove('ready');
+    if(wasReady && !refreshing){
+      refreshing = true;
+      indicator.classList.add('refreshing');
+      indicator.style.transform = 'translate(-50%, 14px)';
+      indicator.style.opacity = '1';
+      haptic('light');
+      try { await Promise.all([refreshBookings(), refreshWaitlist(), refreshLockState()]); rerenderCurrentView(); } catch(err) {}
+      indicator.classList.remove('refreshing');
+      indicator.style.transform = '';
+      indicator.style.opacity = '';
+      refreshing = false;
+    } else {
+      indicator.style.transform = '';
+      indicator.style.opacity = '';
+    }
+    startY = null;
+  }, { passive: true });
+})();
 
 // ============ THEME TOGGLE (light / dark / match system) ============
 (function(){
@@ -2232,6 +2307,17 @@ el.prevMonth.addEventListener('click', () => {
 el.nextMonth.addEventListener('click', () => {
   const next = addMonths(currentMonthFirst, 1);
   if(next <= SEASON_END){ currentMonthFirst = next; renderWeek(); }
+});
+el.dateJumpInput.min = fmtDateISO(SEASON_START);
+el.dateJumpInput.max = fmtDateISO(SEASON_END);
+el.dateJumpInput.addEventListener('change', () => {
+  if(!el.dateJumpInput.value) return;
+  const picked = parseISO(el.dateJumpInput.value);
+  if(bookViewMode === 'month') currentMonthFirst = firstDayOfMonth(picked);
+  else currentWeekMonday = mondayOf(picked);
+  haptic('light');
+  renderWeek();
+  el.dateJumpInput.value = '';
 });
 
 function myBookingTeamId(){

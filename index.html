@@ -308,6 +308,11 @@
   .book-slot.mine .cancel:hover { background: rgba(0,0,0,.24); }
   .book-slot:disabled, .cal-slot.empty:disabled { opacity: .45; cursor: not-allowed; }
   .book-slot.armed, .cal-slot.empty.armed { background: var(--accent-fill) !important; border-style: solid !important; border-color: var(--accent-fill) !important; color: #fff !important; font-weight: 700; }
+  .book-slot.found-highlight { animation: foundPulse 2.6s var(--ease); }
+  @keyframes foundPulse {
+    0%, 100% { box-shadow: none; }
+    15%, 55% { box-shadow: 0 0 0 4px var(--mine); background: var(--mine-bg); border-color: var(--mine); }
+  }
   .waitlist-btn {
     border: 1px dashed var(--mine); background: none; color: var(--mine-deep); font-size: var(--fs-2xs);
     font-weight: 700; padding: 2px 7px; border-radius: var(--radius-chip); cursor: pointer; font-family: inherit; margin-left: 2px;
@@ -505,6 +510,7 @@
   <p class="section-label">Pick a field</p>
   <div class="field-chips" id="fieldChips"></div>
   <div class="field-note" id="fieldNote"></div>
+  <button class="allbtn" id="findNextSlotBtn" style="margin:0 0 14px">🔍 Find next open slot</button>
 
   <p class="section-label">Book timing</p>
   <div class="mode-toggle" id="bookModeToggle">
@@ -781,6 +787,7 @@ const el = {
   count: document.getElementById('count'),
   fieldChips: document.getElementById('fieldChips'),
   fieldNote: document.getElementById('fieldNote'),
+  findNextSlotBtn: document.getElementById('findNextSlotBtn'),
   weekLabel: document.getElementById('weekLabel'),
   prevWeek: document.getElementById('prevWeek'),
   nextWeek: document.getElementById('nextWeek'),
@@ -1618,6 +1625,54 @@ el.fieldChips.addEventListener('click', e => {
   recurringSelectedDays.clear();
   buildRecurringUI();
   renderWeek();
+});
+
+// ============ FIND NEXT OPEN SLOT (smart suggestion — like OpenTable's "next available") ============
+// Scans forward day-by-day on the selected field, from today (or the season
+// start if today is before it) through the end of the season, and returns
+// the first date/subfield/time combo with no matching booking.
+function findNextOpenSlot(fieldId){
+  const field = FIELD_MAP[fieldId];
+  if(!field) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  let cursor = today > SEASON_START ? new Date(today) : new Date(SEASON_START);
+  while(cursor <= SEASON_END){
+    const dateStr = fmtDateISO(cursor);
+    const avail = field.availability.find(a => a.days.includes(cursor.getDay()));
+    if(avail){
+      for(const time of avail.times){
+        for(const sub of avail.subfields){
+          const taken = bookingsCache.some(b => b.field_id===fieldId && b.date===dateStr && b.subfield===sub && b.time===time);
+          if(!taken) return { date: dateStr, subfield: sub, time };
+        }
+      }
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return null;
+}
+
+el.findNextSlotBtn.addEventListener('click', () => {
+  const found = findNextOpenSlot(selectedField);
+  if(!found){
+    flash(`No open slots left at ${FIELD_MAP[selectedField].name} this season.`, 'err');
+    return;
+  }
+  bookViewMode = 'week';
+  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
+  currentWeekMonday = mondayOf(parseISO(found.date));
+  renderWeek();
+  flash(`Next open: ${found.subfield} at ${found.time}, ${fmtDateLong(found.date)} — highlighted below.`, 'ok');
+  // Find the matching rendered button and pulse-highlight it so it's easy to spot on a busy week.
+  requestAnimationFrame(() => {
+    const targetPayload = JSON.stringify({fieldId:selectedField, date:found.date, subfield:found.subfield, time:found.time});
+    const btn = Array.from(document.querySelectorAll('#weekGrid [data-book]')).find(b => b.dataset.book === targetPayload);
+    if(btn){
+      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      btn.classList.add('found-highlight');
+      setTimeout(() => btn.classList.remove('found-highlight'), 2600);
+    }
+  });
 });
 el.prevWeek.addEventListener('click', () => {
   const next = addDays(currentWeekMonday, -7);

@@ -1,14 +1,7 @@
--- Waitlist feature — run once in the Supabase SQL editor for this project
--- (Settings > SQL Editor). Mirrors the same team-ownership rules as the
--- `bookings` table: a coach can only waitlist for their own team, a director
--- for any team of their gender, an admin for anyone.
---
--- IMPORTANT: this assumes `bookings`'s existing RLS policies check
--- profile.team_id / profile.role / profile.gender against the target team,
--- since that's the only way the app's current 42501 error path makes sense.
--- Sanity-check the policy below against your actual `bookings` policies
--- (Database > Policies in the dashboard) before running — adjust the
--- `can_act_for_team` conditions to match if they differ.
+-- Waitlist feature — verified against the live SeafordLacrosse Supabase
+-- project's actual RLS policies (pulled via pg_policies) before writing this,
+-- so the team-ownership checks below exactly mirror bookings_insert_scoped /
+-- bookings_delete_scoped rather than guessing. Run once in the SQL editor.
 
 create table if not exists waitlist (
   id uuid primary key default gen_random_uuid(),
@@ -24,37 +17,38 @@ create table if not exists waitlist (
 
 alter table waitlist enable row level security;
 
--- Helper: can the current user act (book/waitlist) on behalf of this team?
-create or replace function can_act_for_team(target_team_id uuid)
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select exists (
-    select 1
-    from profiles p
-    join teams t on t.id = target_team_id
-    where p.id = auth.uid()
-      and (
-        p.role = 'admin'
-        or (p.role = 'director' and p.gender = t.gender)
-        or (p.role = 'coach' and p.team_id = target_team_id)
+-- Anyone signed in can see who's waiting (so "waitlist (2)" can render for any viewer).
+create policy "waitlist_select_authenticated" on waitlist
+  for select using (( select auth.role() ) = 'authenticated');
+
+-- Same team-ownership rule as bookings_insert_scoped, minus the schedule-lock
+-- check — waitlisting during a lock is harmless (no slot changes hands) and
+-- the app's join/leave waitlist buttons don't gate on scheduleLocked either.
+create policy "waitlist_insert_scoped" on waitlist
+  for insert with check (
+    (requested_by = ( select auth.uid() ))
+    and (
+      exists (select 1 from profiles p where p.id = ( select auth.uid() ) and p.role = 'admin')
+      or exists (select 1 from profiles p where p.id = ( select auth.uid() ) and p.role = 'coach' and p.team_id = waitlist.team_id)
+      or exists (
+        select 1 from profiles p join teams t on t.id = waitlist.team_id
+        where p.id = ( select auth.uid() ) and p.role = 'director' and p.gender = t.gender
       )
+    )
   );
-$$;
 
--- Everyone signed in can see the waitlist (so "3 teams waiting" can show to anyone browsing).
-create policy "waitlist_select_all" on waitlist
-  for select using (auth.uid() is not null);
+-- Same team-ownership rule as bookings_delete_scoped (minus lock + booked_by,
+-- since a waitlist row has no "booked_by" concept — requested_by instead).
+create policy "waitlist_delete_scoped" on waitlist
+  for delete using (
+    (requested_by = ( select auth.uid() ))
+    or exists (select 1 from profiles p where p.id = ( select auth.uid() ) and p.role = 'admin')
+    or exists (select 1 from profiles p where p.id = ( select auth.uid() ) and p.role = 'coach' and p.team_id = waitlist.team_id)
+    or exists (
+      select 1 from profiles p join teams t on t.id = waitlist.team_id
+      where p.id = ( select auth.uid() ) and p.role = 'director' and p.gender = t.gender
+    )
+  );
 
--- Insert only for a team you can act for.
-create policy "waitlist_insert_own_team" on waitlist
-  for insert with check (can_act_for_team(team_id) and requested_by = auth.uid());
-
--- Remove your own team's waitlist entry (or admin/director cleanup).
-create policy "waitlist_delete_own_team" on waitlist
-  for delete using (can_act_for_team(team_id));
-
--- Let the app's existing realtime subscription pattern extend to this table.
+-- Extend the app's existing realtime subscription pattern to this table.
 alter publication supabase_realtime add table waitlist;

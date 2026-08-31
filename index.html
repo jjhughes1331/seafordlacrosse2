@@ -6,8 +6,11 @@
 <title>Seaford Lacrosse 2027 Field Schedule</title>
 <link rel="icon" href="seaford-lacrosse-logo.jpg">
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#fafcfa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#121814" media="(prefers-color-scheme: dark)">
+<!-- Managed entirely by JS (theme-toggle.js logic below) once a manual light/dark
+     override is possible — a single mutable tag is far more reliable across
+     browsers than juggling multiple media-scoped tags against an override. -->
+<meta name="theme-color" content="#fafcfa" media="(prefers-color-scheme: light)" id="themeColorLight">
+<meta name="theme-color" content="#121814" media="(prefers-color-scheme: dark)" id="themeColorDark">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -97,6 +100,33 @@
       --shadow-card-hover: 0 2px 4px rgba(0,0,0,.4), 0 12px 28px -6px rgba(0,0,0,.5);
     }
   }
+  /* Manual override via the footer toggle — applies regardless of system preference.
+     Same values as the prefers-color-scheme block above; kept in sync by hand since
+     CSS has no way to "call" one block from another. */
+  :root[data-theme="dark"] {
+    --turf-deep: #4fae76;
+    --turf: #3f9563;
+    --accent-fill: #1f6e40;
+    --ink: #eef2ef;
+    --muted: #9aa8a0;
+    --line: #2a3630;
+    --chalk: #121814;
+    --silver: #3a453e;
+    --silver-deep: #56635a;
+    --card: #1a2019;
+    --danger: #e6836a;
+    --danger-bg: #3a2420;
+    --mine: #e0b23a;
+    --mine-deep: #f3c757;
+    --mine-bg: #3a3116;
+    --chip-bg: rgba(79,174,118,.16);
+    --chip-hover-bg: rgba(79,174,118,.26);
+    --ok-bg: rgba(79,174,118,.2);
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
+    --shadow-turf: 0 4px 14px rgba(79,174,118,.22);
+    --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 8px 20px -4px rgba(0,0,0,.4);
+    --shadow-card-hover: 0 2px 4px rgba(0,0,0,.4), 0 12px 28px -6px rgba(0,0,0,.5);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html { color-scheme: light dark; -webkit-overflow-scrolling: touch; }
   html, body { overscroll-behavior-y: contain; } /* no rubber-band-into-browser-chrome on mobile */
@@ -155,6 +185,29 @@
     margin-top: 24px;
     background: linear-gradient(90deg, transparent 0%, var(--turf) 20%, var(--turf-deep) 50%, var(--turf) 80%, transparent 100%);
   }
+  #hamburgerBtn {
+    position: fixed; top: 14px; left: 16px; z-index: 610;
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background-color .15s var(--ease), border-color .15s var(--ease);
+  }
+  #hamburgerBtn svg { width: 19px; height: 19px; }
+  #hamburgerBtn:hover, #hamburgerBtn.open { border-color: var(--turf); background: var(--chip-bg); }
+  .hamburger-menu {
+    position: fixed; top: 56px; left: 16px; z-index: 610; min-width: 210px;
+    max-height: calc(100vh - 72px); overflow-y: auto;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card-hover); padding: 6px; display: none; flex-direction: column; gap: 2px;
+  }
+  .hamburger-menu.open { display: flex; animation: viewFadeIn .16s var(--ease); }
+  .hamburger-menu button {
+    display: flex; align-items: center; gap: 10px; text-align: left; border: none; background: none;
+    color: var(--ink); font-family: inherit; font-size: var(--fs-base); font-weight: 600;
+    padding: 10px 12px; border-radius: 8px; cursor: pointer; width: 100%;
+  }
+  .hamburger-menu button:hover { background: var(--chip-bg); }
+  .hamburger-menu button.active { color: var(--turf-deep); background: var(--chip-bg); }
   .header-hero { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 40px); }
   .header-logo-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
   .header-hero img { height: 68px; width: auto; display: block; filter: drop-shadow(0 3px 8px rgba(20,55,31,.14)); }
@@ -461,6 +514,17 @@
   @keyframes viewFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
   footer { max-width: 1000px; margin: 20px auto 0; padding: 20px; color: var(--muted); font-size: var(--fs-xs); border-top: 1px solid var(--line); }
+  footer p { margin-bottom: 14px; }
+  #themeToggleBtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    padding: 9px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }
+  #themeToggleBtn:hover { border-color: var(--turf); color: var(--turf); }
+  #themeToggleBtn .theme-icon-moon { display: none; }
+  #themeToggleBtn.is-dark .theme-icon-sun { display: none; }
+  #themeToggleBtn.is-dark .theme-icon-moon { display: inline-block; }
 
   @media (max-width: 560px) {
     .row { grid-template-columns: 1fr; gap: 8px; }
@@ -533,6 +597,10 @@
   const INVITE_FUNCTION_URL = "https://gjpqwmcdejpvffdimddk.supabase.co/functions/v1/invite-coach";
 </script>
 
+<button id="hamburgerBtn" type="button" aria-label="Menu" aria-expanded="false" style="display:none">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
+</button>
+<nav id="hamburgerMenu" class="hamburger-menu"></nav>
 <header>
   <div class="header-hero">
     <div class="header-logo-col"><img src="seaford-vikings-anniversary-logo.png" alt="Seaford Vikings 250th and 25th anniversary"></div>
@@ -817,7 +885,12 @@
 </div>
 
 <footer id="pageFooter" style="display:none">
-  Access is by invite only. Directors invite coaches from the Admin tab; each coach can only book their own team's slots. Bookings sync live across every signed-in device.
+  <p>Access is by invite only. Directors invite coaches from the Admin tab; each coach can only book their own team's slots. Bookings sync live across every signed-in device.</p>
+  <button id="themeToggleBtn" type="button">
+    <svg class="inline-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+    <svg class="inline-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+    <span id="themeToggleLabel">Match system theme</span>
+  </button>
 </footer>
 
 <script>
@@ -997,6 +1070,97 @@ const el = {
   status: document.getElementById('status'),
   pageFooter: document.getElementById('pageFooter'),
 };
+
+// ============ HAMBURGER MENU (mirrors whichever view-tabs are currently visible,
+// so role-based visibility — coach vs director vs admin — is automatic, not duplicated) ============
+const NAV_ICON_SVG = {
+  schedule: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+  book: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
+  openweek: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  myteam: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+  league: '<path d="M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978"/><path d="M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978"/><path d="M18 9h1.5a1 1 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"/><path d="M6 9H4.5a1 1 0 0 1 0-5H6"/>',
+  admin: '<path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/>',
+};
+function rebuildHamburgerMenu(){
+  const menu = document.getElementById('hamburgerMenu');
+  if(!menu) return;
+  const visibleTabs = Array.from(document.querySelectorAll('#viewTabs .view-tab')).filter(t => t.style.display !== 'none');
+  menu.innerHTML = visibleTabs.map(t => {
+    const view = t.dataset.view;
+    const icon = NAV_ICON_SVG[view] || '';
+    return `<button type="button" data-view="${view}" class="${t.classList.contains('active')?'active':''}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;flex:none">${icon}</svg>
+      ${escSafe(t.textContent)}
+    </button>`;
+  }).join('');
+}
+function closeHamburgerMenu(){
+  document.getElementById('hamburgerMenu')?.classList.remove('open');
+  document.getElementById('hamburgerBtn')?.classList.remove('open');
+  document.getElementById('hamburgerBtn')?.setAttribute('aria-expanded', 'false');
+}
+document.getElementById('hamburgerBtn').addEventListener('click', e => {
+  e.stopPropagation();
+  const btn = document.getElementById('hamburgerBtn');
+  const menu = document.getElementById('hamburgerMenu');
+  const opening = !menu.classList.contains('open');
+  if(opening){ rebuildHamburgerMenu(); haptic('light'); }
+  menu.classList.toggle('open', opening);
+  btn.classList.toggle('open', opening);
+  btn.setAttribute('aria-expanded', String(opening));
+});
+document.getElementById('hamburgerMenu').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-view]');
+  if(!btn) return;
+  switchView(btn.dataset.view);
+  closeHamburgerMenu();
+});
+document.addEventListener('click', e => {
+  if(!e.target.closest('#hamburgerMenu') && !e.target.closest('#hamburgerBtn')) closeHamburgerMenu();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburgerMenu(); });
+
+// ============ THEME TOGGLE (light / dark / match system) ============
+(function(){
+  const KEY = 'seaford-theme'; // 'light' | 'dark' | absent = follow system
+  const root = document.documentElement;
+  const metaLight = document.getElementById('themeColorLight');
+  const metaDark = document.getElementById('themeColorDark');
+
+  function getStored(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
+  function setStored(v){ try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch(e){} }
+
+  function apply(){
+    const stored = getStored();
+    if(stored) root.dataset.theme = stored; else delete root.dataset.theme;
+
+    // Force exactly one theme-color meta to match, regardless of the OS setting,
+    // by overriding their media queries when there's a manual override in play.
+    if(stored === 'dark'){ metaLight.media = 'not all'; metaDark.media = 'all'; }
+    else if(stored === 'light'){ metaLight.media = 'all'; metaDark.media = 'not all'; }
+    else { metaLight.media = '(prefers-color-scheme: light)'; metaDark.media = '(prefers-color-scheme: dark)'; }
+
+    const btn = document.getElementById('themeToggleBtn');
+    const label = document.getElementById('themeToggleLabel');
+    if(btn){
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const activeDark = stored ? stored === 'dark' : systemDark;
+      btn.classList.toggle('is-dark', activeDark);
+    }
+    if(label) label.textContent = stored === 'light' ? 'Light mode' : stored === 'dark' ? 'Dark mode' : 'Match system theme';
+  }
+
+  document.addEventListener('click', e => {
+    if(!e.target.closest('#themeToggleBtn')) return;
+    const stored = getStored();
+    const next = stored === null ? 'light' : stored === 'light' ? 'dark' : null;
+    setStored(next);
+    apply();
+    haptic('light');
+  });
+
+  apply();
+})();
 
 // ============ HEADER CONDENSE-ON-SCROLL (iOS large-title style) ============
 (function(){
@@ -1258,6 +1422,7 @@ async function loadProfileAndStartInner(){
   el.authArea.innerHTML = '';
   el.signedInBar.style.display = 'flex';
   el.viewTabs.style.display = 'flex';
+  document.getElementById('hamburgerBtn').style.display = 'flex';
   el.pageFooter.style.display = 'block';
   el.whoName.textContent = myProfile.role === 'admin'
     ? 'Site Admin'
@@ -1287,6 +1452,8 @@ function teardown(){
   myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
+  document.getElementById('hamburgerBtn').style.display = 'none';
+  closeHamburgerMenu();
   el.pageFooter.style.display = 'none';
   el.teamPicker.style.display = 'none';
   el.lockedTeamBanner.style.display = 'none';

@@ -721,7 +721,12 @@
       -webkit-backdrop-filter: blur(22px) saturate(1.6);
       border: 1px solid var(--line);
       box-shadow: 0 10px 28px rgba(15,30,20,.16), 0 2px 8px rgba(15,30,20,.10);
+      transform: scale(1);
+      transition: transform .22s var(--ease);
     }
+    /* Instagram-style: shrink slightly while actively scrolling, spring back
+       to full size once scrolling stops. Never hides — just breathes. */
+    .view-tabs.nav-scrolling { transform: scale(.92); }
     .view-tab {
       flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 1px; padding: 4px 2px; border-radius: var(--radius-card); border-bottom: none;
@@ -1461,6 +1466,21 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
     if(!ticking){ requestAnimationFrame(apply); ticking = true; }
   }, { passive: true });
   window.addEventListener('resize', apply, { passive: true });
+})();
+
+// ============ BOTTOM NAV SHRINK-ON-SCROLL (Instagram-style breathe) ============
+// Not a hide — the bar stays put and just shrinks slightly while the page is
+// actively moving, then springs back to full size ~150ms after scrolling stops.
+(function(){
+  const nav = document.getElementById('viewTabs');
+  if(!nav) return;
+  let settleTimer = null;
+  window.addEventListener('scroll', () => {
+    if(!isMobileViewport()) return;
+    nav.classList.add('nav-scrolling');
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => nav.classList.remove('nav-scrolling'), 150);
+  }, { passive: true });
 })();
 
 // ============ SWIPEABLE CALENDAR NAV ============

@@ -889,6 +889,7 @@
 
 <!-- ============ BOOK VIEW ============ -->
 <div id="viewBook" class="booking" style="display:none">
+  <div id="pickTeamPrompt" class="locked-team-banner" style="display:none">Select your team above to start booking.</div>
   <div id="priorityLockedBanner" class="priority-locked-banner" style="display:none"></div>
   <div id="priorityFinishedRow" class="priority-finished-row" style="display:none"></div>
   <p class="section-label">Pick a field</p>
@@ -1163,6 +1164,7 @@ let realtimeChannel = null;
 let currentView = 'schedule';
 let scheduleGender = 'girls';
 let scheduleGrade = null;        // filter for schedule view, null = all
+let scheduleGradeTouched = false; // has the user actually opened the picker and chosen something (even "All teams")? Distinguishes that from "hasn't touched it yet", since both leave scheduleGrade null.
 let scheduleMode = 'team';       // 'team' | 'field' — which sub-view of View Schedule is showing
 // Favorite field — per-device convenience (localStorage), not synced. Coaches
 // book the same 1-2 fields all season, so pre-selecting it saves a tap every visit.
@@ -1193,6 +1195,7 @@ const el = {
   genderTabs: document.getElementById('genderTabs'),
   gradeGrid: document.getElementById('gradeGrid'),
   lockedTeamBanner: document.getElementById('lockedTeamBanner'),
+  pickTeamPrompt: document.getElementById('pickTeamPrompt'),
   viewSchedule: document.getElementById('viewSchedule'),
   viewBook: document.getElementById('viewBook'),
   viewOpenWeek: document.getElementById('viewOpenWeek'),
@@ -1938,6 +1941,21 @@ function currentBlockingRank(){
 // Shows/hides the locked banner and "Finished booking" row in the Book view,
 // and hides the actual calendar while locked (browsing is harmless, but the
 // server rejects any insert anyway — no reason to show buttons that will fail).
+// For an admin/director on the Book tab: don't silently fall back to
+// Kindergarten just because nothing's picked yet — make the "Select Your
+// Team" dropdown a real placeholder and gate the booking UI behind an
+// actual choice, matching what the dropdown visually promises.
+function applyBookTeamGate(){
+  if(bookAsGrade){
+    el.pickTeamPrompt.style.display = 'none';
+    buildFieldChips(); buildRecurringUI(); renderWeek();
+    renderPriorityBookingGate();
+  } else {
+    el.pickTeamPrompt.style.display = 'block';
+    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard, #viewBook > #priorityLockedBanner, #viewBook > #priorityFinishedRow')
+      .forEach(el2 => el2.style.display = 'none');
+  }
+}
 function renderPriorityBookingGate(){
   const teamId = myBookingTeamId();
   const team = teamId ? teamsById[teamId] : null;
@@ -2110,27 +2128,25 @@ function switchView(view){
       const grade = teamsById[myProfile.team_id]?.grade || '';
       el.lockedTeamBanner.textContent = `Booking for: ${teamLabel(myProfile.gender, grade)}`;
       buildFieldChips(); buildRecurringUI(); renderWeek();
+      renderPriorityBookingGate();
     } else if(myProfile.role === 'admin'){
       // admin: full pick of gender + grade, any of the 14 teams
       el.lockedTeamBanner.style.display = 'none';
       el.teamPicker.style.display = 'block';
       el.pickerHeading.textContent = 'Book for which team?';
       document.querySelectorAll('.gtab').forEach(g => { g.style.display = 'inline-block'; g.classList.toggle('active', g.dataset.g === bookAsGender); });
-      if(!bookAsGrade) bookAsGrade = GRADES[0];
       buildGradeGrid(true);
-      buildFieldChips(); buildRecurringUI(); renderWeek();
+      applyBookTeamGate();
     } else {
       // director: pick which of their gender's teams to book for
       el.lockedTeamBanner.style.display = 'none';
       el.teamPicker.style.display = 'block';
       el.pickerHeading.textContent = `Book for which ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} team?`;
       document.querySelectorAll('.gtab').forEach(g => g.style.display = 'none'); // gender fixed for director
-      if(!bookAsGrade) bookAsGrade = GRADES[0];
       buildGradeGrid(true);
-      buildFieldChips(); buildRecurringUI(); renderWeek();
+      applyBookTeamGate();
     }
     requestAnimationFrame(positionAllModeThumbs);
-    renderPriorityBookingGate();
   } else if(view === 'openweek'){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
@@ -2166,14 +2182,19 @@ function buildGradeGrid(forBooking){
   const cnts = teamCounts();
   const activeGrade = forBooking ? bookAsGrade : scheduleGrade;
   const gender = forBooking ? (myProfile.role === 'admin' ? bookAsGender : myProfile.gender) : scheduleGender;
-  let html = forBooking ? '' : `<option value="">All teams</option>`;
+  // A disabled placeholder is the closed-state text whenever nothing's picked
+  // yet — the whole point is making it obvious at a glance that this is a
+  // tappable dropdown, not a static label.
+  const showPlaceholder = forBooking ? !activeGrade : (!activeGrade && !scheduleGradeTouched);
+  let html = `<option value="__placeholder__" disabled ${showPlaceholder ? 'selected' : ''}>Select Your Team</option>`;
+  if(!forBooking) html += `<option value="">All teams</option>`;
   html += GRADES.map(g => {
     const key = gender+'|'+g;
     const n = cnts[key] || 0;
     return `<option value="${g}">${g} (${n} booking${n!==1?'s':''})</option>`;
   }).join('');
   el.gradeGrid.innerHTML = html;
-  el.gradeGrid.value = activeGrade || '';
+  el.gradeGrid.value = showPlaceholder ? '__placeholder__' : (activeGrade || '');
 }
 
 document.getElementById('genderTabs').addEventListener('click', e => {
@@ -2189,8 +2210,7 @@ document.getElementById('genderTabs').addEventListener('click', e => {
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
     positionModeThumb(el.genderTabs);
     buildGradeGrid(true);
-    renderWeek();
-    renderPriorityBookingGate();
+    applyBookTeamGate();
   }
 });
 
@@ -2198,17 +2218,17 @@ el.gradeGrid.addEventListener('change', e => {
   const grade = e.target.value || null;
   if(currentView === 'schedule'){
     scheduleGrade = grade;
+    scheduleGradeTouched = true;
     buildGradeGrid();
     renderSchedule();
   } else if(currentView === 'book' && (myProfile.role === 'director' || myProfile.role === 'admin')){
     bookAsGrade = grade;
     buildGradeGrid(true);
-    renderWeek();
-    renderPriorityBookingGate();
+    applyBookTeamGate();
   }
 });
 
-el.allBtn.addEventListener('click', () => { scheduleGrade = null; buildGradeGrid(); renderSchedule(); });
+el.allBtn.addEventListener('click', () => { scheduleGrade = null; scheduleGradeTouched = true; buildGradeGrid(); renderSchedule(); });
 
 // ============ EXPORT TO CSV (TeamSnap import format) ============
 // TeamSnap's schedule-import template has these exact columns. Every

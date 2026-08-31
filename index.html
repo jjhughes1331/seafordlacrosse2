@@ -771,6 +771,21 @@
        condenses on scroll; a second stacked sticky bar here would overlap it. */
   }
 </style>
+<!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard. -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "6566d2f0-7fee-4091-849f-d39551d3f360",
+      // Merged into the site's own sw.js (see that file) instead of the
+      // default separate OneSignalSDKWorker.js, so there's only ever one
+      // service worker registration controlling this scope.
+      serviceWorkerPath: "sw.js",
+      serviceWorkerParam: { scope: "/" },
+    });
+  });
+</script>
 </head>
 <body>
 

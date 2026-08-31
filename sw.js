@@ -2,6 +2,13 @@
 // Deliberately network-first and narrow in scope: it never touches
 // Supabase requests (bookings must always be live, never cached), and
 // only caches the static app shell as a fallback for brief offline blips.
+//
+// OneSignal's push-notification handling is merged in here (rather than
+// registered as its own separate OneSignalSDKWorker.js) because a page can
+// only have one active service worker per scope — two competing
+// registrations at "/" would fight over control instead of coexisting.
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDKWorker.js');
+
 const CACHE_NAME = 'seaford-lax-shell-v2';
 const SHELL_FILES = ['./', './index.html', './manifest.json', './offline.html'];
 

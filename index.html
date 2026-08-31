@@ -129,6 +129,12 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html { color-scheme: light dark; -webkit-overflow-scrolling: touch; }
+  /* Custom thin scrollbar (desktop) — Firefox via scrollbar-width/color, WebKit via ::-webkit-scrollbar */
+  html { scrollbar-width: thin; scrollbar-color: var(--silver-deep) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--silver-deep); border-radius: 8px; border: 2px solid var(--chalk); background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--turf); background-clip: padding-box; }
   html, body { overscroll-behavior-y: contain; } /* no rubber-band-into-browser-chrome on mobile */
   .cal-slots { overscroll-behavior: contain; } /* nested scroll areas don't chain into the page scroll */
   @media (prefers-reduced-motion: reduce) {
@@ -311,6 +317,19 @@
   .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: 8px; font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--turf); color: var(--turf); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
+  .fchip { display: inline-flex; align-items: center; gap: 6px; }
+  .fav-star {
+    display: inline-flex; width: 15px; height: 15px; flex: none; color: var(--muted);
+    position: relative;
+  }
+  .fav-star svg { width: 100%; height: 100%; }
+  .fav-star::before { content: ''; position: absolute; inset: -8px; } /* real 31px+ touch target */
+  .fav-star:hover { color: var(--mine); }
+  .fav-star.active { color: var(--mine); fill: var(--mine); }
+  .fav-star.active svg { fill: var(--mine); }
+  .fchip.active .fav-star { color: rgba(255,255,255,.65); }
+  .fchip.active .fav-star.active { color: #ffd76a; fill: #ffd76a; }
+  .fchip.active .fav-star.active svg { fill: #ffd76a; }
   .field-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin-bottom: 14px; }
   .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
   /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
@@ -951,7 +970,13 @@ let currentView = 'schedule';
 let scheduleGender = 'girls';
 let scheduleGrade = null;        // filter for schedule view, null = all
 let scheduleMode = 'team';       // 'team' | 'field' — which sub-view of View Schedule is showing
-let selectedField = 'seamans';
+// Favorite field — per-device convenience (localStorage), not synced. Coaches
+// book the same 1-2 fields all season, so pre-selecting it saves a tap every visit.
+function getFavoriteField(){ try { return localStorage.getItem('seaford-fav-field'); } catch(e){ return null; } }
+function setFavoriteField(id){ try { id ? localStorage.setItem('seaford-fav-field', id) : localStorage.removeItem('seaford-fav-field'); } catch(e){} }
+function toggleFavoriteField(id){ setFavoriteField(getFavoriteField() === id ? null : id); }
+
+let selectedField = (getFavoriteField() && FIELD_MAP[getFavoriteField()]) ? getFavoriteField() : 'seamans';
 let currentWeekMonday = mondayOf(SEASON_START);
 let bookViewMode = 'month'; // 'week' | 'month' | 'season'
 let currentMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
@@ -1070,6 +1095,7 @@ const el = {
 
 // ============ HAMBURGER MENU (mirrors whichever view-tabs are currently visible,
 // so role-based visibility — coach vs director vs admin — is automatic, not duplicated) ============
+const STAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>';
 const NAV_ICON_SVG = {
   schedule: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
   book: '<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>',
@@ -2039,19 +2065,25 @@ document.addEventListener('click', e => {
 });
 
 function buildFieldChips(){
-  el.fieldChips.innerHTML = '';
-  FIELDS.forEach(f => {
-    const b = document.createElement('button');
-    b.className = 'fchip' + (f.id===selectedField?' active':'');
-    b.dataset.id = f.id;
-    b.textContent = f.name;
-    el.fieldChips.appendChild(b);
-  });
+  const fav = getFavoriteField();
+  el.fieldChips.innerHTML = FIELDS.map(f => `
+    <button class="fchip${f.id===selectedField?' active':''}" data-id="${f.id}">
+      <span class="fav-star${f.id===fav?' active':''}" data-favid="${f.id}" role="button" title="${f.id===fav?'Remove as favorite':'Set as favorite field'}" aria-label="Favorite">${STAR_SVG}</span>
+      ${escSafe(f.name)}
+    </button>`).join('');
   el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
 }
 el.fieldChips.addEventListener('click', e => {
-  if(!e.target.classList.contains('fchip')) return;
-  selectedField = e.target.dataset.id;
+  const starBtn = e.target.closest('.fav-star');
+  if(starBtn){
+    toggleFavoriteField(starBtn.dataset.favid);
+    haptic('light');
+    buildFieldChips();
+    return;
+  }
+  const chip = e.target.closest('.fchip');
+  if(!chip) return;
+  selectedField = chip.dataset.id;
   buildFieldChips();
   recurringSelectedDays.clear();
   buildRecurringUI();
@@ -2408,7 +2440,7 @@ el.weekGrid.addEventListener('click', async e => {
 });
 
 // ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============
-let availField = 'seamans';
+let availField = (getFavoriteField() && FIELD_MAP[getFavoriteField()]) ? getFavoriteField() : 'seamans';
 let availWeekMonday = mondayOf(SEASON_START);
 let fieldViewMode = 'month'; // 'week' | 'month'
 let availMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
@@ -2424,20 +2456,26 @@ function updateFieldBookingAsLabel(){
 }
 
 function buildAvailFieldChips(){
-  el.availFieldChips.innerHTML = '';
-  FIELDS.forEach(f => {
-    const b = document.createElement('button');
-    b.className = 'fchip' + (f.id===availField?' active':'');
-    b.dataset.id = f.id;
-    b.textContent = f.name;
-    el.availFieldChips.appendChild(b);
-  });
+  const fav = getFavoriteField();
+  el.availFieldChips.innerHTML = FIELDS.map(f => `
+    <button class="fchip${f.id===availField?' active':''}" data-id="${f.id}">
+      <span class="fav-star${f.id===fav?' active':''}" data-favid="${f.id}" role="button" title="${f.id===fav?'Remove as favorite':'Set as favorite field'}" aria-label="Favorite">${STAR_SVG}</span>
+      ${escSafe(f.name)}
+    </button>`).join('');
   el.availFieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[availField]);
   updateFieldBookingAsLabel();
 }
 el.availFieldChips.addEventListener('click', e => {
-  if(!e.target.classList.contains('fchip')) return;
-  availField = e.target.dataset.id;
+  const starBtn = e.target.closest('.fav-star');
+  if(starBtn){
+    toggleFavoriteField(starBtn.dataset.favid);
+    haptic('light');
+    buildAvailFieldChips();
+    return;
+  }
+  const chip = e.target.closest('.fchip');
+  if(!chip) return;
+  availField = chip.dataset.id;
   buildAvailFieldChips();
   renderFieldView();
 });

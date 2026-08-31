@@ -285,6 +285,23 @@
   .gcard .cnt { font-size: 11.5px; color: var(--muted); margin-top: 2px; font-weight: 600; }
   .gcard.zero { opacity: .5; }
   .locked-team-banner { background: var(--chip-bg); border: 1.5px solid var(--turf-deep); border-radius: var(--radius-card); padding: 12px 16px; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); margin: 0 auto 18px; max-width: 1000px; }
+  .priority-locked-banner {
+    background: var(--danger-bg); border: 1.5px solid var(--danger); border-radius: var(--radius-card);
+    padding: 16px 18px; font-size: var(--fs-base); color: var(--danger); margin-bottom: 18px; line-height: 1.5;
+  }
+  .priority-finished-row { margin-bottom: 18px; }
+  .priority-finished-badge {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--ok-bg); color: var(--turf-deep);
+    font-weight: 700; font-size: var(--fs-sm); padding: 10px 16px; border-radius: var(--radius-chip);
+  }
+  .priority-tier-status { display: flex; flex-direction: column; gap: 6px; }
+  .priority-tier-row {
+    display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;
+    border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; background: var(--chalk); color: var(--muted);
+  }
+  .priority-tier-row.active { background: var(--chip-bg); color: var(--turf-deep); }
+  .priority-tier-row.done { background: var(--ok-bg); color: var(--turf-deep); opacity: .75; }
+  .priority-tier-row.waiting { background: var(--chalk); color: var(--muted); }
 
   /* ===== Schedule view ===== */
   .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
@@ -805,6 +822,8 @@
 
 <!-- ============ BOOK VIEW ============ -->
 <div id="viewBook" class="booking" style="display:none">
+  <div id="priorityLockedBanner" class="priority-locked-banner" style="display:none"></div>
+  <div id="priorityFinishedRow" class="priority-finished-row" style="display:none"></div>
   <p class="section-label">Pick a field</p>
   <div class="field-chips" id="fieldChips"></div>
   <div class="field-note" id="fieldNote"></div>
@@ -953,6 +972,14 @@
     <h3>Schedule lock</h3>
     <p class="hint" id="lockHint">When locked, nobody — including admins and directors — can book or cancel anything until it's unlocked again.</p>
     <button class="btn-primary" id="lockToggleBtn" style="width:auto;padding:11px 20px"></button>
+  </div>
+
+  <div class="admin-card" style="margin-top:16px">
+    <h3>Priority booking (grade hierarchy)</h3>
+    <p class="hint">When on, teams can only book once every older grade has finished — 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
+    <button class="btn-primary" id="priorityToggleBtn" style="width:auto;padding:11px 20px"></button>
+    <div id="priorityTierStatus" class="priority-tier-status"></div>
+    <button class="allbtn" id="priorityResetBtn" style="margin-top:12px">Reset all teams' finished status</button>
   </div>
 
   <div class="admin-card" style="margin-top:16px">
@@ -1172,6 +1199,11 @@ const el = {
   bulkResults: document.getElementById('bulkResults'),
   lockHint: document.getElementById('lockHint'),
   lockToggleBtn: document.getElementById('lockToggleBtn'),
+  priorityToggleBtn: document.getElementById('priorityToggleBtn'),
+  priorityLockedBanner: document.getElementById('priorityLockedBanner'),
+  priorityFinishedRow: document.getElementById('priorityFinishedRow'),
+  priorityTierStatus: document.getElementById('priorityTierStatus'),
+  priorityResetBtn: document.getElementById('priorityResetBtn'),
   clearGenderField: document.getElementById('clearGenderField'),
   clearGenderSelect: document.getElementById('clearGenderSelect'),
   clearTeamSelect: document.getElementById('clearTeamSelect'),
@@ -1715,16 +1747,96 @@ function checkWaitlistOpenings(){
 }
 
 let scheduleLocked = false;
+let priorityBookingEnabled = false;
 async function refreshLockState(){
-  const { data, error } = await sb.from('app_settings').select('schedule_locked').eq('id', true).single();
+  const { data, error } = await sb.from('app_settings').select('schedule_locked, priority_booking_enabled').eq('id', true).single();
   if(error){ return; } // non-fatal — banner just won't show if this fails
   scheduleLocked = !!data.schedule_locked;
+  priorityBookingEnabled = !!data.priority_booking_enabled;
   renderLockBanner();
 }
+
+// ============ PRIORITY BOOKING (grade hierarchy) ============
+// Combined across both genders: ALL 6th grade teams (girls + boys) must finish
+// before ANY 5th grade team unlocks, then 5th before 4th, and so on down to K.
+// Mirrors the exact same logic as the grade_rank/team_priority_unlocked
+// Postgres functions — this is a UI convenience/preview, the database is the
+// real enforcement (see supabase/priority_booking.sql).
+function gradeRank(grade){ return GRADES.indexOf(grade); } // 0=Kindergarten ... 6=6th Grade (highest = oldest/most senior)
+function teamsAtGradeRank(rank){ return teams.filter(t => gradeRank(t.grade) === rank); }
+function isTierUnlocked(grade){
+  if(!priorityBookingEnabled) return true;
+  const rank = gradeRank(grade);
+  for(let r = rank + 1; r <= 6; r++){
+    const olderTeams = teamsAtGradeRank(r);
+    if(olderTeams.some(t => !t.priority_finished_at)) return false;
+  }
+  return true;
+}
+// Teams blocking the given grade from unlocking — the most senior unfinished tier only,
+// since that's genuinely what's holding things up (older tiers block newer ones in order).
+function blockingTeamsFor(grade){
+  const rank = gradeRank(grade);
+  for(let r = 6; r > rank; r--){
+    const pending = teamsAtGradeRank(r).filter(t => !t.priority_finished_at);
+    if(pending.length) return pending;
+  }
+  return [];
+}
+
+// Shows/hides the locked banner and "Finished booking" row in the Book view,
+// and hides the actual calendar while locked (browsing is harmless, but the
+// server rejects any insert anyway — no reason to show buttons that will fail).
+function renderPriorityBookingGate(){
+  const teamId = myBookingTeamId();
+  const team = teamId ? teamsById[teamId] : null;
+  if(!priorityBookingEnabled || !team){
+    el.priorityLockedBanner.style.display = 'none';
+    el.priorityFinishedRow.style.display = 'none';
+    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
+      .forEach(el2 => el2.style.removeProperty('display'));
+    return;
+  }
+  const unlocked = isTierUnlocked(team.grade);
+  const teamLabelText = teamLabel(team.gender, team.grade);
+  if(!unlocked){
+    const blockers = blockingTeamsFor(team.grade);
+    const blockerList = blockers.map(t => teamLabel(t.gender, t.grade)).join(', ');
+    el.priorityLockedBanner.innerHTML = `<b>Booking isn't open yet for ${escSafe(teamLabelText)}.</b><br>Still finishing: ${escSafe(blockerList || 'an older grade')}.`;
+    el.priorityLockedBanner.style.display = 'block';
+    el.priorityFinishedRow.style.display = 'none';
+    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
+      .forEach(el2 => el2.style.display = 'none');
+  } else {
+    el.priorityLockedBanner.style.display = 'none';
+    document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
+      .forEach(el2 => el2.style.removeProperty('display'));
+    if(team.priority_finished_at){
+      el.priorityFinishedRow.innerHTML = `<span class="priority-finished-badge">&#10003; ${escSafe(teamLabelText)} marked finished booking</span>`;
+    } else {
+      el.priorityFinishedRow.innerHTML = `<button class="allbtn" id="priorityFinishedBtn">Finished booking for ${escSafe(teamLabelText)} &mdash; unlock the next grade</button>`;
+    }
+    el.priorityFinishedRow.style.display = 'block';
+  }
+}
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('#priorityFinishedBtn');
+  if(!btn) return;
+  if(!armTwoTap(btn, 'Tap again to confirm — this unlocks the next grade')) return;
+  const teamId = myBookingTeamId();
+  if(!teamId) return;
+  btn.disabled = true;
+  const { error } = await sb.from('teams').update({ priority_finished_at: new Date().toISOString() }).eq('id', teamId);
+  if(error){ flash('Could not mark finished: '+error.message, 'err'); btn.disabled = false; return; }
+  await loadTeams();
+  haptic('success');
+  flash('Marked finished — thanks! The next grade unlocks once every team in this tier is done.', 'ok');
+  renderPriorityBookingGate();
+});
 function renderLockBanner(){
   el.lockBanner.classList.toggle('show', scheduleLocked);
   el.lockBanner.textContent = scheduleLocked ? '🔒 The schedule is locked — bookings and cancellations are paused right now.' : '';
-  if(myProfile && (myProfile.role === 'admin' || myProfile.role === 'director')) renderLockToggleButton();
+  if(myProfile && (myProfile.role === 'admin' || myProfile.role === 'director')){ renderLockToggleButton(); renderPriorityToggleButton(); }
 }
 
 function rerenderCurrentView(){
@@ -1746,6 +1858,10 @@ function setupRealtime(){
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist' }, async () => {
       await refreshWaitlist();
+      rerenderCurrentView();
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+      await loadTeams();
       rerenderCurrentView();
     })
     .subscribe();
@@ -1805,6 +1921,7 @@ function switchView(view){
       buildGradeGrid(true);
       buildFieldChips(); buildRecurringUI(); renderWeek();
     }
+    renderPriorityBookingGate();
   } else if(view === 'openweek'){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
@@ -1864,6 +1981,7 @@ document.getElementById('genderTabs').addEventListener('click', e => {
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
     buildGradeGrid(true);
     renderWeek();
+    renderPriorityBookingGate();
   }
 });
 
@@ -1877,6 +1995,7 @@ el.gradeGrid.addEventListener('click', e => {
     bookAsGrade = card.dataset.grade;
     buildGradeGrid(true);
     renderWeek();
+    renderPriorityBookingGate();
   }
 });
 
@@ -2988,6 +3107,7 @@ function renderAdmin(){
   }
   loadUserList();
   renderLockToggleButton();
+  renderPriorityToggleButton();
   renderClearControls();
   renderUsageDashboard();
 }
@@ -3088,6 +3208,49 @@ el.lockToggleBtn.addEventListener('click', async () => {
   if(error){ flash('Could not change lock state: '+error.message, 'err'); }
   else { scheduleLocked = goingTo; renderLockBanner(); flash(goingTo ? 'Schedule locked.' : 'Schedule unlocked.', 'ok'); }
   el.lockToggleBtn.disabled = false;
+});
+
+function renderPriorityToggleButton(){
+  if(priorityBookingEnabled){
+    el.priorityToggleBtn.textContent = 'Turn off priority booking';
+    el.priorityToggleBtn.style.background = 'var(--danger)';
+  } else {
+    el.priorityToggleBtn.textContent = 'Turn on priority booking';
+    el.priorityToggleBtn.style.background = '';
+  }
+  renderPriorityTierStatus();
+}
+function renderPriorityTierStatus(){
+  if(!priorityBookingEnabled){ el.priorityTierStatus.innerHTML = ''; return; }
+  let html = '<p class="section-label" style="margin:16px 0 8px">Tier status (oldest first)</p>';
+  for(let r = 6; r >= 0; r--){
+    const grade = GRADES[r];
+    const tierTeams = teamsAtGradeRank(r);
+    if(!tierTeams.length) continue;
+    const doneCount = tierTeams.filter(t => t.priority_finished_at).length;
+    const unlocked = isTierUnlocked(grade);
+    const allDone = doneCount === tierTeams.length;
+    const stateLabel = allDone ? 'Finished' : unlocked ? 'Booking now' : 'Waiting';
+    const stateClass = allDone ? 'done' : unlocked ? 'active' : 'waiting';
+    html += `<div class="priority-tier-row ${stateClass}"><span>${escSafe(grade)}</span><span>${doneCount}/${tierTeams.length} teams &middot; ${stateLabel}</span></div>`;
+  }
+  el.priorityTierStatus.innerHTML = html;
+}
+el.priorityToggleBtn.addEventListener('click', async () => {
+  const goingTo = !priorityBookingEnabled;
+  el.priorityToggleBtn.disabled = true;
+  const { error } = await sb.from('app_settings').update({ priority_booking_enabled: goingTo }).eq('id', true);
+  if(error){ flash('Could not change priority booking: '+error.message, 'err'); }
+  else { priorityBookingEnabled = goingTo; renderPriorityToggleButton(); flash(goingTo ? 'Priority booking turned on.' : 'Priority booking turned off.', 'ok'); }
+  el.priorityToggleBtn.disabled = false;
+});
+el.priorityResetBtn.addEventListener('click', async () => {
+  if(!armTwoTap(el.priorityResetBtn, 'Tap again to confirm reset')) return;
+  el.priorityResetBtn.disabled = true;
+  const { error } = await sb.from('teams').update({ priority_finished_at: null }).not('id', 'is', null);
+  if(error){ flash('Could not reset: '+error.message, 'err'); }
+  else { await loadTeams(); renderPriorityTierStatus(); flash("Reset every team's finished status.", 'ok'); }
+  el.priorityResetBtn.disabled = false;
 });
 
 function renderClearControls(){

@@ -570,6 +570,18 @@
 
   /* ===== Admin view ===== */
   .admin-card { max-width: 1000px; margin: 20px auto 0; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
+  .admin-card-collapsible summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  }
+  .admin-card-collapsible summary::-webkit-details-marker { display: none; }
+  .admin-card-collapsible summary h3 { margin: 0; }
+  .admin-card-collapsible summary::after {
+    content: ''; width: 9px; height: 9px; margin-left: auto; flex: none;
+    border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg); transition: transform .2s var(--ease);
+  }
+  .admin-card-collapsible[open] summary::after { transform: rotate(45deg); }
+  .admin-card-collapsible .hint { margin-top: 12px; }
   .admin-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-lg); margin-bottom: 4px; font-weight: 600; }
   .admin-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 16px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
@@ -915,12 +927,6 @@
 
 <!-- ============ ADMIN VIEW ============ -->
 <div id="viewAdmin" style="display:none">
-  <div class="admin-card" id="usageDashboardCard">
-    <h3>Usage &amp; analytics</h3>
-    <p class="hint" id="usageHint"></p>
-    <div id="usageDashboard"></div>
-  </div>
-
   <div class="admin-card">
     <h3 id="adminHeading">Invite a coach</h3>
     <p class="hint" id="adminHint"></p>
@@ -1024,6 +1030,12 @@
     </div>
     <div id="clearFieldStatus"></div>
   </div>
+
+  <details class="admin-card admin-card-collapsible" id="usageDashboardCard" style="margin-top:16px">
+    <summary><h3>Usage &amp; analytics</h3></summary>
+    <p class="hint" id="usageHint"></p>
+    <div id="usageDashboard"></div>
+  </details>
 </div>
 
 <div class="actions" id="actionsBar">

@@ -561,6 +561,14 @@
   .arm-ring circle { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: armRing 3s linear forwards; opacity: .95; }
   @keyframes armRing { to { stroke-dashoffset: 50.27; } }
   .fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 900; }
+  /* Share card sheet */
+  .share-modal { position: fixed; inset: 0; z-index: 800; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .share-backdrop { position: absolute; inset: 0; background: rgba(8,16,11,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .share-sheet { position: relative; z-index: 1; width: min(420px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card-hover); padding: 14px; }
+  .share-sheet img { display: block; width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; background: var(--turf-deep); }
+  .share-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .share-actions .btn-primary { width: auto; flex: 1 1 140px; margin-top: 0; padding: 11px 16px; }
+  .share-actions .allbtn { flex: 1 1 110px; }
   .weather-badge svg { animation: drip 2.6s ease-in-out infinite; transform-origin: 50% 30%; }
   @keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
   @keyframes foundPulse {
@@ -824,6 +832,19 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
 </button>
 <nav id="hamburgerMenu" class="hamburger-menu"></nav>
+<!-- Share card: a generated PNG of the next 7 days' practices, built for the
+     team group chat (iMessage/WhatsApp) — the channel parents actually live in. -->
+<div class="share-modal" id="shareModal" style="display:none">
+  <div class="share-backdrop" data-share-close></div>
+  <div class="share-sheet" role="dialog" aria-modal="true" aria-label="Share this week's practices">
+    <img id="shareImg" alt="Card showing this week's practices">
+    <div class="share-actions">
+      <button class="btn-primary" id="shareSendBtn" type="button">Share</button>
+      <button class="allbtn" id="shareSaveBtn" type="button">Save image</button>
+      <button class="allbtn" type="button" data-share-close>Close</button>
+    </div>
+  </div>
+</div>
 <div id="pullRefreshIndicator" class="pull-refresh-indicator"><div class="spinner" id="pullRefreshSpinner"></div></div>
 <header>
   <canvas class="sky" id="skyCanvas" aria-hidden="true"></canvas>
@@ -887,6 +908,8 @@
     <div class="toolbar">
       <div class="now-showing" id="nowShowing">All teams</div>
       <button class="allbtn" id="exportCsvBtn" style="display:none">Export to CSV (TeamSnap)</button>
+      <button class="allbtn" id="scheduleIcsBtn" style="display:none">Add to Calendar</button>
+      <button class="allbtn" id="scheduleShareBtn" style="display:none"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg> Share this week</button>
       <button class="allbtn" id="allBtn">Show all teams</button>
     </div>
     <div class="wrap">
@@ -990,6 +1013,7 @@
     <div class="now-showing" id="myTeamHeading"></div>
     <button class="allbtn" id="myTeamExportCsvBtn">Export to CSV (TeamSnap)</button>
     <button class="allbtn" id="myTeamExportIcsBtn">Add to Calendar</button>
+    <button class="allbtn" id="myTeamShareBtn"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg> Share this week</button>
   </div>
   <div class="wrap">
     <p class="count" id="myTeamCount"></p>
@@ -1291,6 +1315,13 @@ const el = {
   myTeamHeading: document.getElementById('myTeamHeading'),
   myTeamExportCsvBtn: document.getElementById('myTeamExportCsvBtn'),
   myTeamExportIcsBtn: document.getElementById('myTeamExportIcsBtn'),
+  myTeamShareBtn: document.getElementById('myTeamShareBtn'),
+  scheduleIcsBtn: document.getElementById('scheduleIcsBtn'),
+  scheduleShareBtn: document.getElementById('scheduleShareBtn'),
+  shareModal: document.getElementById('shareModal'),
+  shareImg: document.getElementById('shareImg'),
+  shareSendBtn: document.getElementById('shareSendBtn'),
+  shareSaveBtn: document.getElementById('shareSaveBtn'),
   myTeamCount: document.getElementById('myTeamCount'),
   myTeamResults: document.getElementById('myTeamResults'),
   leagueGenderToggle: document.getElementById('leagueGenderToggle'),
@@ -2805,6 +2836,8 @@ function renderSchedule(){
   const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
   el.nowShowing.innerHTML = scheduleGrade ? `Showing <span class="tag">${label}</span>` : 'All teams';
   el.exportCsvBtn.style.display = teamKey ? 'inline-block' : 'none';
+  el.scheduleIcsBtn.style.display = teamKey ? 'inline-block' : 'none';
+  el.scheduleShareBtn.style.display = teamKey ? 'inline-flex' : 'none';
 
   const filtered = teamKey
     ? bookingsCache.filter(b => teamKeyFor(b.team_id) === teamKey)
@@ -2858,6 +2891,152 @@ el.myTeamExportIcsBtn.addEventListener('click', () => {
   const key = teamKeyFor(myProfile.team_id);
   if(!key) return;
   exportTeamScheduleICS(key, teamLabel(...key.split('|')));
+});
+// Calendar + share for whichever team the Schedule view is filtered to — so a
+// director can hand a coach's parents the calendar or a card, not just coaches.
+el.scheduleIcsBtn.addEventListener('click', () => {
+  if(!scheduleGrade) return;
+  exportTeamScheduleICS(scheduleGender+'|'+scheduleGrade, teamLabel(scheduleGender, scheduleGrade));
+});
+el.scheduleShareBtn.addEventListener('click', () => {
+  if(!scheduleGrade) return;
+  openShareCard(scheduleGender+'|'+scheduleGrade, teamLabel(scheduleGender, scheduleGrade));
+});
+el.myTeamShareBtn.addEventListener('click', () => {
+  const key = teamKeyFor(myProfile.team_id);
+  if(!key) return;
+  openShareCard(key, teamLabel(...key.split('|')));
+});
+
+// ============ SHARE CARD (next 7 days → the team group chat) ============
+// Renders a 1080×1350 PNG (the 4:5 that iMessage/WhatsApp/Instagram all show
+// full-bleed) of the team's next seven days: day, time, field, and a rain
+// warning where the forecast calls for it. Parents never log in here, so this
+// is the artifact that reaches them — it has to stand on its own.
+function loadImage(src){
+  return new Promise((resolve, reject) => { const im = new Image(); im.onload = () => resolve(im); im.onerror = reject; im.src = src; });
+}
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+async function buildShareCard(teamKey, teamLabelText){
+  const W = 1080, H = 1350;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  try { await Promise.all(['700 72px Quicksand', '600 40px Inter', '400 34px Inter', '700 30px Inter'].map(f => document.fonts.load(f))); } catch(e){}
+
+  // Ground: deep turf green with a soft highlight and faint field markings.
+  ctx.fillStyle = '#14371f'; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W * .85, 120, 40, W * .85, 120, 900);
+  g.addColorStop(0, 'rgba(79,174,118,.38)'); g.addColorStop(1, 'rgba(79,174,118,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.arc(W / 2, H * .62, 170, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-10, H * .62); ctx.lineTo(W + 10, H * .62); ctx.stroke();
+  ctx.strokeRect(70, H * .62 - 420, W - 140, 840);
+
+  // Crest + eyebrow + team name.
+  const badge = await loadImage('seaford-lacrosse-badge.png').catch(() => null);
+  let textX = 72;
+  if(badge){ const bh = 140, bw = Math.round(bh * badge.width / badge.height); ctx.drawImage(badge, 72, 72, bw, bh); textX = 72 + bw + 36; }
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#9fd0b4'; ctx.font = '700 30px Inter';
+  try { ctx.letterSpacing = '4px'; } catch(e){}
+  ctx.fillText('SEAFORD LACROSSE  ·  NEXT 7 DAYS', textX, 118);
+  try { ctx.letterSpacing = '0px'; } catch(e){}
+  ctx.fillStyle = '#ffffff'; ctx.font = '700 72px Quicksand';
+  ctx.fillText(teamLabelText, textX, 196);
+
+  // The next seven days, starting today.
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const end = addDays(today, 6);
+  const startISO = fmtDateISO(today), endISO = fmtDateISO(end);
+  const items = getTeamBookingsSorted(teamKey).filter(b => b.date >= startISO && b.date <= endISO);
+  ctx.fillStyle = '#cfe3d5'; ctx.font = '600 36px Inter';
+  ctx.fillText(`${DOW_SHORT[today.getDay()]} ${MONTHS[today.getMonth()].slice(0,3)} ${today.getDate()} – ${DOW_SHORT[end.getDay()]} ${MONTHS[end.getMonth()].slice(0,3)} ${end.getDate()}`, 72, 296);
+
+  let y = 372;
+  const rowH = 124, maxRows = 6;
+  if(!items.length){
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 48px Quicksand'; ctx.fillText('No practices scheduled', 72, y + 60);
+    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 34px Inter'; ctx.fillText('for the next seven days. Check seafordlax.com for updates.', 72, y + 116);
+  }
+  items.slice(0, maxRows).forEach((b, i) => {
+    const d = parseISO(b.date);
+    const field = FIELD_MAP[b.field_id];
+    const ry = y + i * rowH;
+    // Row card
+    ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.08)';
+    roundRect(ctx, 56, ry, W - 112, rowH - 14, 22); ctx.fill();
+    // Day chip
+    ctx.fillStyle = '#4fae76';
+    roundRect(ctx, 80, ry + 12, 150, rowH - 38, 18); ctx.fill();
+    ctx.fillStyle = '#0f2a19'; ctx.font = '700 26px Inter'; ctx.textAlign = 'center';
+    ctx.fillText(DOW_SHORT[d.getDay()].toUpperCase(), 155, ry + 44);
+    ctx.font = '700 38px Quicksand'; ctx.fillText(`${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`, 155, ry + 84);
+    ctx.textAlign = 'left';
+    // Time + place
+    ctx.fillStyle = '#ffffff'; ctx.font = '600 40px Inter'; ctx.fillText(b.time, 262, ry + 52);
+    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 32px Inter';
+    ctx.fillText(`${field ? field.name : b.field_id}${b.subfield ? ' · ' + b.subfield : ''}`, 262, ry + 94);
+    // Rain warning
+    const w = weatherCache[b.date];
+    if(w && w.precip >= 50){
+      ctx.textAlign = 'right'; ctx.fillStyle = '#e9c46a'; ctx.font = '700 30px Inter';
+      ctx.fillText(`${w.precip}% rain`, W - 88, ry + 62); ctx.textAlign = 'left';
+    }
+  });
+  if(items.length > maxRows){
+    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 32px Inter';
+    ctx.fillText(`+ ${items.length - maxRows} more this week`, 80, y + maxRows * rowH + 40);
+  }
+
+  // Footer
+  ctx.fillStyle = '#9fd0b4'; ctx.font = '700 30px Inter'; ctx.fillText('seafordlax.com', 72, H - 72);
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(207,227,213,.7)'; ctx.font = '400 28px Inter';
+  ctx.fillText(`Updated ${MONTHS[new Date().getMonth()].slice(0,3)} ${new Date().getDate()}`, W - 72, H - 72); ctx.textAlign = 'left';
+
+  return new Promise(resolve => c.toBlob(resolve, 'image/png'));
+}
+let currentShare = null;
+async function openShareCard(teamKey, teamLabelText){
+  const blob = await buildShareCard(teamKey, teamLabelText);
+  if(!blob){ flash('Could not build the share card.', 'err'); return; }
+  if(currentShare?.url) URL.revokeObjectURL(currentShare.url);
+  const filename = `${teamLabelText.replace(/\s+/g,'-').toLowerCase()}-this-week.png`;
+  currentShare = { blob, url: URL.createObjectURL(blob), filename, title: `${teamLabelText} — this week's practices` };
+  el.shareImg.src = currentShare.url;
+  el.shareModal.style.display = 'flex';
+  const sheet = el.shareModal.querySelector('.share-sheet'), backdrop = el.shareModal.querySelector('.share-backdrop');
+  if(hasGSAP() && motionOK()){
+    gsap.fromTo(backdrop, { opacity: 0 }, { opacity: 1, duration: .25, clearProps: 'opacity' });
+    gsap.fromTo(sheet, { y: 36, opacity: 0, scale: .96 }, { y: 0, opacity: 1, scale: 1, duration: .42, ease: 'power3.out', clearProps: 'transform,opacity' });
+  }
+  haptic('light');
+}
+function closeShareCard(){
+  el.shareModal.style.display = 'none';
+  if(currentShare?.url) URL.revokeObjectURL(currentShare.url);
+  currentShare = null;
+}
+el.shareModal.addEventListener('click', e => { if(e.target.closest('[data-share-close]')) closeShareCard(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && el.shareModal.style.display !== 'none') closeShareCard(); });
+el.shareSendBtn.addEventListener('click', async () => {
+  if(!currentShare) return;
+  const file = new File([currentShare.blob], currentShare.filename, { type: 'image/png' });
+  if(navigator.canShare && navigator.canShare({ files: [file] })){
+    try { await navigator.share({ files: [file], title: currentShare.title, text: currentShare.title }); haptic('success'); closeShareCard(); }
+    catch(e){ /* user dismissed the share sheet — nothing to report */ }
+  } else {
+    el.shareSaveBtn.click(); // no native share here (desktop) — saving is the next best thing
+  }
+});
+el.shareSaveBtn.addEventListener('click', () => {
+  if(!currentShare) return;
+  const a = document.createElement('a'); a.href = currentShare.url; a.download = currentShare.filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  flash('Saved — drop it in the team chat.', 'ok');
 });
 
 // ============ LEAGUE OVERVIEW (directors and admin) ============

@@ -20,6 +20,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Motion + 3D. Everything that uses these is guarded (window.gsap / window.THREE)
+     and degrades to the plain CSS behavior if a CDN is blocked or offline. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
 <style>
   :root {
     /* Core greens — from the lacrosse crest, used for functional UI (buttons, badges, highlights) */
@@ -543,6 +548,16 @@
   .book-slot:disabled, .cal-slot.empty:disabled { opacity: .45; cursor: not-allowed; }
   .book-slot.armed, .cal-slot.empty.armed { background: var(--accent-fill) !important; border-style: solid !important; border-color: var(--accent-fill) !important; color: #fff !important; font-weight: 700; }
   .book-slot.found-highlight { animation: foundPulse 2.6s var(--ease); }
+  /* Two-tap confirm countdown ring — shows how long the armed state lasts
+     instead of leaving people guessing when it silently disarms. */
+  .armed:has(> .arm-ring) { position: relative; padding-right: 28px !important; }
+  .arm-ring { position: absolute; right: 7px; top: 50%; width: 14px; height: 14px; margin-top: -7px; pointer-events: none; }
+  .arm-ring svg { width: 14px; height: 14px; display: block; transform: rotate(-90deg); }
+  .arm-ring circle { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: armRing 3s linear forwards; opacity: .95; }
+  @keyframes armRing { to { stroke-dashoffset: 50.27; } }
+  .fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 900; }
+  .weather-badge svg { animation: drip 2.6s ease-in-out infinite; transform-origin: 50% 30%; }
+  @keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
   @keyframes foundPulse {
     0%, 100% { box-shadow: none; }
     15%, 55% { box-shadow: 0 0 0 4px var(--mine); background: var(--mine-bg); border-color: var(--mine); }
@@ -1530,6 +1545,93 @@ function attachSwipeNav(gridEl, getPrevBtn, getNextBtn){
   }, { passive: true });
 }
 
+// ============ MOTION (GSAP) ============
+// Every effect here is optional: it checks for window.gsap and for the user's
+// reduced-motion setting, and falls back to the plain CSS behavior otherwise.
+const motionOK = () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hasGSAP = () => !!window.gsap;
+if(window.gsap && window.Flip){ try { gsap.registerPlugin(Flip); } catch(e){} }
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const VIEW_ORDER = ['schedule','book','openweek','myteam','league','admin'];
+// Stable identity for a booking slot across re-renders, so Flip can morph the
+// "+ Book" chip into the booked chip that replaces it.
+const slotFlipId = (fieldId, dateStr, sub, time) => `${fieldId}|${dateStr}|${sub}|${time}`;
+
+// Directional view entrance: the new view slides in from the side you're
+// heading toward (left→right through the tab order), and its top-level
+// sections stagger in behind it. clearProps leaves no inline transforms behind.
+function animateViewIn(container, dir){
+  if(!container) return;
+  if(!hasGSAP() || !motionOK()){
+    container.style.opacity = '';
+    container.classList.remove('view-fade-in');
+    void container.offsetWidth;
+    container.classList.add('view-fade-in');
+    return;
+  }
+  container.classList.remove('view-fade-in');
+  container.style.opacity = ''; // fromTo below owns opacity from here; never leave the pre-hide in place
+  const kids = Array.from(container.children).filter(k => k.offsetParent !== null).slice(0, 14);
+  gsap.killTweensOf([container, ...kids]);
+  gsap.fromTo(container, { opacity: 0, x: 22 * dir }, { opacity: 1, x: 0, duration: .34, ease: 'power3.out', clearProps: 'opacity,transform' });
+  if(kids.length) gsap.fromTo(kids, { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: .38, ease: 'power2.out', stagger: .045, delay: .04, clearProps: 'opacity,transform' });
+}
+
+// Canvas confetti in the site's own colors. Small bursts for a single
+// booking, a big one for a whole season. Self-cleaning, never blocks input.
+function burstConfetti(x, y, count){
+  if(!motionOK()) return;
+  count = count || 90;
+  const c = document.createElement('canvas');
+  c.className = 'fx-confetti';
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.floor(window.innerWidth * dpr); c.height = Math.floor(window.innerHeight * dpr);
+  document.body.appendChild(c);
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const colors = [cssVar('--turf') || '#1f5c38', cssVar('--turf-deep') || '#14371f', cssVar('--mine') || '#b8860b', '#ffffff', '#cfe3d5'];
+  const parts = [];
+  for(let i = 0; i < count; i++){
+    const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * .95;
+    const s = 5 + Math.random() * (count > 40 ? 11 : 7);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, w: 5 + Math.random() * 5, h: 3 + Math.random() * 4,
+      r: Math.random() * Math.PI, vr: (Math.random() - .5) * .35, c: colors[i % colors.length], life: 1 });
+  }
+  const start = performance.now();
+  let last = start;
+  function frame(now){
+    const dt = Math.min((now - last) / 16.7, 2); last = now;
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    let alive = 0;
+    for(const p of parts){
+      if(p.life <= 0) continue;
+      p.vy += .32 * dt; p.vx *= .992; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; p.life -= .011 * dt;
+      if(p.life <= 0 || p.y > window.innerHeight + 20) { p.life = 0; continue; }
+      alive++;
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.4)); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+    }
+    if(alive && now - start < 3200) requestAnimationFrame(frame); else c.remove();
+  }
+  requestAnimationFrame(frame);
+}
+
+// Weather "rain risk" badges slide in whenever a render creates new ones.
+// A body-level observer catches every render path without each one having
+// to remember to call anything.
+(function(){
+  let queued = false;
+  function run(){
+    queued = false;
+    const fresh = document.querySelectorAll('.weather-badge:not([data-fx])');
+    if(!fresh.length) return;
+    fresh.forEach(b => b.dataset.fx = '1');
+    if(hasGSAP() && motionOK()) gsap.fromTo(fresh, { x: -8, opacity: 0 }, { x: 0, opacity: 1, duration: .4, ease: 'power2.out', stagger: .035, clearProps: 'opacity,transform' });
+  }
+  new MutationObserver(() => { if(!queued){ queued = true; setTimeout(run, 0); } })
+    .observe(document.body, { childList: true, subtree: true });
+})();
+
 // ============ HELPERS ============
 function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -1551,6 +1653,7 @@ function armTwoTap(btn, armedHtml){
   if(btn.dataset.armed === '1'){
     clearTimeout(btn._armTimer);
     btn.dataset.armed = '';
+    btn.querySelector('.arm-ring')?.remove();
     return true;
   }
   haptic('light');
@@ -1558,6 +1661,14 @@ function armTwoTap(btn, armedHtml){
   btn.dataset.origHtml = btn.innerHTML;
   btn.classList.add('armed');
   btn.innerHTML = armedHtml;
+  // Countdown ring for the 3s armed window (skipped on the tiny × cancel
+  // button, where there's no room for it).
+  if(!btn.classList.contains('cancel')){
+    const ring = document.createElement('span');
+    ring.className = 'arm-ring';
+    ring.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8"/></svg>';
+    btn.appendChild(ring);
+  }
   btn._armTimer = setTimeout(() => {
     if(btn.isConnected){ btn.innerHTML = btn.dataset.origHtml; btn.classList.remove('armed'); btn.dataset.armed = ''; }
   }, 3000);
@@ -1572,8 +1683,13 @@ function positionModeThumb(container){
   const thumb = container.querySelector('.mode-toggle-thumb');
   const activeBtn = container.querySelector('.mtab.active');
   if(!thumb || !activeBtn) return;
-  thumb.style.width = activeBtn.offsetWidth + 'px';
-  thumb.style.transform = `translateX(${activeBtn.offsetLeft - 3}px)`;
+  if(hasGSAP() && motionOK()){
+    thumb.style.transition = 'none';
+    gsap.to(thumb, { x: activeBtn.offsetLeft - 3, width: activeBtn.offsetWidth, duration: .42, ease: 'back.out(1.5)', overwrite: 'auto' });
+  } else {
+    thumb.style.width = activeBtn.offsetWidth + 'px';
+    thumb.style.transform = `translateX(${activeBtn.offsetLeft - 3}px)`;
+  }
 }
 function positionAllModeThumbs(){
   document.querySelectorAll('.mode-toggle').forEach(positionModeThumb);
@@ -2129,11 +2245,21 @@ function positionViewTabsThumb(view){
   if(!tab || tab.style.display === 'none') return;
   const thumbWidth = thumb.offsetWidth || 56;
   const center = tab.offsetLeft + tab.offsetWidth / 2;
-  thumb.style.transform = `translate(${center - thumbWidth / 2}px, -50%)`;
+  const x = center - thumbWidth / 2;
+  if(hasGSAP() && motionOK()){
+    // GSAP drives the glide with a slight overshoot; the CSS transition is
+    // switched off so it doesn't smooth over GSAP's per-frame writes.
+    thumb.style.transition = 'none';
+    gsap.to(thumb, { x, yPercent: -50, duration: .5, ease: 'back.out(1.7)', overwrite: 'auto' });
+  } else {
+    thumb.style.transform = `translate(${x}px, -50%)`;
+  }
 }
 
 function switchView(view){
   if(view !== currentView) haptic('light');
+  const prevView = currentView;
+  const viewDir = VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(prevView) ? 1 : -1;
   currentView = view;
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   positionViewTabsThumb(view);
@@ -2147,10 +2273,18 @@ function switchView(view){
 
   const activeContainer = { schedule: el.viewSchedule, book: el.viewBook, openweek: el.viewOpenWeek,
     myteam: el.viewMyTeam, league: el.viewLeague, admin: el.viewAdmin }[view];
-  if(activeContainer){
-    activeContainer.classList.remove('view-fade-in');
-    void activeContainer.offsetWidth; // restart the animation even if this view was shown before
-    activeContainer.classList.add('view-fade-in');
+  // Only choreograph an entrance when the view actually changed. Re-entering
+  // the same view (returning to the tab, a realtime re-render) must not
+  // replay the slide — that reads as a glitch, not a transition.
+  if(activeContainer && view !== prevView){
+    // Hide for one frame so the freshly rendered content doesn't flash before
+    // the entrance runs; the renders below are synchronous, so by the time
+    // the frame fires every card exists and can stagger in.
+    if(hasGSAP() && motionOK()) activeContainer.style.opacity = '0';
+    // setTimeout, not requestAnimationFrame: rAF doesn't fire while the tab
+    // is hidden, which would leave the view stuck invisible if someone
+    // switches views right as the phone locks.
+    setTimeout(() => animateViewIn(activeContainer, viewDir), 0);
   }
 
   if(view === 'schedule'){
@@ -2847,12 +2981,12 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
               ? ` <button class="waitlist-btn on" data-leavewait="${myWait.id}" title="Leave waitlist">On waitlist${slotWaiters.length>1?` +${slotWaiters.length-1}`:''} &times;</button>`
               : ` <button class="waitlist-btn" data-joinwait='${JSON.stringify({fieldId:selectedField,date:dateStr,subfield:sub,time}).replace(/'/g,"&#39;")}'>Waitlist${slotWaiters.length?` (${slotWaiters.length})`:''}</button>`;
           }
-          html += `<span class="book-slot ${isMine?'mine':'booked'}"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}${isMine?` <button class="cancel" data-cancel="${existing.id}" title="Cancel booking">&times;</button>`:waitHtml}</span>`;
+          html += `<span class="book-slot ${isMine?'mine':'booked'}" data-flip-id="${escSafe(slotFlipId(selectedField, dateStr, sub, time))}"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}${isMine?` <button class="cancel" data-cancel="${existing.id}" title="Cancel booking">&times;</button>`:waitHtml}</span>`;
         } else if(isPast){
           html += `<span class="book-slot booked" style="opacity:.4"><span class="sub">${escSafe(sub)}:</span>&mdash;</span>`;
         } else {
           const payload = JSON.stringify({fieldId:selectedField, date:dateStr, subfield:sub, time});
-          html += `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="sub">${escSafe(sub)}:</span><span class="plus">+ Book</span></button>`;
+          html += `<button class="book-slot" data-flip-id="${escSafe(slotFlipId(selectedField, dateStr, sub, time))}" data-book='${payload.replace(/'/g,"&#39;")}'><span class="sub">${escSafe(sub)}:</span><span class="plus">+ Book</span></button>`;
         }
       });
       html += `</div></div>`;
@@ -2982,6 +3116,12 @@ el.recurringBookBtn.addEventListener('click', async () => {
   el.recurringBookBtn.disabled = false;
   el.recurringBookBtn.textContent = 'Book this pattern';
 
+  if(succeeded > 0){
+    // A whole season in one tap deserves the big burst.
+    const r = el.recurringBookBtn.getBoundingClientRect();
+    burstConfetti(r.left + r.width / 2, r.top + r.height / 2, Math.min(70 + succeeded * 4, 160));
+  }
+
   await refreshBookings();
   renderWeek();
 });
@@ -3042,15 +3182,28 @@ el.weekGrid.addEventListener('click', async e => {
       field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
       time: payload.time, team_id: teamId, booked_by: session.user.id,
     });
+    let flipState = null, burstAt = null;
     if(error){
       if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
       else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
       else flash('Booking failed: '+error.message, 'err');
     } else {
       flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+      // Capture the "+ Book" chip's geometry now; after the re-render, Flip
+      // morphs it into its booked self instead of the chip just blinking.
+      if(window.Flip && motionOK() && bookBtn.isConnected) flipState = Flip.getState(bookBtn);
+      const r = bookBtn.getBoundingClientRect();
+      burstAt = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
     }
     await refreshBookings();
     renderWeek();
+    if(flipState){
+      const id = slotFlipId(payload.fieldId, payload.date, payload.subfield, payload.time);
+      const fresh = el.weekGrid.querySelector(`[data-flip-id="${id.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"]`);
+      if(fresh) Flip.from(flipState, { targets: fresh, duration: .45, ease: 'power2.inOut', scale: true,
+        onComplete: () => gsap.fromTo(fresh, { scale: .94 }, { scale: 1, duration: .55, ease: 'elastic.out(1, .5)', clearProps: 'transform' }) });
+    }
+    if(burstAt) burstConfetti(burstAt.x, burstAt.y, 24);
   } else if(cancelBtn){
     if(!armTwoTap(cancelBtn, '!')) return;
     const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();

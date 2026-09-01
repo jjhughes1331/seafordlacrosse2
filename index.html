@@ -201,6 +201,11 @@
     margin-top: 24px;
     background: linear-gradient(90deg, transparent 0%, var(--turf) 20%, var(--turf-deep) 50%, var(--turf) 80%, transparent 100%);
   }
+  /* Weather sky painted behind the hero — today's actual forecast (clouds,
+     rain, golden hour, night stars). Hidden once the header condenses so the
+     compact bar stays clean and the loop can stop. */
+  header .sky { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .95; transition: opacity .35s var(--ease); }
+  header.scrolled .sky { opacity: 0; }
   #hamburgerBtn {
     position: fixed; top: 14px; left: 16px; z-index: 610;
     width: 36px; height: 36px; border-radius: var(--radius-md); border: 1px solid var(--line);
@@ -821,6 +826,7 @@
 <nav id="hamburgerMenu" class="hamburger-menu"></nav>
 <div id="pullRefreshIndicator" class="pull-refresh-indicator"><div class="spinner" id="pullRefreshSpinner"></div></div>
 <header>
+  <canvas class="sky" id="skyCanvas" aria-hidden="true"></canvas>
   <div class="header-hero">
     <div class="header-text">
       <div class="eyebrow">Seaford, New York</div>
@@ -1472,6 +1478,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
       btn.classList.toggle('is-dark', activeDark);
     }
     if(label) label.textContent = stored === 'light' ? 'Light mode' : stored === 'dark' ? 'Dark mode' : 'Match system theme';
+    window.updateSky?.();
   }
 
   document.addEventListener('click', e => {
@@ -2001,6 +2008,7 @@ async function loadWeather(){
       };
     });
     rerenderCurrentView();
+    window.updateSky?.();
   } catch (err) {
     // Offline, blocked, or Open-Meteo down — silently skip. This is a nice-to-have,
     // never something that should surface an error to a coach trying to book a field.
@@ -2013,6 +2021,166 @@ function weatherBadge(dateStr){
   if(!w || w.precip == null || w.precip < 50) return '';
   return ` <span class="weather-badge" title="Open-Meteo forecast: ${w.precip}% chance of precipitation"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg> ${w.precip}%</span>`;
 }
+
+// ============ SKY — weather atmosphere behind the header ============
+// Reads today's Open-Meteo code/precip from weatherCache (already fetched
+// for the calendar badges) plus the time of day, and paints a matching
+// sky: drifting clouds, rain streaks, a golden-hour sun, stars at night in
+// dark mode, a rare lightning flash for thunderstorms. Cheap by design —
+// ~100 primitives at header size, and the loop stops whenever the header
+// is condensed, the tab is hidden, or the user prefers reduced motion.
+(function(){
+  const canvas = document.getElementById('skyCanvas');
+  const headerEl = document.querySelector('header');
+  if(!canvas || !headerEl || !canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, dpr = 1, raf = 0, running = false, last = 0, seededW = -1;
+  let cfg = { kind: 'clear', precip: 0, dark: false, phase: 'day' };
+  let clouds = [], drops = [], stars = [], flashT = 4, flashAlpha = 0;
+
+  function isDark(){
+    const t = document.documentElement.dataset.theme;
+    if(t === 'dark') return true;
+    if(t === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  // WMO weather codes → a handful of visual kinds.
+  function kindFromCode(code, precip){
+    if(code == null) return precip >= 60 ? 'drizzle' : 'clear';
+    if(code === 0) return 'clear';
+    if(code <= 2) return 'partly';
+    if(code === 3 || code === 45 || code === 48) return 'overcast';
+    if(code >= 51 && code <= 57) return 'drizzle';
+    if(code >= 61 && code <= 67) return 'rain';
+    if(code >= 71 && code <= 77) return 'snow';
+    if(code >= 80 && code <= 82) return 'rain';
+    if(code >= 95) return 'thunder';
+    return 'partly';
+  }
+  function phaseNow(){
+    const d = new Date(), h = d.getHours() + d.getMinutes() / 60;
+    if(h < 5.5 || h >= 20.5) return 'night';
+    if(h < 8) return 'dawn';
+    if(h < 16.5) return 'day';
+    if(h < 19.5) return 'golden';
+    return 'dusk';
+  }
+  function resize(){
+    const r = headerEl.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if(W !== seededW) seed(); // only reseed on a real width change, not while the header's height transitions
+  }
+  function seed(){
+    seededW = W;
+    const n = { clear: 2, partly: 3, overcast: 5, drizzle: 5, rain: 5, snow: 4, thunder: 6 }[cfg.kind] || 3;
+    const scale = Math.min(1, H / 170); // short mobile header → smaller clouds so they don't crowd the wordmark
+    clouds = Array.from({ length: n }, (_, i) => ({
+      x: Math.random() * W, y: 8 + Math.random() * (H * .5), s: (40 + Math.random() * 70) * scale,
+      v: (6 + Math.random() * 10) * (i % 2 ? 1 : .7), a: .4 + Math.random() * .45,
+    }));
+    const wet = ['drizzle','rain','thunder','snow'].includes(cfg.kind);
+    const count = !wet ? 0 : cfg.kind === 'drizzle' ? 40 : cfg.kind === 'snow' ? 50 : Math.round(60 + Math.min(100, cfg.precip) * .6);
+    drops = Array.from({ length: count }, () => ({ x: Math.random() * (W + 60) - 30, y: Math.random() * H, l: 6 + Math.random() * 10, v: 220 + Math.random() * 160, w: Math.random() < .3 ? 1.2 : .8 }));
+    stars = cfg.dark && (cfg.kind === 'clear' || cfg.kind === 'partly')
+      ? Array.from({ length: 26 }, () => ({ x: Math.random() * W, y: Math.random() * H * .7, r: .6 + Math.random() * 1.1, p: Math.random() * Math.PI * 2 }))
+      : [];
+  }
+  function palette(){
+    const d = cfg.dark, k = cfg.kind, p = cfg.phase;
+    const wet = k === 'rain' || k === 'thunder' || k === 'drizzle';
+    const grey = k === 'overcast' || wet || k === 'snow';
+    const lowSun = p === 'golden' || p === 'dusk';
+    if(d){
+      return { top: grey ? 'rgba(46,58,52,.55)' : 'rgba(18,32,24,.55)', bot: 'rgba(18,24,20,0)',
+        cloud: grey ? 'rgba(120,135,128,' : 'rgba(150,170,160,', sun: null,
+        glow: (p === 'night' || lowSun) ? 'rgba(255,190,90,.10)' : 'rgba(120,200,150,.08)',
+        drop: 'rgba(200,225,215,', flash: 'rgba(255,255,255,.14)' };
+    }
+    const base = { top: 'rgba(214,236,222,.65)', sun: 'rgba(255,224,150,.55)', glow: 'rgba(31,92,56,.06)' };
+    if(lowSun) Object.assign(base, { top: 'rgba(251,226,196,.7)', sun: 'rgba(255,190,110,.6)', glow: 'rgba(200,120,40,.07)' });
+    if(p === 'dawn') Object.assign(base, { top: 'rgba(230,224,240,.6)', sun: 'rgba(255,210,170,.45)' });
+    if(p === 'night') Object.assign(base, { top: 'rgba(200,214,224,.55)', sun: null });
+    if(grey) Object.assign(base, { top: 'rgba(210,218,214,.75)', sun: null });
+    return Object.assign(base, { bot: 'rgba(250,252,250,0)', cloud: grey ? 'rgba(150,160,155,' : 'rgba(255,255,255,', drop: 'rgba(90,120,105,', flash: 'rgba(255,255,255,.35)' });
+  }
+  function drawCloud(c, col){
+    ctx.fillStyle = col + (c.a * (cfg.kind === 'clear' ? .45 : .62)).toFixed(3) + ')';
+    const s = c.s;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, s, s * .38, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x - s * .45, c.y + s * .08, s * .55, s * .3, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x + s * .5, c.y + s * .1, s * .6, s * .32, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  function frame(now){
+    raf = 0;
+    const dt = Math.min((now - (last || now)) / 1000, .05); last = now;
+    const pal = palette();
+    const lowSun = cfg.phase === 'golden' || cfg.phase === 'dusk';
+    ctx.clearRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, pal.top); g.addColorStop(1, pal.bot);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    if(pal.sun){
+      const sx = lowSun ? W * .18 : W * .82, sy = lowSun ? H * .55 : H * .2;
+      const rg = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * .9);
+      rg.addColorStop(0, pal.sun); rg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+    }
+    for(const st of stars){
+      st.p += dt * 1.2;
+      ctx.fillStyle = 'rgba(230,240,235,' + (.35 + .35 * Math.sin(st.p)).toFixed(3) + ')';
+      ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2); ctx.fill();
+    }
+    for(const c of clouds){ c.x += c.v * dt; if(c.x - c.s * 1.2 > W) c.x = -c.s * 1.2; drawCloud(c, pal.cloud); }
+    if(drops.length){
+      const snow = cfg.kind === 'snow';
+      ctx.strokeStyle = pal.drop + '.28)'; ctx.lineCap = 'round';
+      for(const d of drops){
+        const vy = snow ? d.v * .18 : d.v, vx = snow ? Math.sin(now / 900 + d.x) * 12 : -vy * .18;
+        d.y += vy * dt; d.x += vx * dt;
+        if(d.y > H + 12){ d.y = -12; d.x = Math.random() * (W + 60) - 30; }
+        if(snow){ ctx.fillStyle = pal.drop + '.55)'; ctx.beginPath(); ctx.arc(d.x, d.y, d.w + .6, 0, Math.PI * 2); ctx.fill(); }
+        else { ctx.lineWidth = d.w; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + vx * .02, d.y - d.l); ctx.stroke(); }
+      }
+    }
+    if(cfg.kind === 'thunder' && motionOK()){
+      flashT -= dt;
+      if(flashT <= 0){ flashAlpha = 1; flashT = 6 + Math.random() * 9; }
+      if(flashAlpha > 0){ ctx.globalAlpha = flashAlpha; ctx.fillStyle = pal.flash; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; flashAlpha -= dt * 6; }
+    }
+    // Field-green (or floodlight-amber at night) vignette along the bottom so
+    // the sky settles into the page instead of ending in a hard line.
+    const vg = ctx.createLinearGradient(0, H * .6, 0, H);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, pal.glow);
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    if(running && motionOK() && !document.hidden && !headerEl.classList.contains('scrolled')) raf = requestAnimationFrame(frame);
+    else running = false;
+  }
+  function start(){ if(running) return; running = true; last = 0; if(!raf) raf = requestAnimationFrame(frame); }
+  function update(){
+    const today = fmtDateISO(new Date());
+    const w = (typeof weatherCache !== 'undefined' && weatherCache[today]) || null;
+    cfg = { kind: kindFromCode(w ? w.code : null, w ? (w.precip || 0) : 0), precip: w ? (w.precip || 0) : 0, dark: isDark(), phase: phaseNow() };
+    seededW = -1; // new conditions → new particles
+    resize();
+    running = false;
+    frame(performance.now()); // paint immediately — no blank header while waiting for the first animation frame
+    if(motionOK()) start();
+  }
+  window.updateSky = update;
+  new ResizeObserver(() => { resize(); if(!running) frame(performance.now()); }).observe(headerEl);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) start(); });
+  new MutationObserver(() => { if(!headerEl.classList.contains('scrolled')) start(); }).observe(headerEl, { attributes: true, attributeFilter: ['class'] });
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  if(mq.addEventListener) mq.addEventListener('change', update);
+  setInterval(() => { if(phaseNow() !== cfg.phase) update(); }, 60000);
+  update();
+})();
 
 async function refreshWaitlist(){
   const { data, error } = await sb.from('waitlist').select('*');

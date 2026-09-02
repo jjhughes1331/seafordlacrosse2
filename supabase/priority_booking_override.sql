@@ -1,9 +1,13 @@
--- Director/admin override for priority booking — run once in the SQL editor.
--- Adds a "forced ranks" list: grade tiers a director has manually pushed
--- through even though not every team in that tier finished. Modeled as a set
--- (not a single threshold) so forcing 6th grade through only unlocks 5th —
--- it does NOT cascade to also unlock 4th/3rd/etc before 5th actually finishes
--- (or is itself forced).
+-- Director/admin override for priority booking.
+--
+-- The team_priority_unlocked function (including priority_forced_ranks) now
+-- lives in supabase/priority_booking.sql so re-running that file is not a
+-- footgun. This file is kept as a pointer.
+--
+-- If you have not run security_hardening.sql / the updated priority_booking.sql
+-- yet, the statement below is still safe to run on its own (idempotent
+-- CREATE OR REPLACE). Prefer the merged copy in priority_booking.sql going
+-- forward.
 
 alter table app_settings add column if not exists priority_forced_ranks integer[] not null default '{}';
 

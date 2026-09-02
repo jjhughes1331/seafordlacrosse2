@@ -185,7 +185,7 @@ begin
 end;
 $$;
 
-drop trigger if exists bookings_enqueue_allowed_slot on bookings;
+drop trigger if exists bookings_enforce_allowed_slot on bookings;
 create trigger bookings_enforce_allowed_slot
   before insert or update of field_id, subfield, time, date on bookings
   for each row execute function public.enforce_allowed_slot();

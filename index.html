@@ -1093,14 +1093,14 @@
     <div id="bulkResults"></div>
   </div>
 
-  <p class="admin-section-label">Booking controls</p>
-  <div class="admin-card">
+  <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
+  <div class="admin-card" id="scheduleLockCard">
     <h3>Schedule lock</h3>
     <p class="hint" id="lockHint">When locked, nobody — including admins and directors — can book or cancel anything until it's unlocked again.</p>
     <button class="btn-primary" id="lockToggleBtn" style="width:auto;padding:11px 20px"></button>
   </div>
 
-  <div class="admin-card" style="margin-top:16px">
+  <div class="admin-card" style="margin-top:16px" id="priorityBookingCard">
     <h3>Priority booking (grade hierarchy)</h3>
     <p class="hint">When on, teams can only book once every older grade has finished — 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
     <button class="btn-primary" id="priorityToggleBtn" style="width:auto;padding:11px 20px"></button>
@@ -2356,7 +2356,7 @@ document.addEventListener('click', async e => {
 function renderLockBanner(){
   el.lockBanner.classList.toggle('show', scheduleLocked);
   el.lockBanner.textContent = scheduleLocked ? '🔒 The schedule is locked — bookings and cancellations are paused right now.' : '';
-  if(myProfile && (myProfile.role === 'admin' || myProfile.role === 'director')){ renderLockToggleButton(); renderPriorityToggleButton(); }
+  if(myProfile && myProfile.role === 'admin'){ renderLockToggleButton(); renderPriorityToggleButton(); }
 }
 
 function rerenderCurrentView(){
@@ -3902,8 +3902,17 @@ function renderAdmin(){
     el.userListHead.innerHTML = '<tr><th>Team</th><th>Coach email</th></tr>';
   }
   loadUserList();
-  renderLockToggleButton();
-  renderPriorityToggleButton();
+  const isAdminSettings = myProfile.role === 'admin';
+  const bookingControlsLabel = document.getElementById('bookingControlsLabel');
+  const scheduleLockCard = document.getElementById('scheduleLockCard');
+  const priorityBookingCard = document.getElementById('priorityBookingCard');
+  if(bookingControlsLabel) bookingControlsLabel.style.display = isAdminSettings ? '' : 'none';
+  if(scheduleLockCard) scheduleLockCard.style.display = isAdminSettings ? '' : 'none';
+  if(priorityBookingCard) priorityBookingCard.style.display = isAdminSettings ? '' : 'none';
+  if(isAdminSettings){
+    renderLockToggleButton();
+    renderPriorityToggleButton();
+  }
   renderClearControls();
   renderUsageDashboard();
 }

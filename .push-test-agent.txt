@@ -1,1 +1,1 @@
-@/workspace/seaford-index.html
+<<<FILE:/workspace/seaford-index.html>>>

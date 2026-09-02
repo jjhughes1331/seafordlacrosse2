@@ -5,6 +5,10 @@
 -- ALL 6th grade teams (girls + boys) must finish before ANY 5th grade team
 -- (either gender) unlocks.
 --
+-- Forced ranks (priority_forced_ranks) are included here so re-running this
+-- file does not clobber the override-aware team_priority_unlocked from
+-- priority_booking_override.sql.
+--
 -- IMPORTANT: this modifies the existing bookings_insert_scoped policy (via
 -- ALTER POLICY, so it stays in place the whole time — no window with the
 -- policy missing) to add a hierarchy check on top of the existing
@@ -12,6 +16,7 @@
 -- added check is always true, so nothing changes from today's behavior.
 
 alter table app_settings add column if not exists priority_booking_enabled boolean not null default false;
+alter table app_settings add column if not exists priority_forced_ranks integer[] not null default '{}';
 alter table teams add column if not exists priority_finished_at timestamptz;
 
 create or replace function public.grade_rank(g text)
@@ -39,6 +44,7 @@ as $$
       where mine.id = check_team_id
         and grade_rank(older.grade) > grade_rank(mine.grade)
         and older.priority_finished_at is null
+        and not (grade_rank(older.grade) = any (coalesce((select priority_forced_ranks from app_settings limit 1), '{}')))
     );
 $$;
 

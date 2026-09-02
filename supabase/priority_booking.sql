@@ -7,7 +7,7 @@
 --
 -- Forced ranks (priority_forced_ranks) are included here so re-running this
 -- file does not clobber the override-aware team_priority_unlocked from
--- priority_booking_override.sql. That file is now a pointer at this function.
+-- priority_booking_override.sql.
 --
 -- IMPORTANT: this modifies the existing bookings_insert_scoped policy (via
 -- ALTER POLICY, so it stays in place the whole time — no window with the
@@ -63,31 +63,17 @@ with check (
 -- teams had no UPDATE policy at all before this — needed so a coach/director/
 -- admin can mark their own team's priority_finished_at. Scoped the same way
 -- booking permission already is.
--- Column-level lock (non-admins cannot change gender/grade; only
--- priority_finished_at) is in supabase/security_hardening.sql.
-do $$
-begin
-  create policy "teams_update_priority_scoped" on teams
-    for update
-    using (
-      exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
-      or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'coach' and p.team_id = teams.id)
-      or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'director' and p.gender = teams.gender)
-    )
-    with check (
-      exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
-      or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'coach' and p.team_id = teams.id)
-      or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'director' and p.gender = teams.gender)
-    );
-exception
-  when duplicate_object then
-    null;
-end $$;
+create policy "teams_update_priority_scoped" on teams
+  for update
+  using (
+    exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
+    or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'coach' and p.team_id = teams.id)
+    or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'director' and p.gender = teams.gender)
+  )
+  with check (
+    exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin')
+    or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'coach' and p.team_id = teams.id)
+    or exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'director' and p.gender = teams.gender)
+  );
 
-do $$
-begin
-  alter publication supabase_realtime add table teams;
-exception
-  when duplicate_object then
-    null;
-end $$;
+alter publication supabase_realtime add table teams;

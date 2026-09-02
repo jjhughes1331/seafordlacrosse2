@@ -1,6 +1,8 @@
--- Security hardening — paste once into the Supabase SQL editor.
--- Idempotent-ish: safe to re-run. Does not require the live project to be
--- reachable from this repo. Keep field_slots in sync with FIELDS in index.html.
+-- Security hardening for the Seaford Lacrosse Supabase project
+-- (ref gjpqwmcdejpvffdimddk). Paste this into that project's SQL editor.
+-- Do NOT run this on Snowleopard (or any other project).
+--
+-- Idempotent-ish: safe to re-run. Keep field_slots in sync with FIELDS in index.html.
 --
 -- Season window: 2027-03-01 .. 2027-06-30 (matches SEASON_START / SEASON_END).
 -- Slot allowlist: (field_id, subfield, time) plus days[] using Sunday=0
@@ -20,7 +22,7 @@ begin
   ) then
     alter table bookings
       add constraint bookings_date_in_season
-      check (date >= date '2027-03-01' and date <= date '2027-06-30');
+      check (date between date '2027-03-01' and date '2027-06-30');
   end if;
 exception
   when check_violation then
@@ -34,7 +36,7 @@ begin
   ) then
     alter table waitlist
       add constraint waitlist_date_in_season
-      check (date >= date '2027-03-01' and date <= date '2027-06-30');
+      check (date between date '2027-03-01' and date '2027-06-30');
   end if;
 exception
   when undefined_table then
@@ -187,14 +189,14 @@ $$;
 
 drop trigger if exists bookings_enforce_allowed_slot on bookings;
 create trigger bookings_enforce_allowed_slot
-  before insert or update of field_id, subfield, time, date on bookings
+  before insert or update on bookings
   for each row execute function public.enforce_allowed_slot();
 
 do $$
 begin
   drop trigger if exists waitlist_enforce_allowed_slot on waitlist;
   create trigger waitlist_enforce_allowed_slot
-    before insert or update of field_id, subfield, time, date on waitlist
+    before insert or update on waitlist
     for each row execute function public.enforce_allowed_slot();
 exception
   when undefined_table then
@@ -202,8 +204,8 @@ exception
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 3. Teams: coaches/directors may only change priority_finished_at
---    (cannot change gender/grade or any other column). Admins unrestricted.
+-- 3. Teams: non-admins may only change priority_finished_at
+--    (compare OLD vs NEW on every other column). Admins unrestricted.
 -- ---------------------------------------------------------------------------
 create or replace function public.enforce_teams_update_scope()
 returns trigger
@@ -214,10 +216,6 @@ as $$
 begin
   if exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin') then
     return new;
-  end if;
-  if new.gender is distinct from old.gender or new.grade is distinct from old.grade then
-    raise exception 'Only admins can change teams.gender or teams.grade'
-      using errcode = '42501';
   end if;
   if (to_jsonb(new) - 'priority_finished_at') is distinct from (to_jsonb(old) - 'priority_finished_at') then
     raise exception 'Non-admins may only update teams.priority_finished_at'
@@ -233,28 +231,8 @@ create trigger teams_enforce_update_scope
   for each row execute function public.enforce_teams_update_scope();
 
 -- ---------------------------------------------------------------------------
--- 4. app_settings: UPDATE is admin-only. SELECT policies are left alone so
---    directors (and other authenticated roles) can still read lock/priority
---    state. Existing UPDATE policies — names unknown in this repo — are
---    dropped and replaced.
+-- 4. app_settings: UPDATE only when profiles.role = 'admin' for auth.uid()
 -- ---------------------------------------------------------------------------
-do $$
-declare
-  r record;
-begin
-  for r in
-    select policyname from pg_policies
-    where schemaname = 'public' and tablename = 'app_settings' and cmd = 'UPDATE'
-  loop
-    execute format('drop policy if exists %I on app_settings', r.policyname);
-  end loop;
-end $$;
-
-create policy "app_settings_update_admin" on app_settings
-  for update
-  using (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin'));
-
 create or replace function public.enforce_app_settings_admin_update()
 returns trigger
 language plpgsql
@@ -262,14 +240,6 @@ security definer
 set search_path = public
 as $$
 begin
-  -- SQL editor / service role (no end-user JWT). RLS is already bypassed
-  -- for these; the trigger still fires, so allow them through.
-  if coalesce(auth.role(), '') in ('service_role', 'supabase_admin') then
-    return new;
-  end if;
-  if auth.uid() is null and current_user in ('postgres', 'supabase_admin') then
-    return new;
-  end if;
   if not exists (select 1 from profiles p where p.id = auth.uid() and p.role = 'admin') then
     raise exception 'Only admins can update app_settings'
       using errcode = '42501';
@@ -282,3 +252,25 @@ drop trigger if exists app_settings_enforce_admin_update on app_settings;
 create trigger app_settings_enforce_admin_update
   before update on app_settings
   for each row execute function public.enforce_app_settings_admin_update();
+
+-- ---------------------------------------------------------------------------
+-- 5. Recreate team_priority_unlocked to honor priority_forced_ranks
+--    (copied from supabase/priority_booking_override.sql). Also kept in
+--    supabase/priority_booking.sql so re-running that file is not a footgun.
+-- ---------------------------------------------------------------------------
+alter table app_settings add column if not exists priority_forced_ranks integer[] not null default '{}';
+
+create or replace function public.team_priority_unlocked(check_team_id uuid)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select
+    not coalesce((select priority_booking_enabled from app_settings limit 1), false)
+    or not exists (
+      select 1 from teams older, teams mine
+      where mine.id = check_team_id
+        and grade_rank(older.grade) > grade_rank(mine.grade)
+        and older.priority_finished_at is null
+        and not (grade_rank(older.grade) = any (coalesce((select priority_forced_ranks from app_settings limit 1), '{}')))
+    );
+$$;

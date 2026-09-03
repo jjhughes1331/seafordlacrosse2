@@ -645,6 +645,10 @@
   .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
+  .credential-box { background: var(--chip-bg); border: 1.5px solid var(--line); border-radius: var(--radius-chip); padding: 12px 14px; margin-top: 8px; }
+  .credential-box > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .credential-box code { font-family: monospace; font-size: var(--fs-base); background: var(--card); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); word-break: break-all; }
+  .credential-label { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); min-width: 64px; }
   .coach-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
   .coach-list table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
   .coach-list th { text-align: left; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1.5px solid var(--line); }
@@ -1041,6 +1045,12 @@
   <div class="admin-card">
     <h3 id="adminHeading">Invite a coach</h3>
     <p class="hint" id="adminHint"></p>
+    <div class="mode-toggle" id="inviteModeToggle" style="margin:0 0 14px">
+      <span class="mode-toggle-thumb"></span>
+      <button class="mtab active" data-mode="email">Email invite</button>
+      <button class="mtab" data-mode="password">Create with password</button>
+    </div>
+    <p class="hint" id="inviteModeHint">They'll get an email with a link to set their own password.</p>
     <div class="invite-form">
       <div class="field" id="inviteRoleField" style="display:none">
         <label>Invite as</label>
@@ -1063,6 +1073,13 @@
       <div class="field" id="inviteTeamField">
         <label>Team</label>
         <select id="inviteGrade"></select>
+      </div>
+      <div class="field" id="invitePasswordField" style="display:none">
+        <label>Password</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="invitePassword" placeholder="At least 8 characters" autocomplete="new-password" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-chip);font-size:var(--fs-base)">
+          <button type="button" id="inviteGenPasswordBtn" class="allbtn" style="white-space:nowrap">Generate</button>
+        </div>
       </div>
       <button id="inviteBtn">Send invite</button>
     </div>
@@ -1340,6 +1357,11 @@ const el = {
   inviteGrade: document.getElementById('inviteGrade'),
   inviteBtn: document.getElementById('inviteBtn'),
   inviteStatus: document.getElementById('inviteStatus'),
+  inviteModeToggle: document.getElementById('inviteModeToggle'),
+  inviteModeHint: document.getElementById('inviteModeHint'),
+  invitePasswordField: document.getElementById('invitePasswordField'),
+  invitePassword: document.getElementById('invitePassword'),
+  inviteGenPasswordBtn: document.getElementById('inviteGenPasswordBtn'),
   userListLabel: document.getElementById('userListLabel'),
   userListHead: document.getElementById('userListHead'),
   coachListBody: document.getElementById('coachListBody'),
@@ -4172,6 +4194,36 @@ function syncInviteFormFields(){
 }
 el.inviteRoleSelect.addEventListener('change', syncInviteFormFields);
 
+// ============ INVITE MODE: email link vs. director/admin sets a password directly ============
+// Some directors don't trust an invite email will land (or the person isn't
+// reachable by email at all) — this lets a director/admin create the account
+// outright, with a password they hand the person themselves, no email step.
+let inviteMode = 'email'; // 'email' | 'password'
+function generatePassword(){
+  // Unambiguous charset (no 0/O/1/l/I) — this gets read aloud or texted, not typed by a bot.
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => chars[b % chars.length]).join('');
+}
+function syncInviteMode(){
+  const isPw = inviteMode === 'password';
+  el.invitePasswordField.style.display = isPw ? 'block' : 'none';
+  el.inviteModeHint.textContent = isPw
+    ? 'You set the password and share it with them yourself — no email is sent.'
+    : "They'll get an email with a link to set their own password.";
+  el.inviteBtn.textContent = isPw ? 'Create account' : 'Send invite';
+  if(isPw && !el.invitePassword.value) el.invitePassword.value = generatePassword();
+}
+el.inviteModeToggle.addEventListener('click', e => {
+  const btn = e.target.closest('.mtab'); if(!btn) return;
+  inviteMode = btn.dataset.mode;
+  document.querySelectorAll('#inviteModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
+  positionModeThumb(el.inviteModeToggle);
+  syncInviteMode();
+});
+el.inviteGenPasswordBtn.addEventListener('click', () => { el.invitePassword.value = generatePassword(); el.invitePassword.focus(); });
+
 el.inviteBtn.addEventListener('click', async () => {
   const email = el.inviteEmail.value.trim();
   if(!email){ el.inviteStatus.innerHTML = `<span class="status err">Enter an email address.</span>`; return; }
@@ -4185,7 +4237,14 @@ el.inviteBtn.addEventListener('click', async () => {
     payload.teamId = el.inviteGrade.value;
   }
 
-  el.inviteBtn.disabled = true; el.inviteBtn.textContent = 'Sending…';
+  const usingPassword = inviteMode === 'password';
+  if(usingPassword){
+    const pw = el.invitePassword.value;
+    if(pw.length < 8){ el.inviteStatus.innerHTML = `<span class="status err">Password needs to be at least 8 characters.</span>`; return; }
+    payload.password = pw;
+  }
+
+  el.inviteBtn.disabled = true; el.inviteBtn.textContent = usingPassword ? 'Creating…' : 'Sending…';
   el.inviteStatus.innerHTML = '';
   try {
     const res = await fetch(INVITE_FUNCTION_URL, {
@@ -4195,16 +4254,35 @@ el.inviteBtn.addEventListener('click', async () => {
     });
     const result = await res.json();
     if(result.ok){
-      el.inviteStatus.innerHTML = `<span class="status ok">Invite sent to ${escSafe(email)}.</span>`;
+      if(usingPassword){
+        // No email went out — this is the one place they can get the password,
+        // so make it easy to copy rather than just flashing a success line.
+        el.inviteStatus.innerHTML = `<div class="status ok">Account created for ${escSafe(email)}. Share these with them — they won't be shown again:</div>
+          <div class="credential-box">
+            <div><span class="credential-label">Email</span><code>${escSafe(email)}</code></div>
+            <div><span class="credential-label">Password</span><code>${escSafe(payload.password)}</code></div>
+            <button type="button" class="allbtn" id="copyCredentialsBtn" style="margin-top:8px">Copy both</button>
+          </div>`;
+        document.getElementById('copyCredentialsBtn')?.addEventListener('click', async e => {
+          try {
+            await navigator.clipboard.writeText(`Seaford Lacrosse sign-in\nEmail: ${email}\nPassword: ${payload.password}`);
+            e.target.textContent = 'Copied ✓'; haptic('success');
+            setTimeout(() => { if(e.target) e.target.textContent = 'Copy both'; }, 2000);
+          } catch(err) { flash('Could not copy — select the text manually.', 'err'); }
+        });
+        el.invitePassword.value = '';
+      } else {
+        el.inviteStatus.innerHTML = `<span class="status ok">Invite sent to ${escSafe(email)}.</span>`;
+      }
       el.inviteEmail.value = '';
       loadUserList();
     } else {
-      el.inviteStatus.innerHTML = `<span class="status err">${escSafe(result.error || 'Invite failed')}</span>`;
+      el.inviteStatus.innerHTML = `<span class="status err">${escSafe(result.error || (usingPassword ? 'Could not create account' : 'Invite failed'))}</span>`;
     }
   } catch(err) {
     el.inviteStatus.innerHTML = `<span class="status err">Could not reach the invite service: ${escSafe(err.message)}</span>`;
   }
-  el.inviteBtn.disabled = false; el.inviteBtn.textContent = 'Send invite';
+  el.inviteBtn.disabled = false; el.inviteBtn.textContent = usingPassword ? 'Create account' : 'Send invite';
 });
 
 async function loadUserList(){

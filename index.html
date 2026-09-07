@@ -578,25 +578,38 @@
   .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .cal-weekdays, .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
   .cal-weekdays span { text-align: center; font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; padding-bottom: 8px; }
-  .cal-days { row-gap: 2px; }
-  .cal-day { min-height: 54px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 5px 0 6px; border: none; background: none; cursor: pointer; font-family: inherit; border-radius: var(--radius-chip); }
+  .cal-days { row-gap: 4px; }
+  .cal-day { position: relative; min-height: 68px; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0 12px; border: none; background: none; cursor: pointer; font-family: inherit; border-radius: var(--radius-chip); }
   .cal-day:hover:not(.pad):not(.out) { background: var(--chip-bg); }
   .cal-day.pad { visibility: hidden; cursor: default; }
   .cal-day.out { opacity: .28; cursor: default; }
-  .cal-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
-  .cal-day.today .cal-num { background: var(--turf); color: #fff; font-weight: 800; }
-  .cal-day.selected .cal-num { background: var(--ink); color: var(--card); font-weight: 800; }
-  .cal-day.today.selected .cal-num { background: var(--turf-deep); color: #fff; }
-  .cal-dots { display: flex; gap: 3px; align-items: center; height: 7px; }
-  .cal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--turf); }
-  .cal-dot.mine { background: var(--mine); }
+  .cal-num { position: relative; z-index: 1; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-md); font-weight: 600; color: var(--ink); }
+  .cal-day.today:not(.selected) .cal-num { background: var(--turf); color: #fff; font-weight: 800; }
+  .cal-day.selected .cal-num { color: var(--card); font-weight: 800; }
+  /* The filled selection disc is its own element rather than a background on
+     the number, so GSAP Flip can slide the one disc from the old day to the
+     new one. A background can't travel between two elements. */
+  .cal-sel-ring { position: absolute; top: 6px; left: 50%; margin-left: -19px; width: 38px; height: 38px; border-radius: 50%; background: var(--ink); z-index: 0; }
+  .cal-sel-ring.today { background: var(--turf-deep); }
+  .cal-dots { display: flex; gap: 3px; align-items: center; height: 8px; }
+  /* Your team is the only thing colored. With ~16 teams a colour per team is
+     confetti; the question a coach actually asks the month grid is "when do WE
+     practice", so everyone else is one quiet neutral. Team names live in the
+     day agenda, where there is room to read them. */
+  .cal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); opacity: .5; }
+  .cal-dot.mine { width: 7px; height: 7px; background: var(--mine); opacity: 1; }
+  /* How booked the day is across the fields in view. Directors read pressure
+     across a whole month without opening a single day. */
+  .cal-fill { position: absolute; left: 22%; right: 22%; bottom: 5px; height: 3px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .cal-fill i { display: block; height: 100%; border-radius: 999px; background: var(--turf); }
+  .cal-fill.hot i { background: var(--danger); }
   /* Forecast says wet: a quiet tint so a soggy stretch is visible without
      tapping each day. Only the ~16 days inside the forecast window get it. */
   .cal-day.wet { background: linear-gradient(180deg, rgba(90,130,160,.16), rgba(90,130,160,.04)); }
   .cal-day.wet:hover { background: linear-gradient(180deg, rgba(90,130,160,.24), rgba(90,130,160,.08)); }
   .cal-agenda-date .weather-badge { font-size: var(--fs-xs); vertical-align: 1px; margin-left: 6px; }
   .cal-more { font-size: 9px; font-weight: 800; color: var(--muted); line-height: 1; }
-  @media (min-width: 701px) { .cal-day { min-height: 78px; } .cal-num { width: 36px; height: 36px; font-size: var(--fs-base); } }
+  @media (min-width: 701px) { .cal-day { min-height: 92px; } .cal-num { width: 44px; height: 44px; font-size: var(--fs-lg); } .cal-sel-ring { width: 44px; height: 44px; margin-left: -22px; } }
   .cal-agenda { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
   .cal-agenda-date { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
   .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 11px 13px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--turf); margin-bottom: 6px; }
@@ -3864,6 +3877,18 @@ function calDefaultSelected(which){
   const busy = calSourceBookings(which).map(b => b.date).filter(d => d >= fmtDateISO(first) && d <= fmtDateISO(last)).sort();
   return busy.length ? busy[0] : fmtDateISO(first);
 }
+// How many slots this day could hold across the fields currently in view —
+// the denominator for the cell's fullness bar.
+function calDayCapacity(which, dateObj){
+  const f = calState[which].field;
+  const fields = f === 'all' ? FIELDS : FIELDS.filter(x => x.id === f);
+  let n = 0;
+  fields.forEach(fl => {
+    const avail = fl.availability.find(a => a.days.includes(dateObj.getDay()));
+    if(avail) n += avail.times.length * avail.subfields.length;
+  });
+  return n;
+}
 function renderMonthCalendar(which, host){
   const st = calState[which];
   st.selected = calDefaultSelected(which);
@@ -3893,8 +3918,14 @@ function renderMonthCalendar(which, host){
     for(let i = 0; i < others && shown < 4; i++, shown++) dots += '<span class="cal-dot"></span>';
     if(day.length > shown) dots += `<span class="cal-more">+${day.length - shown}</span>`;
     const wet = weatherCache[dateStr] && weatherCache[dateStr].precip >= 50;
+    const cap = inSeason ? calDayCapacity(which, cursor) : 0;
+    const pct = cap ? Math.min(100, Math.round(day.length / cap * 100)) : 0;
+    const fill = cap ? `<span class="cal-fill${pct >= 80 ? ' hot' : ''}" title="${day.length} of ${cap} slots booked"><i style="width:${pct}%"></i></span>` : '';
+    // data-flip-id lets GSAP Flip recognise this disc as the same object after
+    // the grid is rebuilt, so it slides from the old day to the new one.
+    const ring = dateStr === st.selected ? `<span class="cal-sel-ring${dateStr === todayISO ? ' today' : ''}" data-flip-id="calring-${which}"></span>` : '';
     const cls = ['cal-day', inSeason ? '' : 'out', dateStr === todayISO ? 'today' : '', dateStr === st.selected ? 'selected' : '', wet ? 'wet' : ''].filter(Boolean).join(' ');
-    cells += `<button type="button" class="${cls}" ${inSeason ? `data-cal="day" data-ctx="${which}" data-val="${dateStr}"` : 'disabled'} ${wet ? `title="${weatherCache[dateStr].precip}% chance of rain"` : ''}><span class="cal-num">${cursor.getDate()}</span><span class="cal-dots">${dots}</span></button>`;
+    cells += `<button type="button" class="${cls}" ${inSeason ? `data-cal="day" data-ctx="${which}" data-val="${dateStr}"` : 'disabled'} ${wet ? `title="${weatherCache[dateStr].precip}% chance of rain"` : ''}>${ring}<span class="cal-num">${cursor.getDate()}</span><span class="cal-dots">${dots}</span>${fill}</button>`;
     cursor = addDays(cursor, 1);
   }
 
@@ -3919,7 +3950,7 @@ function renderMonthCalendar(which, host){
     <div class="cal-filter">${chips}</div>
     <div class="cal-weekdays">${DOW_SHORT.map(d => `<span>${d[0]}</span>`).join('')}</div>
     <div class="cal-days">${cells}</div>
-    <div class="cal-legend"><span><i style="background:var(--mine)"></i>Your team</span><span><i style="background:var(--turf)"></i>Other teams</span></div>
+    <div class="cal-legend"><span><i style="background:var(--mine);width:9px;height:9px"></i>Your team</span><span><i style="background:var(--muted);opacity:.5"></i>Other teams</span><span><i style="background:var(--turf);width:16px;height:4px;border-radius:999px"></i>How full the day is</span></div>
     <div class="cal-agenda">
       <div class="cal-agenda-date">${DOW_FULL[sel.getDay()]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}${weatherBadge(st.selected)}</div>
       ${agenda}
@@ -3930,10 +3961,21 @@ document.addEventListener('click', e => {
   const btn = e.target.closest('[data-cal]');
   if(!btn) return;
   const which = btn.dataset.ctx, st = calState[which], action = btn.dataset.cal;
+  const host = which === 'league' ? el.leagueMonthGrid : el.scheduleCalendar;
+
+  // Snapshot the selection disc *before* the grid is rebuilt so Flip can slide
+  // it across to the day we're about to select.
+  let ringState = null;
+  if(action === 'day' && window.Flip && motionOK()){
+    const ring = host && host.querySelector('.cal-sel-ring');
+    if(ring){ try { ringState = Flip.getState(ring); } catch(e){} }
+  }
+  let dir = 0;
+
   if(action === 'day') st.selected = btn.dataset.val;
   else if(action === 'field') st.field = btn.dataset.val;
-  else if(action === 'prev') { st.monthFirst = addMonths(st.monthFirst, -1); st.selected = null; }
-  else if(action === 'next') { st.monthFirst = addMonths(st.monthFirst, 1); st.selected = null; }
+  else if(action === 'prev') { st.monthFirst = addMonths(st.monthFirst, -1); st.selected = null; dir = -1; }
+  else if(action === 'next') { st.monthFirst = addMonths(st.monthFirst, 1); st.selected = null; dir = 1; }
   else if(action === 'today'){
     const now = new Date(); now.setHours(0,0,0,0);
     const target = now < SEASON_START ? SEASON_START : (now > SEASON_END ? SEASON_END : now);
@@ -3941,7 +3983,37 @@ document.addEventListener('click', e => {
   }
   haptic('light');
   if(which === 'league') renderLeague(); else renderScheduleCalendar();
+  calAnimate(host, action, ringState, dir);
 });
+
+// All of this is decoration: it runs only when GSAP loaded and the user hasn't
+// asked for reduced motion. The calendar is fully usable without any of it.
+function calAnimate(host, action, ringState, dir){
+  const cal = host && host.querySelector('.cal');
+  if(!cal || !hasGSAP() || !motionOK()) return;
+
+  if(ringState){ try { Flip.from(ringState, { duration: .42, ease: 'power3.inOut', absolute: true }); } catch(e){} }
+
+  if(action === 'day'){
+    // The agenda unfolds rather than blinking, and the tapped number springs —
+    // so the day you touched is visibly the thing that produced the list.
+    const num = cal.querySelector('.cal-day.selected .cal-num');
+    if(num) gsap.fromTo(num, { scale: .7 }, { scale: 1, duration: .55, ease: 'elastic.out(1, .62)' });
+    gsap.fromTo(cal.querySelector('.cal-agenda-date'), { opacity: 0, y: -5 }, { opacity: 1, y: 0, duration: .28, ease: 'power2.out' });
+    gsap.fromTo(cal.querySelectorAll('.cal-agenda > .cal-item, .cal-agenda > .cal-empty'),
+      { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .36, stagger: .045, ease: 'power3.out' });
+  } else if(dir){
+    // Parallax: the numbers travel furthest and settle first, the dots and
+    // fullness bars trail behind them, so a month change reads as two planes
+    // moving rather than one flat swap.
+    gsap.fromTo(cal.querySelectorAll('.cal-day'), { opacity: 0 },
+      { opacity: 1, duration: .3, ease: 'power1.out', stagger: { each: .004, from: dir > 0 ? 'start' : 'end' } });
+    gsap.fromTo(cal.querySelectorAll('.cal-num'), { x: dir * 52 }, { x: 0, duration: .52, ease: 'power3.out' });
+    gsap.fromTo(cal.querySelectorAll('.cal-dots'), { x: dir * 30 }, { x: 0, duration: .68, ease: 'power3.out' });
+    gsap.fromTo(cal.querySelectorAll('.cal-fill'), { x: dir * 30, opacity: 0 }, { x: 0, opacity: 1, duration: .68, ease: 'power3.out' });
+    gsap.fromTo(cal.querySelector('.cal-month'), { x: dir * 26, opacity: 0 }, { x: 0, opacity: 1, duration: .42, ease: 'power2.out' });
+  }
+}
 
 // The Schedule tab's calendar pane. It used to also host a per-field weekly
 // grid, but that was a weaker copy of Book > Weekly (no cancel, no waitlist)

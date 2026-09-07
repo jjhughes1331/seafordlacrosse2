@@ -605,9 +605,11 @@
   .cal-dot.mine { width: 7px; height: 7px; background: var(--mine); opacity: 1; }
   /* How booked the day is across the fields in view. Directors read pressure
      across a whole month without opening a single day. */
-  .cal-fill { position: absolute; left: 22%; right: 22%; bottom: 5px; height: 3px; border-radius: 999px; background: var(--line); overflow: hidden; }
-  .cal-fill i { display: block; height: 100%; border-radius: 999px; background: var(--turf); }
-  .cal-fill.hot i { background: var(--danger); }
+  .cal-fill { position: absolute; left: 26%; right: 26%; bottom: 6px; height: 2.5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  /* A quantity, not a status: ink at low strength so the bar reads as a
+     measurement rather than an alarm. Only a genuinely full day earns colour. */
+  .cal-fill i { display: block; height: 100%; border-radius: 999px; background: var(--ink); opacity: .34; }
+  .cal-fill.hot i { background: var(--danger); opacity: .85; }
   /* Forecast says wet: a quiet tint so a soggy stretch is visible without
      tapping each day. Only the ~16 days inside the forecast window get it. */
   .cal-day.wet { background: linear-gradient(180deg, rgba(90,130,160,.16), rgba(90,130,160,.04)); }

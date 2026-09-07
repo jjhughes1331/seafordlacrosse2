@@ -1025,8 +1025,8 @@
   <div class="install-nudge" id="installNudge" style="display:none"></div>
   <div class="mode-toggle" id="scheduleModeToggle">
     <span class="mode-toggle-thumb"></span>
-    <button class="mtab active" data-mode="team">By Team</button>
-    <button class="mtab" data-mode="field">By Field</button>
+    <button class="mtab active" data-mode="calendar">Calendar</button>
+    <button class="mtab" data-mode="list">List</button>
   </div>
 
   <div id="scheduleByTeam">
@@ -1383,7 +1383,7 @@ let currentView = 'schedule';
 let scheduleGender = 'girls';
 let scheduleGrade = null;        // filter for schedule view, null = all
 let scheduleGradeTouched = false; // has the user actually opened the picker and chosen something (even "All teams")? Distinguishes that from "hasn't touched it yet", since both leave scheduleGrade null.
-let scheduleMode = 'team';       // 'team' | 'field' — which sub-view of View Schedule is showing
+let scheduleMode = 'calendar';   // 'calendar' | 'list' — which sub-view of View Full Schedule is showing
 // Favorite field — per-device convenience (localStorage), not synced. Coaches
 // book the same 1-2 fields all season, so pre-selecting it saves a tap every visit.
 function getFavoriteField(){ try { return localStorage.getItem('seaford-fav-field'); } catch(e){ return null; } }
@@ -2032,7 +2032,7 @@ window.addEventListener('resize', () => {
 window.addEventListener('resize', () => {
   clearTimeout(window._fieldMonthResizeT);
   window._fieldMonthResizeT = setTimeout(() => {
-    if(myProfile && currentView === 'schedule' && scheduleMode === 'field' && fieldViewMode === 'month') renderFieldView();
+    if(myProfile && currentView === 'schedule' && scheduleMode === 'calendar' && fieldViewMode === 'month') renderFieldView();
     if(myProfile && currentView === 'league' && leagueViewMode === 'month') renderLeague();
   }, 150);
 });
@@ -2278,11 +2278,11 @@ async function loadProfileAndStartInner(){
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
 
   if(myProfile.role === 'coach'){
-    // Land straight on the coach's own team's schedule — the single most
-    // common thing a coach opens the app to check. "Show all teams" in the
-    // picker is one tap away for the full-town view.
+    // View Full Schedule opens on the whole program's calendar. A coach's own
+    // practices live in My Team's Practices, so narrowing this view to their
+    // team just duplicated that tab and made this one's name untrue.
     scheduleGender = myProfile.gender;
-    scheduleGrade = teamsById[myProfile.team_id]?.grade || null;
+    scheduleGrade = null;
     selectedField = 'seamans';
   } else if(myProfile.role === 'director'){
     scheduleGender = myProfile.gender;
@@ -3111,10 +3111,10 @@ el.scheduleModeToggle.addEventListener('click', e => {
 
 function renderScheduleMode(){
   renderWelcome();
-  el.scheduleByTeam.style.display = scheduleMode === 'team' ? 'block' : 'none';
-  el.scheduleByField.style.display = scheduleMode === 'field' ? 'block' : 'none';
+  el.scheduleByTeam.style.display = scheduleMode === 'list' ? 'block' : 'none';
+  el.scheduleByField.style.display = scheduleMode === 'calendar' ? 'block' : 'none';
 
-  if(scheduleMode === 'team'){
+  if(scheduleMode === 'list'){
     el.lockedTeamBanner.style.display = 'none';
     el.teamPicker.style.display = 'block';
     el.pickerHeading.textContent = 'Filter by team';
@@ -4106,7 +4106,12 @@ function calDefaultSelected(which){
     const d = parseISO(st.selected);
     if(d >= first && d <= last) return st.selected;
   }
-  return fmtDateISO(today >= first && today <= last ? today : first);
+  if(today >= first && today <= last) return fmtDateISO(today);
+  // Today isn't in this month, so landing on the 1st tends to open on an empty
+  // day. Open on the month's first day that actually has practices instead —
+  // seeing real content beats reading "nothing booked".
+  const busy = calSourceBookings(which).map(b => b.date).filter(d => d >= fmtDateISO(first) && d <= fmtDateISO(last)).sort();
+  return busy.length ? busy[0] : fmtDateISO(first);
 }
 function renderMonthCalendar(which, host){
   const st = calState[which];

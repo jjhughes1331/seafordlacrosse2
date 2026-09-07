@@ -1044,30 +1044,7 @@
   </div>
 
   <div id="scheduleByField" style="display:none">
-    <p class="section-label">Pick a field</p>
-    <div class="field-chips" id="availFieldChips"></div>
-    <div class="field-note" id="availFieldNote"></div>
-    <p class="field-note" id="fieldBookingAs" style="margin:-4px 0 14px"></p>
-
-    <div class="mode-toggle" id="fieldModeToggle">
-      <span class="mode-toggle-thumb"></span>
-      <button class="mtab" data-mode="week">Weekly</button>
-      <button class="mtab active" data-mode="month">Monthly</button>
-    </div>
-
-    <div class="weeknav" id="availWeekNavBar" style="display:none">
-      <button id="availPrevWeek">&larr; <span class="navlabel">Prev week</span></button>
-      <span class="label" id="availWeekLabel"></span>
-      <button id="availNextWeek"><span class="navlabel">Next week</span> &rarr;</button>
-    </div>
-    <div class="weeknav" id="availMonthNavBar">
-      <button id="availPrevMonth">&larr; <span class="navlabel">Prev month</span></button>
-      <span class="label" id="availMonthLabel"></span>
-      <button id="availNextMonth"><span class="navlabel">Next month</span> &rarr;</button>
-    </div>
-
-    <div id="availWeekGrid"></div>
-    <div id="availMonthGrid"></div>
+    <div id="scheduleCalendar"></div>
   </div>
 </div>
 
@@ -1449,20 +1426,7 @@ const el = {
   recurringSlotSelect: document.getElementById('recurringSlotSelect'),
   recurringBookBtn: document.getElementById('recurringBookBtn'),
   recurringResults: document.getElementById('recurringResults'),
-  availFieldChips: document.getElementById('availFieldChips'),
-  availFieldNote: document.getElementById('availFieldNote'),
-  fieldBookingAs: document.getElementById('fieldBookingAs'),
-  fieldModeToggle: document.getElementById('fieldModeToggle'),
-  availWeekNavBar: document.getElementById('availWeekNavBar'),
-  availMonthNavBar: document.getElementById('availMonthNavBar'),
-  availWeekLabel: document.getElementById('availWeekLabel'),
-  availPrevWeek: document.getElementById('availPrevWeek'),
-  availNextWeek: document.getElementById('availNextWeek'),
-  availMonthLabel: document.getElementById('availMonthLabel'),
-  availPrevMonth: document.getElementById('availPrevMonth'),
-  availNextMonth: document.getElementById('availNextMonth'),
-  availWeekGrid: document.getElementById('availWeekGrid'),
-  availMonthGrid: document.getElementById('availMonthGrid'),
+  scheduleCalendar: document.getElementById('scheduleCalendar'),
   openWeekFieldChips: document.getElementById('openWeekFieldChips'),
   openWeekCount: document.getElementById('openWeekCount'),
   openWeekBookingAs: document.getElementById('openWeekBookingAs'),
@@ -2032,7 +1996,7 @@ window.addEventListener('resize', () => {
 window.addEventListener('resize', () => {
   clearTimeout(window._fieldMonthResizeT);
   window._fieldMonthResizeT = setTimeout(() => {
-    if(myProfile && currentView === 'schedule' && scheduleMode === 'calendar' && fieldViewMode === 'month') renderFieldView();
+    if(myProfile && currentView === 'schedule' && scheduleMode === 'calendar') renderScheduleCalendar();
     if(myProfile && currentView === 'league' && leagueViewMode === 'month') renderLeague();
   }, 150);
 });
@@ -3128,8 +3092,7 @@ function renderScheduleMode(){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
     if((myProfile.role === 'director' || myProfile.role === 'admin') && !bookAsGrade) bookAsGrade = GRADES[0];
-    buildAvailFieldChips();
-    renderFieldView();
+    renderScheduleCalendar();
   }
   requestAnimationFrame(positionAllModeThumbs);
 }
@@ -4019,70 +3982,8 @@ el.weekGrid.addEventListener('click', async e => {
 });
 
 // ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============
-let availField = (getFavoriteField() && FIELD_MAP[getFavoriteField()]) ? getFavoriteField() : 'seamans';
-let availWeekMonday = mondayOf(SEASON_START);
-let fieldViewMode = 'month'; // 'week' | 'month'
-let availMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
 
-function updateFieldBookingAsLabel(){
-  const teamId = myBookingTeamId ? myBookingTeamId() : null;
-  if(teamId){
-    const key = teamKeyFor(teamId);
-    el.fieldBookingAs.textContent = key ? `Booking as: ${teamLabel(...key.split('|'))}` : '';
-  } else {
-    el.fieldBookingAs.textContent = '';
-  }
-}
 
-function buildAvailFieldChips(){
-  const fav = getFavoriteField();
-  el.availFieldChips.innerHTML = FIELDS.map(f => `
-    <button class="fchip${f.id===availField?' active':''}" data-id="${f.id}">
-      <span class="fav-star${f.id===fav?' active':''}" data-favid="${f.id}" role="button" title="${f.id===fav?'Remove as favorite':'Set as favorite field'}" aria-label="Favorite">${STAR_SVG}</span>
-      <span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span>
-    </button>`).join('');
-  el.availFieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[availField]);
-  updateFieldBookingAsLabel();
-}
-el.availFieldChips.addEventListener('click', e => {
-  const starBtn = e.target.closest('.fav-star');
-  if(starBtn){
-    toggleFavoriteField(starBtn.dataset.favid);
-    haptic('light');
-    buildAvailFieldChips();
-    return;
-  }
-  const chip = e.target.closest('.fchip');
-  if(!chip) return;
-  availField = chip.dataset.id;
-  buildAvailFieldChips();
-  renderFieldView();
-});
-el.fieldModeToggle.addEventListener('click', e => {
-  const btn = e.target.closest('.mtab'); if(!btn) return;
-  fieldViewMode = btn.dataset.mode;
-  document.querySelectorAll('#fieldModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
-  positionModeThumb(el.fieldModeToggle);
-  renderFieldView();
-});
-el.availPrevWeek.addEventListener('click', () => {
-  const next = addDays(availWeekMonday, -7);
-  if(next >= mondayOf(SEASON_START)){ availWeekMonday = next; renderFieldView(); }
-});
-el.availNextWeek.addEventListener('click', () => {
-  const next = addDays(availWeekMonday, 7);
-  if(next <= SEASON_END){ availWeekMonday = next; renderFieldView(); }
-});
-el.availPrevMonth.addEventListener('click', () => {
-  const next = addMonths(availMonthFirst, -1);
-  if(next >= firstDayOfMonth(SEASON_START)){ availMonthFirst = next; renderFieldView(); }
-});
-el.availNextMonth.addEventListener('click', () => {
-  const next = addMonths(availMonthFirst, 1);
-  if(next <= SEASON_END){ availMonthFirst = next; renderFieldView(); }
-});
-attachSwipeNav(el.availWeekGrid, () => el.availPrevWeek, () => el.availNextWeek);
-attachSwipeNav(el.availMonthGrid, () => el.availPrevMonth, () => el.availNextMonth);
 
 // ============ MONTH CALENDAR (shared by Schedule and League) ============
 // One component, two callers. Each caller owns a little state object and
@@ -4188,101 +4089,26 @@ document.addEventListener('click', e => {
     st.monthFirst = firstDayOfMonth(target); st.selected = fmtDateISO(target);
   }
   haptic('light');
-  if(which === 'league') renderLeague(); else renderFieldView();
+  if(which === 'league') renderLeague(); else renderScheduleCalendar();
 });
 
-function renderFieldView(){
-  const isWeek = fieldViewMode === 'week';
-  el.availWeekNavBar.style.display = isWeek ? 'flex' : 'none';
-  el.availWeekGrid.style.display = isWeek ? 'block' : 'none';
-  el.availMonthGrid.style.display = isWeek ? 'none' : 'block';
-  // The month calendar covers the whole program and carries its own month
-  // nav + field filter, so the per-field chips and the old month nav bar
-  // (both of which belong to the weekly, one-field view) step aside.
-  el.availMonthNavBar.style.display = 'none';
-  const chipsLabel = el.availFieldChips.previousElementSibling;
-  el.availFieldChips.style.display = isWeek ? '' : 'none';
-  if(chipsLabel && chipsLabel.classList.contains('section-label')) chipsLabel.style.display = isWeek ? '' : 'none';
-  el.availFieldNote.style.display = isWeek ? '' : 'none';
-  el.fieldBookingAs.style.display = isWeek ? '' : 'none';
-  if(isWeek) renderFieldAvailability();
-  else renderMonthCalendar('schedule', el.availMonthGrid);
+// The Schedule tab's calendar pane. It used to also host a per-field weekly
+// grid, but that was a weaker copy of Book > Weekly (no cancel, no waitlist)
+// carrying its own field selection and its own booking code path. Deleted —
+// browsing lives here, booking lives in Book.
+function renderScheduleCalendar(){
+  renderMonthCalendar('schedule', el.scheduleCalendar);
 }
-
-function renderFieldAvailability(){
-  const monday = availWeekMonday;
-  const sunday = addDays(monday, 6);
-  el.availWeekLabel.textContent = `${MONTHS[monday.getMonth()]} ${monday.getDate()} - ${MONTHS[sunday.getMonth()]} ${sunday.getDate()}, 2027`;
-  el.availPrevWeek.disabled = addDays(monday, -7) < mondayOf(SEASON_START);
-  el.availNextWeek.disabled = addDays(monday, 7) > SEASON_END;
-
-  const field = FIELD_MAP[availField];
-  const myTeamId = myBookingTeamId();
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  let html = '', daysShown = 0;
-  for(let i=0;i<7;i++){
-    const date = addDays(monday, i);
-    if(date < SEASON_START || date > SEASON_END) continue;
-    const dow = date.getDay();
-    const avail = field.availability.find(a => a.days.includes(dow));
-    if(!avail) continue;
-    daysShown++;
-    const dateStr = fmtDateISO(date);
-    const isPast = date < today;
-    html += `<div class="day"><h3>${DOW_FULL[dow]}, ${MONTHS[date.getMonth()]} ${date.getDate()}${isPast?'<span class="past">past</span>':''}${weatherBadge(dateStr)}</h3>`;
-    avail.times.forEach(time => {
-      html += `<div class="timerow"><div class="timelabel">${time}</div><div class="subrow">`;
-      avail.subfields.forEach(sub => {
-        const existing = bookingsCache.find(b => b.field_id===availField && b.date===dateStr && b.subfield===sub && b.time===time);
-        if(existing){
-          const key = teamKeyFor(existing.team_id);
-          const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
-          const isMine = existing.team_id === myTeamId;
-          html += `<span class="book-slot ${isMine?'mine':'booked'}"><span class="sub">${escSafe(sub)}:</span>${escSafe(teamText)}</span>`;
-        } else if(isPast){
-          html += `<span class="book-slot booked" style="opacity:.4"><span class="sub">${escSafe(sub)}:</span>&mdash;</span>`;
-        } else {
-          const payload = JSON.stringify({fieldId:availField, date:dateStr, subfield:sub, time});
-          html += `<button class="book-slot" data-fieldbook='${payload.replace(/'/g,"&#39;")}'><span class="sub">${escSafe(sub)}:</span><span class="plus">+ Book</span></button>`;
-        }
-      });
-      html += `</div></div>`;
-    });
-    html += `</div>`;
-  }
-  if(!daysShown){
-    html = `<div class="empty-week">This field has no available days in the current week. Try a different field or another week.</div>`;
-  }
-  el.availWeekGrid.innerHTML = html;
-}
+// Swipe left/right across a month to page through it, same as the old grid had.
+attachSwipeNav(el.scheduleCalendar,
+  () => el.scheduleCalendar.querySelector('[data-cal="prev"]'),
+  () => el.scheduleCalendar.querySelector('[data-cal="next"]'));
+attachSwipeNav(el.leagueMonthGrid,
+  () => el.leagueMonthGrid.querySelector('[data-cal="prev"]'),
+  () => el.leagueMonthGrid.querySelector('[data-cal="next"]'));
 
 
-el.availWeekGrid.addEventListener('click', e => handleFieldBookClick(e));
-el.availMonthGrid.addEventListener('click', e => handleFieldBookClick(e));
-async function handleFieldBookClick(e){
-  const btn = e.target.closest('[data-fieldbook]');
-  if(!btn) return;
-  if(scheduleLocked){ flash('The schedule is currently locked — no bookings can be made right now.', 'err'); return; }
-  const teamId = myBookingTeamId();
-  if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
-  if(!armTwoTap(btn, btn.classList.contains('cal-slot') ? 'Tap again' : '<span class="plus">Tap again to book</span>')) return;
-  const payload = JSON.parse(btn.dataset.fieldbook);
-  btn.disabled = true;
-  const { data: inserted, error } = await sb.from('bookings').insert({
-    field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
-    time: payload.time, team_id: teamId, booked_by: session.user.id,
-  }).select().single();
-  if(error){
-    if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
-    else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
-    else flash('Booking failed: '+error.message, 'err');
-  } else {
-    flashBooked(payload, inserted?.id);
-  }
-  await refreshBookings();
-  renderFieldView();
-}
+
 
 // ============ OPEN THIS WEEK VIEW (all fields, next 7 days, everyone) ============
 let openWeekField = null; // null = all fields

@@ -3957,7 +3957,7 @@ function renderMonthCalendar(which, host){
     <div class="cal-filter">${chips}</div>
     <div class="cal-weekdays">${DOW_SHORT.map(d => `<span>${d[0]}</span>`).join('')}</div>
     <div class="cal-days">${cells}</div>
-    <div class="cal-legend"><span><i style="background:var(--mine);width:9px;height:9px"></i>Your team</span><span><i style="background:var(--muted);opacity:.5"></i>Other teams</span><span><i style="background:var(--turf);width:16px;height:4px;border-radius:999px"></i>How full the day is</span></div>
+    <div class="cal-legend"><span><i style="background:var(--mine);width:9px;height:9px"></i>Your team</span><span><i style="background:var(--muted);opacity:.5"></i>Other teams</span><span><i style="background:var(--ink);opacity:.34;width:16px;height:4px;border-radius:999px"></i>How full the day is</span></div>
     <div class="cal-agenda">
       <div class="cal-agenda-date">${DOW_FULL[sel.getDay()]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}${weatherBadge(st.selected)}</div>
       ${agenda}

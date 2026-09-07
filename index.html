@@ -562,6 +562,51 @@
   .arm-ring circle { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: armRing 3s linear forwards; opacity: .95; }
   @keyframes armRing { to { stroke-dashoffset: 50.27; } }
   .fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 900; }
+  /* ===== Month calendar (Apple Calendar shape: numbers + dots, tap for the day) =====
+     A grid of "9 open" badges answered a question nobody asked. What a coach
+     or director actually wants off a month view is "what is going on" — so
+     the grid shows the whole program by default, one dot per practice (gold
+     if it's your team), and the day you tap opens its agenda underneath. */
+  .cal { margin-top: 2px; padding: 0 20px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+  .cal-filter { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
+  .cal-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .cal-month { flex: 1; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
+  .cal-nav { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-size: 17px; line-height: 1; cursor: pointer; font-family: inherit; }
+  .cal-nav:hover:not(:disabled) { border-color: var(--turf); }
+  .cal-nav:disabled { opacity: .35; cursor: not-allowed; }
+  .cal-today-btn { flex: none; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-weight: 700; font-size: var(--fs-xs); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+  .cal-today-btn:hover { border-color: var(--turf); }
+  .cal-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
+  .cal-filter::-webkit-scrollbar { display: none; }
+  .cal-chip { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
+  .cal-chip:hover { border-color: var(--turf); color: var(--turf); }
+  .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
+  .cal-weekdays, .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .cal-weekdays span { text-align: center; font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; padding-bottom: 8px; }
+  .cal-days { row-gap: 2px; }
+  .cal-day { min-height: 54px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 5px 0 6px; border: none; background: none; cursor: pointer; font-family: inherit; border-radius: var(--radius-chip); }
+  .cal-day:hover:not(.pad):not(.out) { background: var(--chip-bg); }
+  .cal-day.pad { visibility: hidden; cursor: default; }
+  .cal-day.out { opacity: .28; cursor: default; }
+  .cal-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-sm); font-weight: 600; color: var(--ink); }
+  .cal-day.today .cal-num { background: var(--turf); color: #fff; font-weight: 800; }
+  .cal-day.selected .cal-num { background: var(--ink); color: var(--card); font-weight: 800; }
+  .cal-day.today.selected .cal-num { background: var(--turf-deep); color: #fff; }
+  .cal-dots { display: flex; gap: 3px; align-items: center; height: 7px; }
+  .cal-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--turf); }
+  .cal-dot.mine { background: var(--mine); }
+  .cal-more { font-size: 9px; font-weight: 800; color: var(--muted); line-height: 1; }
+  @media (min-width: 701px) { .cal-day { min-height: 78px; } .cal-num { width: 36px; height: 36px; font-size: var(--fs-base); } }
+  .cal-agenda { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .cal-agenda-date { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
+  .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 11px 13px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--turf); margin-bottom: 6px; }
+  .cal-item.mine { border-left-color: var(--mine); background: var(--mine-bg); }
+  .cal-time { font-weight: 800; font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cal-team { font-weight: 700; color: var(--turf-deep); font-size: var(--fs-sm); }
+  .cal-where { color: var(--muted); font-size: var(--fs-xs); margin-top: 1px; }
+  .cal-empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0 2px; }
+  .cal-legend { display: flex; gap: 14px; margin-top: 12px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
+  .cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
   /* Big one-tap "next open slot" button */
   .next-slot-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 0 0 18px; padding: 14px 18px; border-radius: var(--radius-pill); font-size: var(--fs-md); line-height: 1.2; }
   .next-slot-hero .next-slot-main { display: inline-flex; align-items: center; gap: 8px; }
@@ -1022,7 +1067,7 @@
     </div>
 
     <div id="availWeekGrid"></div>
-    <div id="availMonthGrid" class="cal-grid"></div>
+    <div id="availMonthGrid"></div>
   </div>
 </div>
 
@@ -1125,15 +1170,8 @@
       <span class="label" id="leagueMonthLabel"></span>
       <button id="leagueNextMonth"><span class="navlabel">Next month</span> &rarr;</button>
     </div>
-    <div id="leagueMonthGrid" class="book-month-grid"></div>
+    <div id="leagueMonthGrid"></div>
     <div id="leagueUtil" class="league-util" style="display:none"></div>
-    <div id="leagueDayDetail" style="display:none">
-      <div class="toolbar" style="margin-top:18px">
-        <div class="now-showing" id="leagueDayDetailLabel"></div>
-        <button class="allbtn" id="leagueDayDetailClear">&times; Clear</button>
-      </div>
-      <div id="leagueDayDetailResults"></div>
-    </div>
     <p class="count" id="leagueCount"></p>
     <div id="leagueResults"></div>
   </div>
@@ -1450,10 +1488,6 @@ const el = {
   leaguePrevMonth: document.getElementById('leaguePrevMonth'),
   leagueNextMonth: document.getElementById('leagueNextMonth'),
   leagueMonthGrid: document.getElementById('leagueMonthGrid'),
-  leagueDayDetail: document.getElementById('leagueDayDetail'),
-  leagueDayDetailLabel: document.getElementById('leagueDayDetailLabel'),
-  leagueDayDetailClear: document.getElementById('leagueDayDetailClear'),
-  leagueDayDetailResults: document.getElementById('leagueDayDetailResults'),
   usageHint: document.getElementById('usageHint'),
   usageDashboard: document.getElementById('usageDashboard'),
   adminHeading: document.getElementById('adminHeading'),
@@ -3395,7 +3429,6 @@ el.shareSaveBtn.addEventListener('click', () => {
 let leagueGenderFilter = 'all'; // 'all' | 'girls' | 'boys'
 let leagueViewMode = 'month'; // 'list' | 'month'
 let leagueMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
-let leagueSelectedDate = null;
 
 function leagueFilteredBookings(){
   return leagueGenderFilter === 'all'
@@ -3407,7 +3440,6 @@ function leagueLabel(){ return leagueGenderFilter === 'all' ? 'all teams' : (lea
 el.leagueGenderToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
   leagueGenderFilter = btn.dataset.gender;
-  leagueSelectedDate = null;
   document.querySelectorAll('#leagueGenderToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
   positionModeThumb(el.leagueGenderToggle);
   renderLeague();
@@ -3427,24 +3459,19 @@ el.leagueNextMonth.addEventListener('click', () => {
   const next = addMonths(leagueMonthFirst, 1);
   if(next <= SEASON_END){ leagueMonthFirst = next; renderLeague(); }
 });
-el.leagueDayDetailClear.addEventListener('click', () => {
-  leagueSelectedDate = null;
-  el.leagueDayDetail.style.display = 'none';
-  el.leagueMonthGrid.style.display = 'grid';
-});
 
 function renderLeague(){
   const isMonth = leagueViewMode === 'month';
-  el.leagueMonthNavBar.style.display = isMonth ? 'flex' : 'none';
-  el.leagueMonthGrid.style.display = isMonth && !leagueSelectedDate ? 'grid' : 'none';
-  document.getElementById('leagueUtil').style.display = isMonth && !leagueSelectedDate ? 'block' : 'none';
-  el.leagueDayDetail.style.display = isMonth && leagueSelectedDate ? 'block' : 'none';
+  el.leagueMonthGrid.style.display = isMonth ? 'block' : 'none';
+  document.getElementById('leagueUtil').style.display = isMonth ? 'block' : 'none';
+  el.leagueMonthNavBar.style.display = 'none'; // calendar carries its own month nav
   el.leagueCount.style.display = isMonth ? 'none' : '';
   el.leagueResults.style.display = isMonth ? 'none' : '';
 
   if(isMonth){
-    renderLeagueMonthGrid();
-    if(leagueSelectedDate) renderLeagueDayDetail(leagueSelectedDate);
+    renderMonthCalendar('league', el.leagueMonthGrid);
+    const first = firstDayOfMonth(calState.league.monthFirst), last = lastDayOfMonth(calState.league.monthFirst);
+    renderLeagueUtil(first, last, leagueFilteredBookings());
     return;
   }
 
@@ -3459,46 +3486,6 @@ function renderLeague(){
   const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, null);
   el.leagueResults.innerHTML = html;
   el.leagueCount.innerHTML = `<b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''} &mdash; ${escSafe(label)}.`;
-}
-
-// Whole-league month calendar: one badge per day (total booked slots that
-// day, across every field), not per-field like the Schedule > By Field grid
-// — a director wants "how busy is the league this day", not one field's
-// availability. Tapping a day drills into every booking that day below.
-function renderLeagueMonthGrid(){
-  const monthFirst = leagueMonthFirst;
-  const first = firstDayOfMonth(monthFirst);
-  const last = lastDayOfMonth(monthFirst);
-  el.leagueMonthLabel.textContent = `${MONTHS[monthFirst.getMonth()]} ${monthFirst.getFullYear()}`;
-  el.leaguePrevMonth.disabled = addMonths(monthFirst, -1) < firstDayOfMonth(SEASON_START);
-  el.leagueNextMonth.disabled = addMonths(monthFirst, 1) > SEASON_END;
-
-  const filtered = leagueFilteredBookings();
-  const byDate = {};
-  filtered.forEach(b => { (byDate[b.date] = byDate[b.date] || []).push(b); });
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  let html = '';
-  DOW_SHORT.forEach(d => html += `<div class="book-month-dow">${d}</div>`);
-  for(let i=0;i<first.getDay();i++) html += '<div class="book-month-cell pad"></div>';
-  let cursor = new Date(first);
-  while(cursor <= last){
-    const dateStr = fmtDateISO(cursor);
-    const inSeason = cursor >= SEASON_START && cursor <= SEASON_END;
-    const dayBookings = byDate[dateStr] || [];
-    const isPast = cursor < today;
-    if(!inSeason){
-      html += `<div class="book-month-cell closed"><span class="book-month-daynum">${cursor.getDate()}</span></div>`;
-    } else {
-      const badge = !dayBookings.length
-        ? (isPast ? `<span class="book-month-badge past">past</span>` : '')
-        : `<span class="book-month-badge${isPast?' past':' open'}">${dayBookings.length} booked</span>`;
-      html += `<button class="book-month-cell${isPast?' past':''}${leagueSelectedDate===dateStr?' selected':''}" data-leagueday="${dateStr}"><span class="book-month-daynum">${cursor.getDate()}</span>${badge}</button>`;
-    }
-    cursor = addDays(cursor, 1);
-  }
-  el.leagueMonthGrid.innerHTML = html;
-  renderLeagueUtil(first, last, filtered);
 }
 // How many slots a field can offer between two dates, from its availability
 // table — the denominator for "how full is this field".
@@ -3530,24 +3517,7 @@ function renderLeagueUtil(start, end, bookings){
     `<div class="util-row"><span class="util-name">${escSafe(r.f.short || r.f.name)}</span><span class="util-bar"><span class="util-fill${r.pct >= 80 ? ' hot' : r.pct <= 25 ? ' cold' : ''}" style="width:${r.pct}%"></span></span><span class="util-num">${r.used && r.pct === 0 ? '&lt;1' : r.pct}%<small>${r.used}/${r.cap}</small></span></div>`
   ).join('');
 }
-el.leagueMonthGrid.addEventListener('click', e => {
-  const btn = e.target.closest('[data-leagueday]'); if(!btn) return;
-  leagueSelectedDate = btn.dataset.leagueday;
-  haptic('light');
-  renderLeague();
-});
 
-function renderLeagueDayDetail(dateStr){
-  const d = parseISO(dateStr);
-  el.leagueDayDetailLabel.textContent = `${DOW_FULL[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
-  const dayBookings = leagueFilteredBookings().filter(b => b.date === dateStr);
-  if(!dayBookings.length){
-    el.leagueDayDetailResults.innerHTML = `<div class="empty-schedule"><b>Nothing booked</b>No slots booked for ${escSafe(leagueLabel())} on this day.</div>`;
-    return;
-  }
-  const { html } = renderGroupedByFieldDate(dayBookings, null);
-  el.leagueDayDetailResults.innerHTML = html;
-}
 
 // ============ BOOK VIEW ============
 // ============ FIELD MAP & DIRECTIONS ============
@@ -4114,17 +4084,124 @@ el.availNextMonth.addEventListener('click', () => {
 attachSwipeNav(el.availWeekGrid, () => el.availPrevWeek, () => el.availNextWeek);
 attachSwipeNav(el.availMonthGrid, () => el.availPrevMonth, () => el.availNextMonth);
 
+// ============ MONTH CALENDAR (shared by Schedule and League) ============
+// One component, two callers. Each caller owns a little state object and
+// says which bookings belong to it; everything about how a month looks and
+// behaves lives here so the two views can never drift apart.
+const calState = {
+  schedule: { monthFirst: new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1), selected: null, field: 'all' },
+  league:   { monthFirst: new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1), selected: null, field: 'all' },
+};
+function calSourceBookings(which){
+  const base = which === 'league' ? leagueFilteredBookings() : bookingsCache;
+  const f = calState[which].field;
+  return f === 'all' ? base : base.filter(b => b.field_id === f);
+}
+function calDefaultSelected(which){
+  // Apple always has a day selected. Prefer today when it's on screen,
+  // otherwise the 1st of whatever month you're looking at.
+  const st = calState[which], first = firstDayOfMonth(st.monthFirst), last = lastDayOfMonth(st.monthFirst);
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(st.selected){
+    const d = parseISO(st.selected);
+    if(d >= first && d <= last) return st.selected;
+  }
+  return fmtDateISO(today >= first && today <= last ? today : first);
+}
+function renderMonthCalendar(which, host){
+  const st = calState[which];
+  st.selected = calDefaultSelected(which);
+  const first = firstDayOfMonth(st.monthFirst), last = lastDayOfMonth(st.monthFirst);
+  const todayISO = fmtDateISO(new Date());
+  const myTeamId = myBookingTeamId();
+  const bookings = calSourceBookings(which);
+  const byDate = {};
+  bookings.forEach(b => { (byDate[b.date] = byDate[b.date] || []).push(b); });
+
+  const chips = [{ id: 'all', name: 'All fields' }].concat(FIELDS.map(f => ({ id: f.id, name: f.short || f.name })))
+    .map(c => `<button type="button" class="cal-chip${st.field === c.id ? ' active' : ''}" data-cal="field" data-ctx="${which}" data-val="${c.id}">${escSafe(c.name)}</button>`).join('');
+
+  let cells = '';
+  for(let i = 0; i < first.getDay(); i++) cells += '<div class="cal-day pad"></div>';
+  let cursor = new Date(first);
+  while(cursor <= last){
+    const dateStr = fmtDateISO(cursor);
+    const inSeason = cursor >= SEASON_START && cursor <= SEASON_END;
+    const day = (byDate[dateStr] || []);
+    const mine = day.filter(b => myTeamId && b.team_id === myTeamId).length;
+    const others = day.length - mine;
+    // Gold first so "my team practices today" survives the 4-dot cap.
+    let dots = '';
+    let shown = 0;
+    for(let i = 0; i < mine && shown < 4; i++, shown++) dots += '<span class="cal-dot mine"></span>';
+    for(let i = 0; i < others && shown < 4; i++, shown++) dots += '<span class="cal-dot"></span>';
+    if(day.length > shown) dots += `<span class="cal-more">+${day.length - shown}</span>`;
+    const cls = ['cal-day', inSeason ? '' : 'out', dateStr === todayISO ? 'today' : '', dateStr === st.selected ? 'selected' : ''].filter(Boolean).join(' ');
+    cells += `<button type="button" class="${cls}" ${inSeason ? `data-cal="day" data-ctx="${which}" data-val="${dateStr}"` : 'disabled'}><span class="cal-num">${cursor.getDate()}</span><span class="cal-dots">${dots}</span></button>`;
+    cursor = addDays(cursor, 1);
+  }
+
+  const sel = parseISO(st.selected);
+  const startMins = t => { const p = parseTimeRangeTo24h(t); return p ? p.startHour24 * 60 + p.startMin : 0; };
+  const dayItems = (byDate[st.selected] || []).slice().sort((a, b) => startMins(a.time) - startMins(b.time));
+  const agenda = dayItems.length ? dayItems.map(b => {
+    const key = teamKeyFor(b.team_id);
+    const team = key ? teamLabel(...key.split('|')) : 'Unknown team';
+    const field = FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id;
+    const isMine = myTeamId && b.team_id === myTeamId;
+    return `<div class="cal-item${isMine ? ' mine' : ''}"><span class="cal-time">${escSafe(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span></div>`;
+  }).join('') : `<p class="cal-empty">Nothing booked${st.field === 'all' ? '' : ' at ' + escSafe(FIELD_MAP[st.field].name)} on this day.</p>`;
+
+  host.innerHTML = `<div class="cal">
+    <div class="cal-toolbar">
+      <div class="cal-month">${MONTHS[st.monthFirst.getMonth()]} ${st.monthFirst.getFullYear()}</div>
+      <button type="button" class="cal-today-btn" data-cal="today" data-ctx="${which}">Today</button>
+      <button type="button" class="cal-nav" data-cal="prev" data-ctx="${which}" ${addMonths(st.monthFirst, -1) < firstDayOfMonth(SEASON_START) ? 'disabled' : ''} aria-label="Previous month">&lsaquo;</button>
+      <button type="button" class="cal-nav" data-cal="next" data-ctx="${which}" ${addMonths(st.monthFirst, 1) > SEASON_END ? 'disabled' : ''} aria-label="Next month">&rsaquo;</button>
+    </div>
+    <div class="cal-filter">${chips}</div>
+    <div class="cal-weekdays">${DOW_SHORT.map(d => `<span>${d[0]}</span>`).join('')}</div>
+    <div class="cal-days">${cells}</div>
+    <div class="cal-legend"><span><i style="background:var(--mine)"></i>Your team</span><span><i style="background:var(--turf)"></i>Other teams</span></div>
+    <div class="cal-agenda">
+      <div class="cal-agenda-date">${DOW_FULL[sel.getDay()]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}</div>
+      ${agenda}
+    </div>
+  </div>`;
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-cal]');
+  if(!btn) return;
+  const which = btn.dataset.ctx, st = calState[which], action = btn.dataset.cal;
+  if(action === 'day') st.selected = btn.dataset.val;
+  else if(action === 'field') st.field = btn.dataset.val;
+  else if(action === 'prev') { st.monthFirst = addMonths(st.monthFirst, -1); st.selected = null; }
+  else if(action === 'next') { st.monthFirst = addMonths(st.monthFirst, 1); st.selected = null; }
+  else if(action === 'today'){
+    const now = new Date(); now.setHours(0,0,0,0);
+    const target = now < SEASON_START ? SEASON_START : (now > SEASON_END ? SEASON_END : now);
+    st.monthFirst = firstDayOfMonth(target); st.selected = fmtDateISO(target);
+  }
+  haptic('light');
+  if(which === 'league') renderLeague(); else renderFieldView();
+});
+
 function renderFieldView(){
-  el.availWeekNavBar.style.display = fieldViewMode === 'week' ? 'flex' : 'none';
-  el.availMonthNavBar.style.display = fieldViewMode === 'month' ? 'flex' : 'none';
-  el.availWeekGrid.style.display = fieldViewMode === 'week' ? 'block' : 'none';
-  // Empty string (not 'grid') when showing — lets the stylesheet's own
-  // .cal-grid rules decide the display value, including the mobile media
-  // queries that switch it to a single-column agenda list on small screens.
-  // A hardcoded inline 'grid' here would out-rank all of those unconditionally.
-  el.availMonthGrid.style.display = fieldViewMode === 'month' ? '' : 'none';
-  if(fieldViewMode === 'week') renderFieldAvailability();
-  else renderFieldMonthGrid();
+  const isWeek = fieldViewMode === 'week';
+  el.availWeekNavBar.style.display = isWeek ? 'flex' : 'none';
+  el.availWeekGrid.style.display = isWeek ? 'block' : 'none';
+  el.availMonthGrid.style.display = isWeek ? 'none' : 'block';
+  // The month calendar covers the whole program and carries its own month
+  // nav + field filter, so the per-field chips and the old month nav bar
+  // (both of which belong to the weekly, one-field view) step aside.
+  el.availMonthNavBar.style.display = 'none';
+  const chipsLabel = el.availFieldChips.previousElementSibling;
+  el.availFieldChips.style.display = isWeek ? '' : 'none';
+  if(chipsLabel && chipsLabel.classList.contains('section-label')) chipsLabel.style.display = isWeek ? '' : 'none';
+  el.availFieldNote.style.display = isWeek ? '' : 'none';
+  el.fieldBookingAs.style.display = isWeek ? '' : 'none';
+  if(isWeek) renderFieldAvailability();
+  else renderMonthCalendar('schedule', el.availMonthGrid);
 }
 
 function renderFieldAvailability(){
@@ -4175,119 +4252,6 @@ function renderFieldAvailability(){
   el.availWeekGrid.innerHTML = html;
 }
 
-// Mobile gets the same compact tap-to-drill grid as the Book view's month
-// mode instead of a wall of tiny inline slot chips per day — that pattern
-// was built for exactly this problem and reads fine at phone width; desktop
-// keeps the full inline-slots grid, which has the room for it.
-function renderFieldMonthGridMobile(){
-  const monthFirst = availMonthFirst;
-  const first = firstDayOfMonth(monthFirst);
-  const last = lastDayOfMonth(monthFirst);
-  el.availMonthLabel.textContent = `${MONTHS[monthFirst.getMonth()]} ${monthFirst.getFullYear()}`;
-  el.availPrevMonth.disabled = addMonths(monthFirst, -1) < firstDayOfMonth(SEASON_START);
-  el.availNextMonth.disabled = addMonths(monthFirst, 1) > SEASON_END;
-
-  const field = FIELD_MAP[availField];
-  const myTeamId = myBookingTeamId();
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  let html = '<div class="book-month-grid">';
-  DOW_SHORT.forEach(d => html += `<div class="book-month-dow">${d}</div>`);
-  for(let i=0;i<first.getDay();i++) html += '<div class="book-month-cell pad"></div>';
-  let cursor = new Date(first);
-  while(cursor <= last){
-    const dateStr = fmtDateISO(cursor);
-    const inSeason = cursor >= SEASON_START && cursor <= SEASON_END;
-    const avail = inSeason ? field.availability.find(a => a.days.includes(cursor.getDay())) : null;
-    if(!avail){
-      html += `<div class="book-month-cell closed"><span class="book-month-daynum">${cursor.getDate()}</span></div>`;
-    } else {
-      let bookedCount = 0, mineCount = 0, totalSlots = 0;
-      avail.times.forEach(time => avail.subfields.forEach(sub => {
-        totalSlots++;
-        const existing = bookingsCache.find(b => b.field_id===availField && b.date===dateStr && b.subfield===sub && b.time===time);
-        if(existing){ bookedCount++; if(myTeamId && existing.team_id===myTeamId) mineCount++; }
-      }));
-      const openCount = totalSlots - bookedCount;
-      const isPast = cursor < today;
-      let badgeHtml;
-      if(isPast) badgeHtml = `<span class="book-month-badge past">past</span>`;
-      else if(mineCount > 0) badgeHtml = `<span class="book-month-badge mine">${mineCount} mine</span>`;
-      else if(openCount <= 0) badgeHtml = `<span class="book-month-badge full">Full</span>`;
-      else badgeHtml = `<span class="book-month-badge open">${openCount} open</span>`;
-      html += `<button class="book-month-cell${isPast?' past':''}" data-jumpfielddate="${dateStr}"><span class="book-month-daynum">${cursor.getDate()}</span>${badgeHtml}</button>`;
-    }
-    cursor = addDays(cursor, 1);
-  }
-  html += '</div>';
-  el.availMonthGrid.innerHTML = html;
-}
-el.availMonthGrid.addEventListener('click', e => {
-  const jumpBtn = e.target.closest('[data-jumpfielddate]'); if(!jumpBtn) return;
-  fieldViewMode = 'week';
-  document.querySelectorAll('#fieldModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
-  positionModeThumb(el.fieldModeToggle);
-  availWeekMonday = mondayOf(parseISO(jumpBtn.dataset.jumpfielddate));
-  haptic('light');
-  renderFieldView();
-});
-
-function renderFieldMonthGrid(){
-  if(isMobileViewport()) return renderFieldMonthGridMobile();
-  const monthStart = firstDayOfMonth(availMonthFirst);
-  const monthEnd = lastDayOfMonth(availMonthFirst);
-  el.availMonthLabel.textContent = `${MONTHS[availMonthFirst.getMonth()]} ${availMonthFirst.getFullYear()}`;
-  el.availPrevMonth.disabled = addMonths(availMonthFirst, -1) < firstDayOfMonth(SEASON_START);
-  el.availNextMonth.disabled = addMonths(availMonthFirst, 1) > SEASON_END;
-
-  const field = FIELD_MAP[availField];
-  const myTeamId = myBookingTeamId();
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  let html = DOW_SHORT.map(d => `<div class="cal-dow">${d}</div>`).join('');
-
-  const leadingBlanks = monthStart.getDay(); // 0=Sun .. 6=Sat
-  for(let i=0;i<leadingBlanks;i++) html += `<div class="cal-cell pad"></div>`;
-
-  let cursor = new Date(monthStart);
-  while(cursor <= monthEnd){
-    const date = new Date(cursor);
-    const dow = date.getDay();
-    const dateStr = fmtDateISO(date);
-    const inSeason = date >= SEASON_START && date <= SEASON_END;
-    const avail = inSeason ? field.availability.find(a => a.days.includes(dow)) : null;
-    const isPast = date < today;
-
-    if(!avail){
-      html += `<div class="cal-cell closed"><div class="cal-daynum">${date.getDate()}</div></div>`;
-    } else {
-      let slotsHtml = '';
-      avail.times.forEach(time => {
-        avail.subfields.forEach(sub => {
-          const existing = bookingsCache.find(b => b.field_id===availField && b.date===dateStr && b.subfield===sub && b.time===time);
-          if(existing){
-            const key = teamKeyFor(existing.team_id);
-            const teamText = key ? teamLabel(...key.split('|')) : '(unknown)';
-            const isMine = existing.team_id === myTeamId;
-            slotsHtml += `<span class="cal-slot${isMine?' mine':''}"><b>${escSafe(time)}</b> ${escSafe(sub)}: ${escSafe(teamText)}</span>`;
-          } else if(isPast){
-            slotsHtml += `<span class="cal-slot" style="opacity:.4"><b>${escSafe(time)}</b> ${escSafe(sub)}: &mdash;</span>`;
-          } else {
-            const payload = JSON.stringify({fieldId:availField, date:dateStr, subfield:sub, time});
-            slotsHtml += `<button class="cal-slot empty" data-fieldbook='${payload.replace(/'/g,"&#39;")}'><b>${escSafe(time)}</b> Empty ${escSafe(sub)}</button>`;
-          }
-        });
-      });
-      html += `<div class="cal-cell"><div class="cal-daynum">${date.getDate()}</div><div class="cal-slots">${slotsHtml}</div></div>`;
-    }
-    cursor = addDays(cursor, 1);
-  }
-
-  const trailingBlanks = (7 - (monthEnd.getDay() + 1) % 7) % 7;
-  for(let i=0;i<trailingBlanks;i++) html += `<div class="cal-cell pad"></div>`;
-
-  el.availMonthGrid.innerHTML = html;
-}
 
 el.availWeekGrid.addEventListener('click', e => handleFieldBookClick(e));
 el.availMonthGrid.addEventListener('click', e => handleFieldBookClick(e));

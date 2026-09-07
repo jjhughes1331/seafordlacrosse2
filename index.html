@@ -613,6 +613,9 @@
   .nudge-text { font-size: var(--fs-sm); color: var(--ink); line-height: 1.5; }
   .nudge-actions { display: flex; gap: 8px; }
   .kbd { display: inline-block; background: var(--chip-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: var(--fs-xs); }
+  .cal-title { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 4px; font-weight: 600; }
+  .share-sheet .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
+  .cal-google-hint { margin: 12px 0 0 !important; }
   /* Share card sheet */
   .share-modal { position: fixed; inset: 0; z-index: 800; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .share-backdrop { position: absolute; inset: 0; background: rgba(8,16,11,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -888,6 +891,21 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></svg>
 </button>
 <nav id="hamburgerMenu" class="hamburger-menu"></nav>
+<!-- Calendar sheet: sync (a feed the phone re-checks itself) or a one-time file -->
+<div class="share-modal" id="calSheet" style="display:none">
+  <div class="share-backdrop" data-cal-close></div>
+  <div class="share-sheet" role="dialog" aria-modal="true" aria-label="Add to calendar">
+    <h3 class="cal-title" id="calSheetTitle">Add to your calendar</h3>
+    <p class="hint" id="calSheetHint">Sync it and your calendar updates itself whenever a practice is booked or cancelled. Download it and you get today's schedule, frozen.</p>
+    <div class="share-actions" style="flex-direction:column">
+      <button class="btn-primary" id="calSubscribeBtn" type="button">Sync — updates itself</button>
+      <button class="allbtn" id="calCopyBtn" type="button">Copy link (for Google Calendar)</button>
+      <button class="allbtn" id="calDownloadBtn" type="button">Download once (.ics)</button>
+      <button class="allbtn" type="button" data-cal-close>Close</button>
+    </div>
+    <p class="hint cal-google-hint">Google Calendar: paste the copied link under <span class="kbd">Other calendars</span> → <span class="kbd">From URL</span>.</p>
+  </div>
+</div>
 <!-- Share card: a generated PNG of the next 7 days' practices, built for the
      team group chat (iMessage/WhatsApp) — the channel parents actually live in. -->
 <div class="share-modal" id="shareModal" style="display:none">
@@ -3182,13 +3200,51 @@ el.myTeamExportCsvBtn.addEventListener('click', () => {
 el.myTeamExportIcsBtn.addEventListener('click', () => {
   const key = teamKeyFor(myProfile.team_id);
   if(!key) return;
-  exportTeamScheduleICS(key, teamLabel(...key.split('|')));
+  openCalendarSheet(key, teamLabel(...key.split('|')));
 });
 // Calendar + share for whichever team the Schedule view is filtered to — so a
 // director can hand a coach's parents the calendar or a card, not just coaches.
 el.scheduleIcsBtn.addEventListener('click', () => {
   if(!scheduleGrade) return;
-  exportTeamScheduleICS(scheduleGender+'|'+scheduleGrade, teamLabel(scheduleGender, scheduleGrade));
+  openCalendarSheet(scheduleGender+'|'+scheduleGrade, teamLabel(scheduleGender, scheduleGrade));
+});
+
+// ============ CALENDAR SYNC ============
+// A one-time .ics goes stale the day someone cancels. The team-ics Edge
+// Function serves a live feed per team (by its unguessable uuid); Apple and
+// Google re-check it on their own, so the schedule in someone's phone
+// calendar stays right without them thinking about it.
+const TEAM_ICS_URL = 'https://gjpqwmcdejpvffdimddk.supabase.co/functions/v1/team-ics';
+let calSheetTeam = null;
+function openCalendarSheet(teamKey, teamLabelText){
+  const teamId = teamsByKey[teamKey];
+  if(!teamId) return;
+  calSheetTeam = { key: teamKey, label: teamLabelText, id: teamId, https: TEAM_ICS_URL + '?team=' + encodeURIComponent(teamId) };
+  document.getElementById('calSheetTitle').textContent = 'Add ' + teamLabelText + ' to your calendar';
+  const sheet = document.getElementById('calSheet');
+  sheet.style.display = 'flex';
+  if(hasGSAP() && motionOK()) gsap.fromTo(sheet.querySelector('.share-sheet'), { y: 36, opacity: 0, scale: .96 }, { y: 0, opacity: 1, scale: 1, duration: .42, ease: 'power3.out', clearProps: 'transform,opacity' });
+  haptic('light');
+}
+function closeCalendarSheet(){ document.getElementById('calSheet').style.display = 'none'; calSheetTeam = null; }
+document.getElementById('calSheet').addEventListener('click', e => { if(e.target.closest('[data-cal-close]')) closeCalendarSheet(); });
+document.getElementById('calSubscribeBtn').addEventListener('click', () => {
+  if(!calSheetTeam) return;
+  // webcal:// is what makes Apple Calendar (iOS + Mac) treat it as a
+  // subscription rather than a one-time import.
+  window.location.href = calSheetTeam.https.replace(/^https:/, 'webcal:');
+  flash('Opening your calendar app — tap Subscribe there.', 'ok');
+  closeCalendarSheet();
+});
+document.getElementById('calCopyBtn').addEventListener('click', async e => {
+  if(!calSheetTeam) return;
+  try { await navigator.clipboard.writeText(calSheetTeam.https); e.target.textContent = 'Copied ✓'; haptic('success'); setTimeout(() => { e.target.textContent = 'Copy link (for Google Calendar)'; }, 2000); }
+  catch(err){ flash('Could not copy — long-press the link instead: ' + calSheetTeam.https, 'err'); }
+});
+document.getElementById('calDownloadBtn').addEventListener('click', () => {
+  if(!calSheetTeam) return;
+  exportTeamScheduleICS(calSheetTeam.key, calSheetTeam.label);
+  closeCalendarSheet();
 });
 el.scheduleShareBtn.addEventListener('click', () => {
   if(!scheduleGrade) return;

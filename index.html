@@ -745,6 +745,18 @@
   .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
+  /* Per-user actions live in a row that opens *under* the user's row rather
+     than in extra columns — a 4-column table with buttons is unusable on a
+     phone, and these are rare, deliberate actions that deserve full width. */
+  .manage-btn { background: none; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 700; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
+  .manage-btn:hover { border-color: var(--turf); color: var(--turf); }
+  .manage-btn[aria-expanded="true"] { background: var(--turf); border-color: var(--turf); color: #fff; }
+  .user-actions > td { background: var(--chip-bg); padding: 14px !important; }
+  .user-actions-inner { display: flex; flex-wrap: wrap; gap: 8px; }
+  .user-actions .allbtn { flex: 1 1 auto; }
+  .user-actions .danger { border-color: #d9534f; color: #d9534f; }
+  .user-actions .danger:hover, .user-actions .danger.armed { background: #d9534f; border-color: #d9534f; color: #fff; }
+  .user-actions-status { flex-basis: 100%; }
   .credential-box { background: var(--chip-bg); border: 1.5px solid var(--line); border-radius: var(--radius-chip); padding: 12px 14px; margin-top: 8px; }
   .credential-box > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .credential-box code { font-family: monospace; font-size: var(--fs-base); background: var(--card); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); word-break: break-all; }
@@ -1201,7 +1213,7 @@
     <div class="coach-list">
       <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
       <table>
-        <thead id="userListHead"><tr><th>Team</th><th>Email</th></tr></thead>
+        <thead id="userListHead"><tr><th>Team</th><th>Email</th><th></th></tr></thead>
         <tbody id="coachListBody"></tbody>
 
       </table>
@@ -4064,7 +4076,7 @@ function renderAdmin(){
     syncInviteFormFields();
     populateTeamSelect(); // full 14, gender-labeled
     el.userListLabel.textContent = 'Directors & coaches';
-    el.userListHead.innerHTML = '<tr><th>Role</th><th>Team</th><th>Email</th></tr>';
+    el.userListHead.innerHTML = '<tr><th>Role</th><th>Team</th><th>Email</th><th></th></tr>';
   } else {
     const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
     el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
@@ -4077,7 +4089,7 @@ function renderAdmin(){
       return `<option value="${id}">${g}</option>`;
     }).join('');
     el.userListLabel.textContent = 'Coaches on your teams';
-    el.userListHead.innerHTML = '<tr><th>Team</th><th>Coach email</th></tr>';
+    el.userListHead.innerHTML = '<tr><th>Team</th><th>Coach email</th><th></th></tr>';
   }
   loadUserList();
   const isAdminSettings = myProfile.role === 'admin';
@@ -4442,10 +4454,10 @@ el.inviteBtn.addEventListener('click', async () => {
 });
 
 async function loadUserList(){
-  const colspan = myProfile.role === 'admin' ? 3 : 2;
+  const colspan = myProfile.role === 'admin' ? 4 : 3;
   el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">Loading…</td></tr>`;
 
-  let query = sb.from('profiles').select('email, role, gender, team_id');
+  let query = sb.from('profiles').select('id, email, role, gender, team_id');
   if(myProfile.role === 'admin'){
     query = query.in('role', ['director','coach']);
   } else {
@@ -4473,15 +4485,117 @@ async function loadUserList(){
         ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
         : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
       const roleLabel = u.role === 'director' ? 'Director' : 'Coach';
-      return `<tr><td>${escSafe(roleLabel)}</td><td>${escSafe(teamText)}</td><td>${escSafe(u.email)}</td></tr>`;
+      return `<tr><td>${escSafe(roleLabel)}</td><td>${escSafe(teamText)}</td><td>${escSafe(u.email)}</td>${manageCell(u, colspan)}`;
     }).join('');
   } else {
     el.coachListBody.innerHTML = data.map(c => {
       const grade = teamsById[c.team_id]?.grade || '(unknown)';
-      return `<tr><td>${escSafe(grade)}</td><td>${escSafe(c.email)}</td></tr>`;
+      return `<tr><td>${escSafe(grade)}</td><td>${escSafe(c.email)}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
 }
+
+// Closes each user's <tr> and appends its (hidden) actions row. You can't
+// manage yourself — that's the one move that locks you out of your own app.
+function manageCell(u, colspan){
+  if(u.id === myProfile.id){
+    return `<td style="text-align:right"><span class="hint" style="font-size:var(--fs-xs)">You</span></td></tr>`;
+  }
+  return `<td style="text-align:right"><button type="button" class="manage-btn" aria-expanded="false" data-manage="${escSafe(u.id)}">Manage</button></td></tr>
+    <tr class="user-actions" data-actions="${escSafe(u.id)}" hidden><td colspan="${colspan}">
+      <div class="user-actions-inner">
+        <button type="button" class="allbtn" data-act="email-reset" data-uid="${escSafe(u.id)}" data-email="${escSafe(u.email)}">Email a reset link</button>
+        <button type="button" class="allbtn" data-act="set-password" data-uid="${escSafe(u.id)}" data-email="${escSafe(u.email)}">Set a new password</button>
+        <button type="button" class="allbtn danger" data-act="remove" data-uid="${escSafe(u.id)}" data-email="${escSafe(u.email)}">Remove</button>
+        <div class="user-actions-status"></div>
+      </div>
+    </td></tr>`;
+}
+
+const MANAGE_FUNCTION_URL = INVITE_FUNCTION_URL.replace(/invite-coach$/, 'manage-user');
+async function manageUser(payload){
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(MANAGE_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+
+el.coachListBody.addEventListener('click', async e => {
+  const toggle = e.target.closest('[data-manage]');
+  if(toggle){
+    const row = el.coachListBody.querySelector(`[data-actions="${toggle.dataset.manage}"]`);
+    const open = row.hidden;
+    // Only one open at a time — this is a menu, not a checklist.
+    el.coachListBody.querySelectorAll('.user-actions').forEach(r => r.hidden = true);
+    el.coachListBody.querySelectorAll('[data-manage]').forEach(b => b.setAttribute('aria-expanded','false'));
+    row.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    return;
+  }
+
+  const btn = e.target.closest('[data-act]');
+  if(!btn) return;
+  const { act, uid, email } = btn.dataset;
+  const status = btn.closest('.user-actions-inner').querySelector('.user-actions-status');
+  const setStatus = (html) => { status.innerHTML = html; };
+
+  if(act === 'email-reset'){
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
+    setStatus(error
+      ? `<span class="status err">${escSafe(error.message)}</span>`
+      : `<span class="status ok">Reset link sent to ${escSafe(email)}. If it doesn't arrive, use “Set a new password” instead.</span>`);
+    btn.disabled = false; btn.textContent = 'Email a reset link';
+    return;
+  }
+
+  if(act === 'set-password'){
+    const password = generatePassword();
+    btn.disabled = true; btn.textContent = 'Setting…';
+    const result = await manageUser({ action: 'reset-password', userId: uid, password }).catch(err => ({ ok:false, error: err.message }));
+    if(result.ok){
+      // Nothing is emailed, so this box is the only place the password exists.
+      setStatus(`<div class="status ok">New password set. Share these — they won't be shown again:</div>
+        <div class="credential-box">
+          <div><span class="credential-label">Email</span><code>${escSafe(email)}</code></div>
+          <div><span class="credential-label">Password</span><code>${escSafe(password)}</code></div>
+          <button type="button" class="allbtn" data-act="copy-creds" data-email="${escSafe(email)}" data-pw="${escSafe(password)}" style="margin-top:8px">Copy both</button>
+        </div>`);
+      haptic('success');
+    } else {
+      setStatus(`<span class="status err">${escSafe(result.error || 'Could not set the password')}</span>`);
+    }
+    btn.disabled = false; btn.textContent = 'Set a new password';
+    return;
+  }
+
+  if(act === 'copy-creds'){
+    try {
+      await navigator.clipboard.writeText(`Seaford Lacrosse sign-in\nEmail: ${btn.dataset.email}\nPassword: ${btn.dataset.pw}`);
+      btn.textContent = 'Copied ✓'; haptic('success');
+      setTimeout(() => { if(btn) btn.textContent = 'Copy both'; }, 2000);
+    } catch(err) { flash('Could not copy — select the text manually.', 'err'); }
+    return;
+  }
+
+  if(act === 'remove'){
+    if(!armTwoTap(btn, 'Tap again to remove')) return;
+    btn.disabled = true; btn.textContent = 'Removing…';
+    const result = await manageUser({ action: 'remove', userId: uid }).catch(err => ({ ok:false, error: err.message }));
+    if(result.ok){
+      const n = result.bookingsReassigned || 0;
+      flash(`Removed ${email}.` + (n ? ` Their ${n} booking${n===1?'':'s'} stayed on the schedule.` : ''), 'ok');
+      haptic('success');
+      loadUserList();
+    } else {
+      setStatus(`<span class="status err">${escSafe(result.error || 'Could not remove this user')}</span>`);
+      btn.disabled = false; btn.textContent = 'Remove';
+    }
+  }
+});
 
 // ============ BULK INVITE FROM SPREADSHEET ============
 el.bulkUploadBtn.addEventListener('click', async () => {

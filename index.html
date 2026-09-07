@@ -562,6 +562,57 @@
   .arm-ring circle { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: armRing 3s linear forwards; opacity: .95; }
   @keyframes armRing { to { stroke-dashoffset: 50.27; } }
   .fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 900; }
+  /* Big one-tap "next open slot" button */
+  .next-slot-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 0 0 18px; padding: 14px 18px; border-radius: var(--radius-pill); font-size: var(--fs-md); line-height: 1.2; }
+  .next-slot-hero .next-slot-main { display: inline-flex; align-items: center; gap: 8px; }
+  .next-slot-hero .next-slot-sub { font-size: var(--fs-xs); font-weight: 600; opacity: .85; }
+  /* Toast action (Undo) */
+  .toast-action { margin-left: 6px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 999px; padding: 6px 13px; font-weight: 800; font-size: var(--fs-xs); cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .toast-action:hover { background: rgba(255,255,255,.26); }
+  /* Priority ladder */
+  .ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-chip); background: rgba(255,255,255,.55); color: var(--ink); font-size: var(--fs-sm); }
+  .ladder-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--line); color: var(--muted); }
+  .ladder-note { font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .ladder-row.done { opacity: .75; }
+  .ladder-row.done .ladder-dot { background: var(--ok-bg); color: var(--turf-deep); }
+  .ladder-row.blocking { background: rgba(255,255,255,.85); font-weight: 700; }
+  .ladder-row.blocking .ladder-dot { background: var(--danger-bg); color: var(--danger); }
+  .ladder-row.blocking .ladder-note { color: var(--danger); }
+  .ladder-row.you { background: var(--mine-bg); border: 1.5px solid var(--mine); font-weight: 800; }
+  .ladder-row.you .ladder-dot { background: var(--mine); color: #fff; }
+  .ladder-row.you .ladder-note { color: var(--mine-deep); }
+  .ladder-row.after, .ladder-row.waiting { opacity: .55; }
+  /* League field utilization bars */
+  .league-util { margin-top: 18px; }
+  .util-row { display: grid; grid-template-columns: minmax(84px, 120px) 1fr auto; align-items: center; gap: 10px; margin-bottom: 8px; font-size: var(--fs-sm); }
+  .util-name { font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .util-bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .util-fill { display: block; height: 100%; border-radius: 999px; background: var(--turf); transition: width .5s var(--ease); }
+  .util-fill.hot { background: var(--danger); }
+  .util-fill.cold { background: var(--mine); }
+  .util-num { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+  .util-num small { display: block; font-size: var(--fs-2xs); color: var(--muted); font-weight: 600; }
+  /* "Since you were here" strip */
+  .changes-strip { max-width: 1000px; margin: 12px auto 0; padding: 0 20px; display: flex; gap: 8px; align-items: stretch; }
+  .changes-body { flex: 1; text-align: left; background: var(--mine-bg); border: 1.5px solid var(--mine); color: var(--mine-deep); border-radius: var(--radius-pill); padding: 10px 16px; font-size: var(--fs-sm); font-family: inherit; cursor: pointer; line-height: 1.4; }
+  .changes-close { flex: none; width: 40px; border-radius: var(--radius-pill); border: 1.5px solid var(--line); background: var(--card); color: var(--muted); font-size: 18px; cursor: pointer; }
+  /* Welcome checklist + install nudge */
+  .welcome-card, .install-nudge { max-width: 1000px; margin: 16px auto 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 16px 18px; }
+  .welcome-card { margin-left: 20px; margin-right: 20px; }
+  .install-nudge { margin-left: 20px; margin-right: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+  @media (min-width: 1041px) { .welcome-card, .install-nudge { margin-left: auto; margin-right: auto; } }
+  .welcome-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 2px; font-weight: 600; }
+  .welcome-card .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
+  .welcome-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--chip-bg); border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 11px 14px; margin-bottom: 8px; font-family: inherit; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); cursor: pointer; }
+  .welcome-row:hover { border-color: var(--turf); }
+  .welcome-row.done { background: var(--ok-bg); color: var(--muted); text-decoration: line-through; cursor: default; }
+  .welcome-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--turf); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex: none; }
+  .welcome-row.done .welcome-check { background: var(--turf); border-color: var(--turf); color: #fff; }
+  .welcome-card .link-btn { margin-top: 2px; }
+  .nudge-text { font-size: var(--fs-sm); color: var(--ink); line-height: 1.5; }
+  .nudge-actions { display: flex; gap: 8px; }
+  .kbd { display: inline-block; background: var(--chip-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: var(--fs-xs); }
   /* Share card sheet */
   .share-modal { position: fixed; inset: 0; z-index: 800; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .share-backdrop { position: absolute; inset: 0; background: rgba(8,16,11,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
@@ -879,6 +930,10 @@
 </div>
 
 <div id="lockBanner"></div>
+<div id="changesStrip" class="changes-strip" style="display:none">
+  <button class="changes-body" id="changesBody" type="button"></button>
+  <button class="changes-close" id="changesClose" type="button" aria-label="Dismiss">&times;</button>
+</div>
 
 <!-- ============ AUTH SCREENS ============ -->
 <div id="authArea">
@@ -903,6 +958,8 @@
 
 <!-- ============ SCHEDULE VIEW ============ -->
 <div id="viewSchedule" style="display:none">
+  <div class="welcome-card" id="welcomeCard" style="display:none"></div>
+  <div class="install-nudge" id="installNudge" style="display:none"></div>
   <div class="mode-toggle" id="scheduleModeToggle">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-mode="team">By Team</button>
@@ -956,10 +1013,15 @@
   <div id="pickTeamPrompt" class="locked-team-banner" style="display:none">Select your team above to start booking.</div>
   <div id="priorityLockedBanner" class="priority-locked-banner" style="display:none"></div>
   <div id="priorityFinishedRow" class="priority-finished-row" style="display:none"></div>
+  <!-- The one-tap path. It was a small grey button buried under the field
+       list; the thing that does the most should be the biggest thing. -->
+  <button class="btn-primary next-slot-hero" id="findNextSlotBtn" type="button">
+    <span class="next-slot-main"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Show me the next open slot</span>
+    <span class="next-slot-sub" id="findNextSlotSub"></span>
+  </button>
   <p class="section-label">Pick a field</p>
   <div class="field-chips" id="fieldChips"></div>
   <div class="field-note" id="fieldNote"></div>
-  <button class="allbtn" id="findNextSlotBtn" style="margin:0 0 14px"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg> Find next open slot</button>
 
   <p class="section-label">Book timing</p>
   <div class="mode-toggle" id="bookModeToggle">
@@ -1046,6 +1108,7 @@
       <button id="leagueNextMonth"><span class="navlabel">Next month</span> &rarr;</button>
     </div>
     <div id="leagueMonthGrid" class="book-month-grid"></div>
+    <div id="leagueUtil" class="league-util" style="display:none"></div>
     <div id="leagueDayDetail" style="display:none">
       <div class="toolbar" style="margin-top:18px">
         <div class="now-showing" id="leagueDayDetailLabel"></div>
@@ -1721,6 +1784,127 @@ function burstConfetti(x, y, count){
     .observe(document.body, { childList: true, subtree: true });
 })();
 
+// ============ SINCE YOU WERE HERE ============
+// Nothing told a coach what changed while they were gone. We keep a tiny
+// snapshot of booking ids + the lock state in localStorage, diff it on
+// sign-in, and say the difference out loud in a one-line strip. While the
+// app is open, realtime changes get added to the same strip as they land.
+const SEEN_KEY = 'seaford-seen';
+function readSeen(){ try { return JSON.parse(localStorage.getItem(SEEN_KEY) || 'null'); } catch(e){ return null; } }
+function saveSeen(){
+  if(!myProfile) return;
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify({ ids: bookingsCache.map(b => b.id), locked: !!scheduleLocked, ts: Date.now() })); } catch(e){}
+}
+function describeBooking(b){
+  const key = teamKeyFor(b.team_id);
+  const team = key ? teamLabel(...key.split('|')) : 'A team';
+  const field = FIELD_MAP[b.field_id] ? (FIELD_MAP[b.field_id].short || FIELD_MAP[b.field_id].name) : b.field_id;
+  return `${team} · ${field} ${fmtDateLong(b.date)}`;
+}
+function showChangesStrip(parts){
+  const strip = document.getElementById('changesStrip');
+  if(!parts.length){ strip.style.display = 'none'; return; }
+  document.getElementById('changesBody').innerHTML = `<b>Since you were here:</b> ${parts.map(escSafe).join(' &middot; ')}`;
+  strip.style.display = 'flex';
+  if(hasGSAP() && motionOK()) gsap.fromTo(strip, { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: .35, ease: 'power2.out', clearProps: 'transform,opacity' });
+}
+function renderChangesSinceLastVisit(){
+  const seen = readSeen();
+  saveSeen(); // from here on, "since you were here" means since right now
+  if(!seen || !Array.isArray(seen.ids)) return;
+  const seenIds = new Set(seen.ids);
+  const nowIds = new Set(bookingsCache.map(b => b.id));
+  const added = bookingsCache.filter(b => !seenIds.has(b.id));
+  const removed = seen.ids.filter(id => !nowIds.has(id)).length;
+  const parts = [];
+  if(added.length){
+    parts.push(`${added.length} new booking${added.length !== 1 ? 's' : ''}`);
+    added.slice(0, 2).forEach(b => parts.push(describeBooking(b)));
+  }
+  if(removed) parts.push(`${removed} cancelled — a slot may have opened up`);
+  if(seen.locked !== !!scheduleLocked) parts.push(scheduleLocked ? 'the schedule was locked' : 'the schedule was unlocked');
+  showChangesStrip(parts.slice(0, 4)); // one line on a phone, not a paragraph
+}
+let liveChangeParts = [];
+function noteLiveChanges(before, after){
+  if(!before || !myProfile) return;
+  const beforeIds = new Set(before.map(b => b.id)), afterIds = new Set(after.map(b => b.id));
+  after.filter(b => !beforeIds.has(b.id)).forEach(b => liveChangeParts.push('Just now: ' + describeBooking(b) + ' booked'));
+  before.filter(b => !afterIds.has(b.id)).forEach(b => liveChangeParts.push('Just now: ' + describeBooking(b) + ' opened up'));
+  liveChangeParts = liveChangeParts.slice(-4);
+  if(liveChangeParts.length) showChangesStrip(liveChangeParts);
+  saveSeen();
+}
+document.getElementById('changesClose').addEventListener('click', () => { liveChangeParts = []; document.getElementById('changesStrip').style.display = 'none'; });
+document.getElementById('changesBody').addEventListener('click', () => { switchView(myProfile && myProfile.role !== 'coach' ? 'league' : 'schedule'); });
+window.addEventListener('pagehide', saveSeen);
+document.addEventListener('visibilitychange', () => { if(document.hidden) saveSeen(); });
+
+// ============ WELCOME CHECKLIST + HOME-SCREEN NUDGE ============
+// A brand-new coach lands on an empty schedule and has to guess what to do.
+// Three checkboxes that tick themselves as they happen; goes away for good
+// once all three are done or they dismiss it. On the 2nd visit, a gentle
+// "put this on your home screen" card with the two taps it takes.
+function noteVisit(){ try { localStorage.setItem('seaford-visits', String((parseInt(localStorage.getItem('seaford-visits') || '0', 10) || 0) + 1)); } catch(e){} }
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstallPrompt = e; });
+function isInstalled(){ return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+function renderWelcome(){
+  const card = document.getElementById('welcomeCard'), nudge = document.getElementById('installNudge');
+  if(!card || !myProfile) return;
+  let flags = {}; try { flags = JSON.parse(localStorage.getItem('seaford-welcome') || '{}'); } catch(e){}
+  const myTeam = myBookingTeamId();
+  const favDone = !!getFavoriteField();
+  const bookDone = myProfile.role === 'coach' ? bookingsCache.some(b => b.team_id === myTeam)
+    : bookingsCache.some(b => { const t = teamsById[b.team_id]; return t && (myProfile.role === 'admin' || t.gender === myProfile.gender); });
+  const pushDone = ('Notification' in window) && Notification.permission === 'granted';
+  const allDone = favDone && bookDone && pushDone;
+  if(flags.dismissed || allDone){
+    card.style.display = 'none';
+    if(allDone && !flags.dismissed){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e){} }
+  } else {
+    const row = (done, text, action) => `<button type="button" class="welcome-row${done ? ' done' : ''}" data-welcome="${action}"><span class="welcome-check">${done ? '&#10003;' : ''}</span><span>${text}</span></button>`;
+    card.innerHTML = `<h3>Welcome, ${escSafe(el.whoName.textContent || 'coach')} &#128075;</h3><p class="hint">Three quick things and you're set up.</p>
+      ${row(favDone, 'Star your favorite field', 'book')}
+      ${row(bookDone, myProfile.role === 'coach' ? 'Book your first practice' : 'Book a first practice', 'book')}
+      ${row(pushDone, 'Turn on notifications', 'push')}
+      <button type="button" class="link-btn" data-welcome="dismiss">Skip for now</button>`;
+    card.style.display = 'block';
+  }
+  // Install nudge: 2nd visit or later, not already installed, not dismissed.
+  let visits = 0; try { visits = parseInt(localStorage.getItem('seaford-visits') || '0', 10) || 0; } catch(e){}
+  let nudgeDismissed = false; try { nudgeDismissed = localStorage.getItem('seaford-install-dismissed') === '1'; } catch(e){}
+  if(nudge){
+    if(visits >= 2 && !isInstalled() && !nudgeDismissed){
+      const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      nudge.innerHTML = `<div class="nudge-text"><b>Put Seaford Lax on your home screen.</b><br>${ios
+        ? 'Tap <span class="kbd">Share</span> at the bottom of Safari, then <span class="kbd">Add to Home Screen</span>.'
+        : (deferredInstallPrompt ? 'One tap — it opens like an app, no browser bar.' : 'Open your browser menu and choose <span class="kbd">Add to Home screen</span>.')}</div>
+        <div class="nudge-actions">${(!ios && deferredInstallPrompt) ? '<button type="button" class="allbtn" data-install="go">Add it</button>' : ''}<button type="button" class="allbtn" data-install="dismiss">Not now</button></div>`;
+      nudge.style.display = 'flex';
+    } else nudge.style.display = 'none';
+  }
+}
+document.addEventListener('click', async e => {
+  const w = e.target.closest('[data-welcome]');
+  if(w){
+    const a = w.dataset.welcome;
+    if(a === 'dismiss'){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e2){} renderWelcome(); }
+    else if(a === 'push'){
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.Notifications.requestPermission(); } catch(e2){} renderWelcome(); });
+    }
+    else if(a === 'book'){ switchView('book'); }
+    return;
+  }
+  const i = e.target.closest('[data-install]');
+  if(i){
+    if(i.dataset.install === 'go' && deferredInstallPrompt){ deferredInstallPrompt.prompt(); try { await deferredInstallPrompt.userChoice; } catch(e2){} deferredInstallPrompt = null; }
+    try { localStorage.setItem('seaford-install-dismissed', '1'); } catch(e2){}
+    renderWelcome();
+  }
+});
+
 // ============ HELPERS ============
 function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtDateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -1816,16 +2000,24 @@ function haptic(kind){
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="toast-icon"><circle class="toast-icon-ring" cx="12" cy="12" r="10"/><path class="toast-icon-check" d="m8 12.5 2.5 2.5L16 9"/></svg>';
 const ICON_WARN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="toast-icon"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
 
-function flash(msg, type){
+// action: optional { label, onClick } — renders a pill button inside the
+// toast (e.g. Undo). It lives exactly as long as the toast does.
+function flash(msg, type, action){
   const icon = type === 'ok' ? ICON_CHECK : type === 'err' ? ICON_WARN : '';
   el.status.innerHTML = icon + '<span>' + escSafe(msg) + '</span>';
+  if(action){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-action'; b.textContent = action.label;
+    b.addEventListener('click', () => { clearTimeout(flash._t); el.actionsBar.classList.remove('show'); action.onClick(); });
+    el.status.appendChild(b);
+  }
   el.status.className = (type||'');
   el.actionsBar.classList.remove('swiping'); el.actionsBar.style.transform = '';
   el.actionsBar.classList.add('show');
   if(type === 'ok') haptic('success'); else if(type === 'err') haptic('error');
   clearTimeout(flash._t);
   // Longer messages (and errors) get more time to read, not a flat 4s for everything.
-  const base = type === 'err' ? 5500 : 4000;
+  const base = type === 'err' ? 5500 : action ? 6000 : 4000;
   const perChar = 60;
   const duration = Math.min(base + msg.length * perChar, 12000);
   flash._t = setTimeout(()=>{ el.actionsBar.classList.remove('show'); }, duration);
@@ -1834,6 +2026,20 @@ document.getElementById('statusClose').addEventListener('click', () => {
   clearTimeout(flash._t);
   el.actionsBar.classList.remove('show');
 });
+// "Booked · Undo" — one tap to take it back for a few seconds. Cold thumbs at
+// a field hit the wrong slot; an undo beats making them find the × and
+// two-tap a cancel. Needs the new row's id, so callers insert with .select().
+function flashBooked(payload, insertedId){
+  const msg = 'Booked: ' + payload.subfield + ' at ' + payload.time;
+  if(!insertedId){ flash(msg, 'ok'); return; }
+  flash(msg, 'ok', { label: 'Undo', onClick: async () => {
+    const { error } = await sb.from('bookings').delete().eq('id', insertedId);
+    if(error){ flash('Could not undo: ' + error.message, 'err'); return; }
+    await refreshBookings();
+    rerenderCurrentView();
+    flash('Booking undone', 'ok');
+  }});
+}
 
 // Swipe the toast sideways to dismiss it — the standard mobile notification gesture.
 (function(){
@@ -2032,6 +2238,8 @@ async function loadProfileAndStartInner(){
     scheduleGender = 'girls'; // admin: profile has no gender, default the schedule filter
   }
 
+  noteVisit();
+  renderChangesSinceLastVisit();
   switchView('schedule');
 }
 
@@ -2363,6 +2571,29 @@ function applyBookTeamGate(){
       .forEach(el2 => el2.style.display = 'none');
   }
 }
+// The line, drawn: every grade from most-senior down, with a state each —
+// done, pushed through, still booking (the real blocker), you, or after you.
+// A coach shouldn't have to parse "still finishing: 6th Grade, 5th Grade"
+// to work out how many tiers are ahead of them.
+function priorityLadderHTML(team){
+  const myRank = gradeRank(team.grade);
+  let blockerFound = false;
+  const rows = [];
+  for(let r = 6; r >= 0; r--){
+    const label = GRADES[r];
+    let state, note;
+    if(r > myRank){
+      const pending = teamsAtGradeRank(r).filter(t => !t.priority_finished_at);
+      if(priorityForcedRanks.has(r)){ state = 'done'; note = 'pushed through'; }
+      else if(!pending.length){ state = 'done'; note = 'done'; }
+      else if(!blockerFound){ state = 'blocking'; blockerFound = true; note = `${pending.length} team${pending.length !== 1 ? 's' : ''} still booking`; }
+      else { state = 'waiting'; note = 'waiting'; }
+    } else if(r === myRank){ state = 'you'; note = blockerFound ? "you're next after that" : 'your turn'; }
+    else { state = 'after'; note = 'after you'; }
+    rows.push(`<div class="ladder-row ${state}"><span class="ladder-dot">${state === 'done' ? '&#10003;' : state === 'you' ? '&#9679;' : state === 'blocking' ? '&#8987;' : ''}</span><span class="ladder-label">${escSafe(label)}</span><span class="ladder-note">${escSafe(note)}</span></div>`);
+  }
+  return `<div class="ladder">${rows.join('')}</div>`;
+}
 function renderPriorityBookingGate(){
   const teamId = myBookingTeamId();
   const team = teamId ? teamsById[teamId] : null;
@@ -2379,7 +2610,7 @@ function renderPriorityBookingGate(){
   if(!unlocked){
     const blockers = blockingTeamsFor(team.grade);
     const blockerList = blockers.map(t => teamLabel(t.gender, t.grade)).join(', ');
-    el.priorityLockedBanner.innerHTML = `<b>Booking isn't open yet for ${escSafe(teamLabelText)}.</b><br>Still finishing: ${escSafe(blockerList || 'an older grade')}.`;
+    el.priorityLockedBanner.innerHTML = `<b>Not ${escSafe(teamLabelText)}'s turn yet.</b> Here's the line:${priorityLadderHTML(team)}`;
     el.priorityLockedBanner.style.display = 'block';
     el.priorityFinishedRow.style.display = 'none';
     document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
@@ -2428,8 +2659,10 @@ function rerenderCurrentView(){
 function setupRealtime(){
   realtimeChannel = sb.channel('bookings-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
+      const before = bookingsCache;
       await refreshBookings();
       rerenderCurrentView();
+      noteLiveChanges(before, bookingsCache);
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, async () => {
       await refreshLockState();
@@ -2825,6 +3058,7 @@ el.scheduleModeToggle.addEventListener('click', e => {
 });
 
 function renderScheduleMode(){
+  renderWelcome();
   el.scheduleByTeam.style.display = scheduleMode === 'team' ? 'block' : 'none';
   el.scheduleByField.style.display = scheduleMode === 'field' ? 'block' : 'none';
 
@@ -3147,6 +3381,7 @@ function renderLeague(){
   const isMonth = leagueViewMode === 'month';
   el.leagueMonthNavBar.style.display = isMonth ? 'flex' : 'none';
   el.leagueMonthGrid.style.display = isMonth && !leagueSelectedDate ? 'grid' : 'none';
+  document.getElementById('leagueUtil').style.display = isMonth && !leagueSelectedDate ? 'block' : 'none';
   el.leagueDayDetail.style.display = isMonth && leagueSelectedDate ? 'block' : 'none';
   el.leagueCount.style.display = isMonth ? 'none' : '';
   el.leagueResults.style.display = isMonth ? 'none' : '';
@@ -3207,6 +3442,37 @@ function renderLeagueMonthGrid(){
     cursor = addDays(cursor, 1);
   }
   el.leagueMonthGrid.innerHTML = html;
+  renderLeagueUtil(first, last, filtered);
+}
+// How many slots a field can offer between two dates, from its availability
+// table — the denominator for "how full is this field".
+function fieldSlotCapacity(field, start, end){
+  let n = 0, cursor = new Date(start);
+  while(cursor <= end){
+    if(cursor >= SEASON_START && cursor <= SEASON_END){
+      const avail = field.availability.find(a => a.days.includes(cursor.getDay()));
+      if(avail) n += avail.times.length * avail.subfields.length;
+    }
+    cursor = addDays(cursor, 1);
+  }
+  return n;
+}
+// Which fields are full and which are sitting empty this month — so a
+// director can steer teams toward the empty ones instead of everyone
+// fighting over the same field.
+function renderLeagueUtil(start, end, bookings){
+  const box = document.getElementById('leagueUtil');
+  const startISO = fmtDateISO(start), endISO = fmtDateISO(end);
+  const rows = FIELDS.map(f => {
+    const cap = fieldSlotCapacity(f, start, end);
+    const used = bookings.filter(b => b.field_id === f.id && b.date >= startISO && b.date <= endISO).length;
+    const pct = cap ? Math.round(used / cap * 100) : 0;
+    return { f, cap, used, pct };
+  }).filter(r => r.cap > 0).sort((a, b) => b.pct - a.pct);
+  if(!rows.length){ box.innerHTML = ''; return; }
+  box.innerHTML = `<p class="section-label">How full each field is this month</p>` + rows.map(r =>
+    `<div class="util-row"><span class="util-name">${escSafe(r.f.short || r.f.name)}</span><span class="util-bar"><span class="util-fill${r.pct >= 80 ? ' hot' : r.pct <= 25 ? ' cold' : ''}" style="width:${r.pct}%"></span></span><span class="util-num">${r.used && r.pct === 0 ? '&lt;1' : r.pct}%<small>${r.used}/${r.cap}</small></span></div>`
+  ).join('');
 }
 el.leagueMonthGrid.addEventListener('click', e => {
   const btn = e.target.closest('[data-leagueday]'); if(!btn) return;
@@ -3262,6 +3528,8 @@ function buildFieldChips(){
       <span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span>
     </button>`).join('');
   el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
+  const nextSub = document.getElementById('findNextSlotSub');
+  if(nextSub) nextSub.textContent = 'at ' + FIELD_MAP[selectedField].name;
 }
 el.fieldChips.addEventListener('click', e => {
   const starBtn = e.target.closest('.fav-star');
@@ -3687,17 +3955,17 @@ el.weekGrid.addEventListener('click', async e => {
     if(!armTwoTap(bookBtn, '<span class="plus">Tap again to book</span>')) return;
     const payload = JSON.parse(bookBtn.dataset.book);
     bookBtn.disabled = true;
-    const { error } = await sb.from('bookings').insert({
+    const { data: inserted, error } = await sb.from('bookings').insert({
       field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
       time: payload.time, team_id: teamId, booked_by: session.user.id,
-    });
+    }).select().single();
     let flipState = null, burstAt = null;
     if(error){
       if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
       else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
       else flash('Booking failed: '+error.message, 'err');
     } else {
-      flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+      flashBooked(payload, inserted?.id);
       // Capture the "+ Book" chip's geometry now; after the re-render, Flip
       // morphs it into its booked self instead of the chip just blinking.
       if(window.Flip && motionOK() && bookBtn.isConnected) flipState = Flip.getState(bookBtn);
@@ -3976,16 +4244,16 @@ async function handleFieldBookClick(e){
   if(!armTwoTap(btn, btn.classList.contains('cal-slot') ? 'Tap again' : '<span class="plus">Tap again to book</span>')) return;
   const payload = JSON.parse(btn.dataset.fieldbook);
   btn.disabled = true;
-  const { error } = await sb.from('bookings').insert({
+  const { data: inserted, error } = await sb.from('bookings').insert({
     field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
     time: payload.time, team_id: teamId, booked_by: session.user.id,
-  });
+  }).select().single();
   if(error){
     if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
     else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
     else flash('Booking failed: '+error.message, 'err');
   } else {
-    flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+    flashBooked(payload, inserted?.id);
   }
   await refreshBookings();
   renderFieldView();
@@ -4081,16 +4349,16 @@ el.openWeekResults.addEventListener('click', async e => {
   const teamId = myBookingTeamId();
   if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
   bookBtn.disabled = true;
-  const { error } = await sb.from('bookings').insert({
+  const { data: inserted, error } = await sb.from('bookings').insert({
     field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
     time: payload.time, team_id: teamId, booked_by: session.user.id,
-  });
+  }).select().single();
   if(error){
     if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
     else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
     else flash('Booking failed: '+error.message, 'err');
   } else {
-    flash('Booked: '+payload.subfield+' at '+payload.time, 'ok');
+    flashBooked(payload, inserted?.id);
   }
   await refreshBookings();
   renderOpenWeek();

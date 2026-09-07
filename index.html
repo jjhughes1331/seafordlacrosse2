@@ -28,8 +28,11 @@
 <style>
   :root {
     /* Core greens — from the lacrosse crest, used for functional UI (buttons, badges, highlights) */
-    --turf-deep: #14371f;
+    --turf-deep: #101a15;   /* text, not brand — see the note above --hover-edge */
     --turf: #1f5c38;
+    /* Hover used to paint everything green. Neutral hover, green reserved for
+       the primary action and the active state, is the whole 'editorial' move. */
+    --hover-edge: #8c968f;
     /* Solid-fill buttons/chips need a color that holds 4.5:1+ against white text.
        Text usages of --turf-deep don't have that constraint, so in dark mode
        --turf-deep gets lightened for text-on-dark-background contrast while
@@ -37,7 +40,7 @@
     --accent-fill: #14371f;
     --ink: #14201a;
     --muted: #5c6b62;
-    --line: #dde6de;
+    --line: #e2e5e3;
     --chalk: #fafcfa;
     --silver: #aeb8b1;
     --silver-deep: #7c8a82;
@@ -71,7 +74,7 @@
     --mine-bg: #fdf3dc;
     /* Tinted chip/highlight backgrounds — MUST be tokens, not raw hex, or they
        stay light in dark mode while their text color goes light-on-light. */
-    --chip-bg: #eef3ef;
+    --chip-bg: #f0f2f1;
     --chip-hover-bg: #f0f6f1;
     --ok-bg: #e6f2ea;
     /* Notch / home-indicator safe areas (iPhone) — 0px on devices without them */
@@ -85,7 +88,8 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --navbar-bg: rgba(26,32,25,.62);
-      --turf-deep: #4fae76;
+      --turf-deep: #e8ede9;
+      --hover-edge: #7d8c84;
       --turf: #3f9563;
       --accent-fill: #1f6e40; /* 6.25:1 against white — verified via WCAG contrast calc */
       --ink: #eef2ef;
@@ -100,7 +104,7 @@
       --mine: #e0b23a;
       --mine-deep: #f3c757;
       --mine-bg: #3a3116;
-      --chip-bg: rgba(79,174,118,.16);
+      --chip-bg: rgba(255,255,255,.07);
       --chip-hover-bg: rgba(79,174,118,.26);
       --ok-bg: rgba(79,174,118,.2);
       --shadow: 0 1px 2px rgba(0,0,0,.3);
@@ -114,7 +118,8 @@
      CSS has no way to "call" one block from another. */
   :root[data-theme="dark"] {
     --navbar-bg: rgba(26,32,25,.62);
-    --turf-deep: #4fae76;
+    --turf-deep: #e8ede9;
+    --hover-edge: #7d8c84;
     --turf: #3f9563;
     --accent-fill: #1f6e40;
     --ink: #eef2ef;
@@ -129,7 +134,7 @@
     --mine: #e0b23a;
     --mine-deep: #f3c757;
     --mine-bg: #3a3116;
-    --chip-bg: rgba(79,174,118,.16);
+    --chip-bg: rgba(255,255,255,.07);
     --chip-hover-bg: rgba(79,174,118,.26);
     --ok-bg: rgba(79,174,118,.2);
     --shadow: 0 1px 2px rgba(0,0,0,.3);
@@ -209,7 +214,7 @@
     transition: background-color .15s var(--ease), border-color .15s var(--ease);
   }
   #hamburgerBtn svg { width: 19px; height: 19px; }
-  #hamburgerBtn:hover, #hamburgerBtn.open { border-color: var(--turf); background: var(--chip-bg); }
+  #hamburgerBtn:hover, #hamburgerBtn.open { border-color: var(--hover-edge); background: var(--chip-bg); }
   .hamburger-menu {
     position: fixed; top: 56px; left: 16px; z-index: 610; min-width: 210px;
     max-height: calc(100vh - 72px); overflow-y: auto;
@@ -238,7 +243,7 @@
   .header-logo-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
   .header-hero img { height: 68px; width: auto; display: block; filter: drop-shadow(0 3px 8px rgba(20,55,31,.14)); }
   .header-text { position: relative; z-index: 1; text-align: center; }
-  .eyebrow { font-size: var(--fs-2xs); letter-spacing: 3px; text-transform: uppercase; color: var(--turf); font-weight: 700; margin-bottom: 4px; }
+  .eyebrow { font-size: var(--fs-2xs); letter-spacing: 3px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
   h1 { font-family: var(--font-display); font-size: clamp(28px, 5.5vw, 44px); font-weight: 600; letter-spacing: .2px; color: var(--turf-deep); line-height: 1.1; }
   .sub { color: var(--muted); margin-top: 4px; font-size: var(--fs-base); }
 
@@ -269,7 +274,7 @@
   .field { text-align: left; margin-bottom: 14px; }
   .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
   .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; }
-  .field input:focus { outline: none; border-color: var(--turf); }
+  .field input:focus { outline: none; border-color: var(--hover-edge); }
   .btn-primary { width: 100%; background: var(--accent-fill); color: #fff; border: none; padding: 12px; border-radius: var(--radius-chip); font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
   .btn-primary:hover { background: var(--turf); }
   .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
@@ -301,7 +306,7 @@
     background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2ZTdiNzAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5IDYgNiA2LTYiLz48L3N2Zz4=");
     background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;
   }
-  .grade-select:hover { border-color: var(--turf); }
+  .grade-select:hover { border-color: var(--hover-edge); }
   .grade-select:focus { outline: none; border-color: var(--turf-deep); }
   .locked-team-banner { background: var(--chip-bg); border: 1.5px solid var(--turf-deep); border-radius: var(--radius-card); padding: 12px 16px; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); margin: 0 auto 18px; max-width: 1000px; }
   .priority-locked-banner {
@@ -328,7 +333,7 @@
   .now-showing { font-size: var(--fs-lg); font-weight: 800; color: var(--ink); }
   .now-showing .tag { color: var(--turf-deep); }
   .allbtn { margin-left: auto; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 7px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
-  .allbtn:hover { border-color: var(--turf); color: var(--turf); }
+  .allbtn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .count { color: var(--muted); font-size: var(--fs-sm); margin: 12px 0 16px; }
   .count b { color: var(--ink); }
   .venue { margin-bottom: 26px; }
@@ -384,7 +389,7 @@
     .fchip-short { display: inline; }
   }
   .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
-  .fchip:hover { border-color: var(--turf); color: var(--turf); }
+  .fchip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
   .fchip { display: inline-flex; align-items: center; gap: 6px; }
   .fav-star {
@@ -417,7 +422,7 @@
     border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: var(--radius-chip);
     padding: 6px 8px; font-size: var(--fs-xs); font-family: inherit; color-scheme: light dark;
   }
-  #dateJumpInput:hover, #dateJumpInput:focus { border-color: var(--turf); outline: none; }
+  #dateJumpInput:hover, #dateJumpInput:focus { border-color: var(--hover-edge); outline: none; }
   /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
      button instead of each button separately swapping its own background — the
      iOS-native segmented-control look. */
@@ -436,7 +441,7 @@
     padding: 7px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
     cursor: pointer; transition: color .2s var(--ease);
   }
-  .mtab:hover, .gtab:hover { color: var(--turf); }
+  .mtab:hover, .gtab:hover { color: var(--hover-edge); }
   .mtab.active, .gtab.active { color: #fff; }
   .mtab.active:hover, .gtab.active:hover { color: #fff; }
   .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
@@ -453,7 +458,7 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     font-family: inherit; cursor: pointer; padding: 4px 2px;
   }
-  .book-month-cell:hover { border-color: var(--turf); }
+  .book-month-cell:hover { border-color: var(--hover-edge); }
   .book-month-cell.pad { visibility: hidden; }
   .book-month-cell.closed { background: var(--chalk); color: var(--muted); cursor: default; }
   .book-month-cell.past { opacity: .55; }
@@ -474,7 +479,7 @@
   .cal-slots { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; max-height: 100px; }
   .cal-slot { font-size: 10.5px; padding: 2px 5px; border-radius: var(--radius-chip); background: var(--chip-bg); color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
   .cal-slot.empty { background: none; border: 1px dashed var(--line); color: var(--muted); cursor: pointer; width: 100%; }
-  .cal-slot.empty:hover { border-color: var(--turf); color: var(--turf); }
+  .cal-slot.empty:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-slot.mine { background: var(--mine-bg); color: var(--mine-deep); font-weight: 700; border: 1px solid var(--mine); }
   @media (max-width: 700px) and (min-width: 481px) {
     .cal-grid { gap: 3px; }
@@ -497,7 +502,7 @@
     .cal-slot.empty { justify-content: flex-start; }
   }
   .daytoggle { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
-  .daytoggle:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
+  .daytoggle:hover:not(:disabled) { border-color: var(--hover-edge); color: var(--hover-edge); }
   .daytoggle.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .daytoggle:disabled { opacity: .3; cursor: not-allowed; }
   select {
@@ -509,11 +514,11 @@
     background-size: 5px 5px, 5px 5px;
     background-repeat: no-repeat;
   }
-  select:hover { border-color: var(--turf); }
+  select:hover { border-color: var(--hover-edge); }
   select:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
   .field select { width: 100%; }
   .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
-  .weeknav button:hover:not(:disabled) { border-color: var(--turf); color: var(--turf); }
+  .weeknav button:hover:not(:disabled) { border-color: var(--hover-edge); color: var(--hover-edge); }
   .weeknav button:disabled { opacity: .35; cursor: not-allowed; }
   @media (max-width: 420px) {
     .weeknav button .navlabel { display: none; } /* arrow-only — "Prev month" was wrapping mid-word on narrow phones */
@@ -532,7 +537,7 @@
   .timelabel { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); padding-top: 6px; }
   .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
   .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
-  .book-slot:hover { border-style: solid; border-color: var(--turf); color: var(--turf); background: var(--chip-hover-bg); }
+  .book-slot:hover { border-style: solid; border-color: var(--hover-edge); color: var(--hover-edge); background: var(--chip-hover-bg); }
   .book-slot .sub { font-weight: 700; color: var(--ink); }
   .book-slot.booked { border-style: solid; border-color: var(--line); background: var(--chip-bg); color: var(--turf-deep); cursor: default; }
   .book-slot.booked:hover { background: var(--chip-bg); }
@@ -567,14 +572,14 @@
   .cal-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .cal-month { flex: 1; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
   .cal-nav { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-size: 17px; line-height: 1; cursor: pointer; font-family: inherit; }
-  .cal-nav:hover:not(:disabled) { border-color: var(--turf); }
+  .cal-nav:hover:not(:disabled) { border-color: var(--hover-edge); }
   .cal-nav:disabled { opacity: .35; cursor: not-allowed; }
   .cal-today-btn { flex: none; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-weight: 700; font-size: var(--fs-xs); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
-  .cal-today-btn:hover { border-color: var(--turf); }
+  .cal-today-btn:hover { border-color: var(--hover-edge); }
   .cal-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
   .cal-filter::-webkit-scrollbar { display: none; }
   .cal-chip { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
-  .cal-chip:hover { border-color: var(--turf); color: var(--turf); }
+  .cal-chip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .cal-weekdays, .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
   .cal-weekdays span { text-align: center; font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; padding-bottom: 8px; }
@@ -663,7 +668,7 @@
   .welcome-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 2px; font-weight: 600; }
   .welcome-card .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
   .welcome-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--chip-bg); border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 11px 14px; margin-bottom: 8px; font-family: inherit; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); cursor: pointer; }
-  .welcome-row:hover { border-color: var(--turf); }
+  .welcome-row:hover { border-color: var(--hover-edge); }
   .welcome-row.done { background: var(--ok-bg); color: var(--muted); text-decoration: line-through; cursor: default; }
   .welcome-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--turf); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex: none; }
   .welcome-row.done .welcome-check { background: var(--turf); border-color: var(--turf); color: #fff; }
@@ -710,7 +715,7 @@
     color: var(--turf); font-size: var(--fs-2xs); font-weight: 700; padding: 3px 9px; font-style: normal;
     border-radius: var(--radius-chip); cursor: pointer; font-family: inherit;
   }
-  .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--turf); background: var(--chip-hover-bg); }
+  .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--hover-edge); background: var(--chip-hover-bg); }
   .field-map-directions { display: inline-block; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 700; font-style: normal; }
   .inline-icon { width: 14px; height: 14px; vertical-align: -2.5px; flex: none; }
   .field-map-box { margin-top: 10px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--line); }
@@ -762,7 +767,7 @@
      than in extra columns — a 4-column table with buttons is unusable on a
      phone, and these are rare, deliberate actions that deserve full width. */
   .manage-btn { background: none; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 700; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
-  .manage-btn:hover { border-color: var(--turf); color: var(--turf); }
+  .manage-btn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .manage-btn[aria-expanded="true"] { background: var(--turf); border-color: var(--turf); color: #fff; }
   .user-actions > td { background: var(--chip-bg); padding: 14px !important; }
   .user-actions-inner { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -833,7 +838,7 @@
     padding: 9px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
     cursor: pointer; font-family: inherit;
   }
-  #themeToggleBtn:hover { border-color: var(--turf); color: var(--turf); }
+  #themeToggleBtn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   #themeToggleBtn .theme-icon-moon { display: none; }
   #themeToggleBtn.is-dark .theme-icon-sun { display: none; }
   #themeToggleBtn.is-dark .theme-icon-moon { display: inline-block; }

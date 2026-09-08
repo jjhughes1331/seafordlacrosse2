@@ -578,6 +578,10 @@
   .cal-today-btn:hover { border-color: var(--hover-edge); }
   .cal-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
   .cal-filter::-webkit-scrollbar { display: none; }
+  /* Nothing told you the strip scrolled, so the chips past the edge may as
+     well not have existed — half of why the sideways drag got attempted at
+     all. Fade the trailing edge so there's visibly more to reach. */
+  .cal-filter { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); }
   .cal-chip { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
   .cal-chip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }

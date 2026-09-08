@@ -1692,9 +1692,18 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
 (function(){
   const headerEl = document.querySelector('header');
   let ticking = false;
+  // Hysteresis, not a single threshold. The header is sticky but still in
+  // flow, so collapsing it pulls the whole page up by its collapse delta
+  // (~140px when signed in). With one 40px trip point, the jitter of a real
+  // momentum scroll crosses it repeatedly and the page reflows on every
+  // crossing — that's the flicker. Collapse high, expand low, and the dead
+  // zone between them means ordinary scroll noise can't retrigger it.
+  const COLLAPSE_AT = 88, EXPAND_AT = 24;
   function apply(){
     const forceCondensed = isMobileViewport() && typeof currentView !== 'undefined' && currentView !== 'schedule';
-    headerEl.classList.toggle('scrolled', window.scrollY > 40 || forceCondensed);
+    const on = headerEl.classList.contains('scrolled');
+    const next = forceCondensed || (on ? window.scrollY > EXPAND_AT : window.scrollY > COLLAPSE_AT);
+    if(next !== on) headerEl.classList.toggle('scrolled', next);
     ticking = false;
   }
   window.applyHeaderCondense = apply;
@@ -3991,7 +4000,29 @@ document.addEventListener('click', e => {
   haptic('light');
   if(which === 'league') renderLeague(); else renderScheduleCalendar();
   calAnimate(host, action, ringState, dir);
+  if(action === 'day'){
+    const cal = host && host.querySelector('.cal');
+    if(cal) revealAgenda(cal);
+  }
 });
+
+// Tapping a date used to update a list sitting below the fold, behind the
+// floating nav — nothing visibly happened unless you thought to scroll. Bring
+// the agenda up to meet the tap. Only ever scrolls down, and only when the
+// agenda actually isn't on screen, so it never yanks the page out from under you.
+function revealAgenda(cal, isCorrection){
+  const ag = cal.querySelector('.cal-agenda');
+  if(!ag) return;
+  const nav = document.getElementById('viewTabs');
+  const navH = (nav && getComputedStyle(nav).position === 'fixed') ? nav.getBoundingClientRect().height + 18 : 0;
+  const want = Math.min(ag.offsetHeight, Math.round(window.innerHeight * 0.42));
+  const delta = ag.getBoundingClientRect().top - (window.innerHeight - navH - want);
+  if(delta <= 8) return;
+  window.scrollBy({ top: delta, behavior: motionOK() ? 'smooth' : 'auto' });
+  // Scrolling down can condense the header, which shifts everything up
+  // mid-flight. One correction pass after it settles, never a loop.
+  if(!isCorrection) setTimeout(() => revealAgenda(cal, true), 460);
+}
 
 // All of this is decoration: it runs only when GSAP loaded and the user hasn't
 // asked for reduced motion. The calendar is fully usable without any of it.

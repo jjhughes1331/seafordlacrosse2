@@ -371,6 +371,10 @@
     padding: 10px 12px; border-radius: var(--radius-chip); cursor: pointer; width: 100%;
   }
   .hamburger-menu button:hover { background: var(--chip-bg); }
+  .hamburger-name { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .hamburger-name input { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
+  .hamburger-name .allbtn { margin-left: 0; }
+  .hamburger-editname { width: 100%; }
   .hamburger-menu button.active { color: var(--turf-deep); background: var(--chip-bg); }
   .hamburger-identity {
     display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px; margin-bottom: 4px;
@@ -1429,7 +1433,7 @@
       <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
       <input type="search" id="userSearch" placeholder="Search name, email or team" autocomplete="off" style="width:100%;margin-bottom:12px">
       <table>
-        <thead id="userListHead"><tr><th>Team</th><th>Email</th><th></th></tr></thead>
+        <thead id="userListHead"><tr><th>Name</th><th>Team</th><th>Email</th><th></th></tr></thead>
         <tbody id="coachListBody"></tbody>
 
       </table>
@@ -1450,6 +1454,14 @@
           <option value="coach">Coach</option>
           <option value="director">Director</option>
         </select>
+      </div>
+      <div class="field">
+        <label>First name</label>
+        <input type="text" id="inviteFirstName" placeholder="Dana" autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label>Last name</label>
+        <input type="text" id="inviteLastName" placeholder="Mcloughlin" autocomplete="family-name">
       </div>
       <div class="field">
         <label>Email</label>
@@ -1480,7 +1492,7 @@
   </div></div>
     <div data-peoplepane="bulk" hidden><div class="admin-card" style="margin-top:16px">
     <h3>Bulk invite from spreadsheet</h3>
-    <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b> — one row per coach.
+    <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b>. Name can be one column or separate <b>First Name</b> / <b>Last Name</b> columns.
       <a href="coach-roster-template.xlsx" download class="template-link" style="color:var(--turf);font-weight:700">Download the template</a>.
       Directors can only upload coaches for their own gender; other rows are skipped.
     </p>
@@ -1748,6 +1760,8 @@ const el = {
   inviteGenderSelect: document.getElementById('inviteGenderSelect'),
   inviteTeamField: document.getElementById('inviteTeamField'),
   inviteEmail: document.getElementById('inviteEmail'),
+  inviteFirstName: document.getElementById('inviteFirstName'),
+  inviteLastName: document.getElementById('inviteLastName'),
   inviteGrade: document.getElementById('inviteGrade'),
   inviteBtn: document.getElementById('inviteBtn'),
   inviteStatus: document.getElementById('inviteStatus'),
@@ -1799,11 +1813,41 @@ function rebuildHamburgerMenu(){
     <span class="who">${escSafe(el.whoName.textContent)}</span>
     <span class="role-pill">${escSafe(el.rolePill.textContent)}</span>
   </div>` : '';
+  // Accounts created before names existed have none, and a coach should be able
+  // to fix their own without asking an admin. Open when it's missing, tucked
+  // behind a button once it's set.
+  const named = myProfile && (myProfile.first_name || myProfile.last_name);
+  const nameForm = myProfile ? `<div class="hamburger-name" id="hamburgerName"${named ? ' hidden' : ''}>
+      <input type="text" id="myFirstName" placeholder="First name" autocomplete="given-name" value="${escSafe(myProfile.first_name || '')}">
+      <input type="text" id="myLastName" placeholder="Last name" autocomplete="family-name" value="${escSafe(myProfile.last_name || '')}">
+      <button type="button" class="allbtn" id="saveMyNameBtn">Save name</button>
+      <span class="hint" id="myNameStatus"></span>
+    </div>
+    ${named ? '<button type="button" class="hamburger-editname" id="editMyNameBtn">Edit your name</button>' : ''}` : '';
   const signOut = myProfile ? `<button type="button" class="hamburger-signout" id="hamburgerSignOutBtn">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8a1.3 1.3 0 0 1 .92.38l4 4a1.3 1.3 0 1 1-1.84 1.84L13.3 6.24V14.4a1.3 1.3 0 0 1-2.6 0V6.24L8.92 8.02a1.3 1.3 0 1 1-1.84-1.84l4-4A1.3 1.3 0 0 1 12 1.8ZM4.4 13.1a1.3 1.3 0 0 1 1.3 1.3v4.2c0 .5.4.9.9.9h10.8c.5 0 .9-.4.9-.9v-4.2a1.3 1.3 0 1 1 2.6 0v4.2a3.5 3.5 0 0 1-3.5 3.5H6.6a3.5 3.5 0 0 1-3.5-3.5v-4.2a1.3 1.3 0 0 1 1.3-1.3Z"/></svg>
     Sign out
   </button>` : '';
-  menu.innerHTML = identity + signOut;
+  menu.innerHTML = identity + nameForm + signOut;
+  document.getElementById('editMyNameBtn')?.addEventListener('click', e => {
+    document.getElementById('hamburgerName').hidden = false;
+    e.target.remove();
+  });
+  document.getElementById('saveMyNameBtn')?.addEventListener('click', async () => {
+    const first = document.getElementById('myFirstName').value.trim();
+    const last = document.getElementById('myLastName').value.trim();
+    const status = document.getElementById('myNameStatus');
+    if(!first && !last){ status.textContent = 'Enter a first or last name.'; return; }
+    status.textContent = 'Saving…';
+    const res = await manageUser({ action: 'set-name', userId: myProfile.id, firstName: first, lastName: last })
+      .catch(err => ({ ok: false, error: err.message }));
+    if(!res.ok){ status.textContent = res.error || 'Could not save'; return; }
+    myProfile.first_name = first; myProfile.last_name = last;
+    el.whoName.textContent = personName(myProfile);
+    status.textContent = 'Saved';
+    haptic('success');
+    rebuildHamburgerMenu();
+  });
   document.getElementById('hamburgerSignOutBtn')?.addEventListener('click', () => sb.auth.signOut());
 }
 function closeHamburgerMenu(){
@@ -2217,6 +2261,25 @@ function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; 
 function mondayOf(d){ const x=new Date(d); const dw=x.getDay(); const diff=(dw===0?-6:1-dw); x.setDate(x.getDate()+diff); return x; }
 function fmtDateLong(s){ const d=parseISO(s); return `${MONTHS[d.getMonth()]} ${d.getDate()}`; }
 function dowOfISO(s){ return DOW_FULL[parseISO(s).getDay()]; }
+// A profile's name if it has one, otherwise the role label the site used to
+// pass off as a name. Everything that shows a person goes through here so the
+// fallback can't drift between screens.
+function personName(p){
+  if(!p) return '';
+  const full = [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+  if(full) return full;
+  return p.role === 'admin' ? 'Site Admin'
+    : p.role === 'director' ? `${p.gender === 'girls' ? 'Girls' : 'Boys'} Director`
+    : teamLabel(p.gender, teamsById[p.team_id]?.grade || '');
+}
+// Split a single spreadsheet "Name" cell. Last token is the surname; everything
+// before it stays with the first name, so "Ana Maria de Souza" keeps its shape.
+function splitName(full){
+  const parts = String(full || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return { first: '', last: '' };
+  if(parts.length === 1) return { first: parts[0], last: '' };
+  return { first: parts.slice(0, -1).join(' '), last: parts[parts.length - 1] };
+}
 function teamLabel(gender, grade){ return `${gender==='girls'?'Girls':'Boys'} ${grade}`; }
 function teamKeyFor(teamId){
   const t = teamsById[teamId];
@@ -2520,11 +2583,7 @@ async function loadProfileAndStartInner(){
   el.viewTabs.style.display = 'flex';
   document.getElementById('hamburgerBtn').style.display = 'flex';
   el.pageFooter.style.display = 'block';
-  el.whoName.textContent = myProfile.role === 'admin'
-    ? 'Site Admin'
-    : myProfile.role === 'director'
-      ? `${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} Director`
-      : teamLabel(myProfile.gender, teamsById[myProfile.team_id]?.grade || '');
+  el.whoName.textContent = personName(myProfile);
   el.rolePill.textContent = myProfile.role;
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = 'inline-block';
   if(myProfile.role === 'coach') el.myTeamTab.style.display = 'inline-block';
@@ -4748,7 +4807,7 @@ function renderAdmin(){
     syncInviteFormFields();
     populateTeamSelect(); // full 14, gender-labeled
     el.userListLabel.textContent = 'Directors & coaches';
-    el.userListHead.innerHTML = '<tr><th>Role</th><th>Team</th><th>Email</th><th></th></tr>';
+    el.userListHead.innerHTML = '<tr><th>Name</th><th>Role</th><th>Team</th><th>Email</th><th></th></tr>';
   } else {
     const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
     el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
@@ -4761,7 +4820,7 @@ function renderAdmin(){
       return `<option value="${id}">${g}</option>`;
     }).join('');
     el.userListLabel.textContent = 'Coaches on your teams';
-    el.userListHead.innerHTML = '<tr><th>Team</th><th>Coach email</th><th></th></tr>';
+    el.userListHead.innerHTML = '<tr><th>Name</th><th>Team</th><th>Coach email</th><th></th></tr>';
   }
   loadUserList();
   const isAdminSettings = myProfile.role === 'admin';
@@ -5130,7 +5189,11 @@ el.inviteBtn.addEventListener('click', async () => {
       } else {
         el.inviteStatus.innerHTML = `<span class="status ok">Invite sent to ${escSafe(email)}.</span>`;
       }
-      el.inviteEmail.value = '';
+      const nameRes = await setUserName(email, el.inviteFirstName.value.trim(), el.inviteLastName.value.trim());
+      if(!nameRes.ok){
+        el.inviteStatus.innerHTML += `<div class="status err">${escSafe(nameRes.error || 'Could not save their name')}</div>`;
+      }
+      el.inviteEmail.value = ''; el.inviteFirstName.value = ''; el.inviteLastName.value = '';
       loadUserList();
     } else {
       el.inviteStatus.innerHTML = `<span class="status err">${escSafe(result.error || (usingPassword ? 'Could not create account' : 'Invite failed'))}</span>`;
@@ -5145,10 +5208,10 @@ el.inviteBtn.addEventListener('click', async () => {
 // the list is small enough that it never needs to.
 let userListRows = [];
 async function loadUserList(){
-  const colspan = myProfile.role === 'admin' ? 4 : 3;
+  const colspan = myProfile.role === 'admin' ? 5 : 4;
   el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">Loading…</td></tr>`;
 
-  let query = sb.from('profiles').select('id, email, role, gender, team_id');
+  let query = sb.from('profiles').select('id, email, role, gender, team_id, first_name, last_name');
   if(myProfile.role === 'admin'){
     query = query.in('role', ['director','coach']);
   } else {
@@ -5178,10 +5241,10 @@ function userRowTeamText(u){
     : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
 }
 function renderUserList(){
-  const colspan = myProfile.role === 'admin' ? 4 : 3;
+  const colspan = myProfile.role === 'admin' ? 5 : 4;
   const q = (el.userSearch?.value || '').trim().toLowerCase();
-  const match = u => !q || [u.email, userRowTeamText(u), u.role === 'director' ? 'Director' : 'Coach']
-    .join(' ').toLowerCase().includes(q);
+  const match = u => !q || [personName(u), u.first_name, u.last_name, u.email, userRowTeamText(u),
+    u.role === 'director' ? 'Director' : 'Coach'].filter(Boolean).join(' ').toLowerCase().includes(q);
   const rows = userListRows.filter(match);
   if(!rows.length){
     el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">${q ? 'Nobody matches “' + escSafe(q) + '”.' : 'No one invited yet.'}</td></tr>`;
@@ -5190,12 +5253,12 @@ function renderUserList(){
   if(myProfile.role === 'admin'){
     el.coachListBody.innerHTML = rows.map(u => {
       const roleLabel = u.role === 'director' ? 'Director' : 'Coach';
-      return `<tr><td>${escSafe(roleLabel)}</td><td>${escSafe(userRowTeamText(u))}</td><td class="email-cell">${escSafe(u.email)}</td>${manageCell(u, colspan)}`;
+      return `<tr><td>${escSafe(personName(u))}</td><td>${escSafe(roleLabel)}</td><td>${escSafe(userRowTeamText(u))}</td><td class="email-cell">${escSafe(u.email)}</td>${manageCell(u, colspan)}`;
     }).join('');
   } else {
     el.coachListBody.innerHTML = rows.map(c => {
       const grade = teamsById[c.team_id]?.grade || '(unknown)';
-      return `<tr><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td>${manageCell(c, colspan)}`;
+      return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
 }
@@ -5219,6 +5282,15 @@ function manageCell(u, colspan){
 }
 
 const MANAGE_FUNCTION_URL = INVITE_FUNCTION_URL.replace(/invite-coach$/, 'manage-user');
+// invite-coach creates the account and its source lives only in the Supabase
+// dashboard, so the name is written straight afterwards through manage-user,
+// which runs under the service role and already knows who may act on whom.
+async function setUserName(email, firstName, lastName){
+  if(!firstName && !lastName) return { ok: true, skipped: true };
+  const { data: prof } = await sb.from('profiles').select('id').eq('email', email).maybeSingle();
+  if(!prof) return { ok: false, error: 'Account created, but its profile was not found to name' };
+  return manageUser({ action: 'set-name', userId: prof.id, firstName, lastName });
+}
 async function manageUser(payload){
   const { data: { session } } = await sb.auth.getSession();
   const res = await fetch(MANAGE_FUNCTION_URL, {
@@ -5330,7 +5402,12 @@ el.bulkUploadBtn.addEventListener('click', async () => {
   const validRows = [];
   const skipped = [];
   rows.forEach(row => {
-    const name = String(row.Name || row.name || '').trim();
+    // The template has always asked for Name, and this parsed it, validated
+    // against it, reported errors with it - and then never sent it anywhere.
+    let first = String(row['First Name'] || row.FirstName || row.first_name || '').trim();
+    let last  = String(row['Last Name']  || row.LastName  || row.last_name  || '').trim();
+    const name = String(row.Name || row.name || '').trim() || [first, last].filter(Boolean).join(' ');
+    if(!first && !last && name){ const sp = splitName(name); first = sp.first; last = sp.last; }
     const email = String(row.Email || row.email || '').trim().toLowerCase();
     const gender = String(row.Gender || row.gender || '').trim().toLowerCase();
     const grade = String(row.Grade || row.grade || '').trim();
@@ -5344,7 +5421,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
     }
     const teamId = teamsByKey[gender+'|'+grade];
     if(!teamId){ skipped.push({name, email, reason:'Could not match a team'}); return; }
-    validRows.push({ name, email, gender, grade, teamId });
+    validRows.push({ name, first, last, email, gender, grade, teamId });
   });
 
   if(!validRows.length && !skipped.length){
@@ -5363,6 +5440,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
         body: JSON.stringify({ email: row.email, inviteRole: 'coach', teamId: row.teamId }),
       });
       const result = await res.json();
+      if(result.ok) await setUserName(row.email, row.first, row.last);
       sent.push({ ...row, ok: result.ok, error: result.error });
     } catch(err) {
       sent.push({ ...row, ok: false, error: err.message });

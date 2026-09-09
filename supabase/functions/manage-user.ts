@@ -14,6 +14,7 @@
 // REQUEST BODY:
 //   { "action": "reset-password", "userId": "<uuid>", "password": "<8+ chars>" }
 //   { "action": "remove",         "userId": "<uuid>" }
+//   { "action": "set-name",       "userId": "<uuid>", "firstName": "...", "lastName": "..." }
 // RESPONSE: { "ok": true, ... } or { "ok": false, "error": "..." }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -57,13 +58,15 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: "Only directors and admins can manage users" }, 403);
   }
 
-  let body: { action?: string; userId?: string; password?: string };
+  let body: { action?: string; userId?: string; password?: string; firstName?: string; lastName?: string };
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON body" }, 400); }
 
   const action = body.action;
   const userId = (body.userId || "").trim();
   if (!userId) return json({ ok: false, error: "userId is required" }, 400);
-  if (userId === callerId) {
+  // Acting on yourself is how you lock yourself out - except for naming
+  // yourself, which is the one thing you should always be allowed to do.
+  if (userId === callerId && action !== "set-name") {
     return json({ ok: false, error: "You can't do that to your own account" }, 403);
   }
 
@@ -72,7 +75,9 @@ Deno.serve(async (req) => {
   if (targetErr || !target) return json({ ok: false, error: "User not found" }, 404);
 
   // Authorize against the target, mirroring who may invite whom.
-  if (caller.role === "director") {
+  if (userId === callerId) {
+    // naming yourself: already established you're a director or admin
+  } else if (caller.role === "director") {
     if (target.role !== "coach") {
       return json({ ok: false, error: "Directors can only manage coaches" }, 403);
     }
@@ -92,6 +97,20 @@ Deno.serve(async (req) => {
     const { error } = await admin.auth.admin.updateUserById(userId, { password });
     if (error) return json({ ok: false, error: error.message }, 400);
     return json({ ok: true, email: target.email });
+  }
+
+  if (action === "set-name") {
+    // Writing a name onto someone else's profile needs the service role, and
+    // this function already establishes who the caller may act on. Routing it
+    // here means invite-coach — whose source lives only in the dashboard — does
+    // not have to change.
+    const first = (body.firstName || "").trim();
+    const last = (body.lastName || "").trim();
+    if (!first && !last) return json({ ok: false, error: "A first or last name is required" }, 400);
+    const { error } = await admin.from("profiles")
+      .update({ first_name: first || null, last_name: last || null }).eq("id", userId);
+    if (error) return json({ ok: false, error: error.message }, 400);
+    return json({ ok: true, firstName: first, lastName: last });
   }
 
   if (action === "remove") {

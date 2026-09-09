@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-title" content="Seaford Lax">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Motion + 3D. Everything that uses these is guarded (window.gsap / window.THREE)
@@ -61,7 +61,7 @@
     --radius-chip: 8px;
     --radius-sm: 6px;
     --font-display: "Quicksand", "Trebuchet MS", sans-serif;
-    --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-body: "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
     /* Spacing scale — consistent rhythm instead of ad-hoc values */
     --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
     /* Type scale — every text size in the page maps to one of these steps */
@@ -907,12 +907,12 @@
       -webkit-mask-position: center; mask-position: center;
     }
     .view-tab::after { content: attr(data-short); display: block; font-size: 9.5px; }
-    .view-tab[data-view="schedule"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMnY0Ii8+PHBhdGggZD0iTTE2IDJ2NCIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiLz48cGF0aCBkPSJNMyAxMGgxOCIvPjxwYXRoIGQ9Ik04IDE0aC4wMSIvPjxwYXRoIGQ9Ik0xMiAxNGguMDEiLz48cGF0aCBkPSJNMTYgMTRoLjAxIi8+PHBhdGggZD0iTTggMThoLjAxIi8+PHBhdGggZD0iTTEyIDE4aC4wMSIvPjxwYXRoIGQ9Ik0xNiAxOGguMDEiLz48L3N2Zz4=); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTggMnY0Ii8+PHBhdGggZD0iTTE2IDJ2NCIvPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiLz48cGF0aCBkPSJNMyAxMGgxOCIvPjxwYXRoIGQ9Ik04IDE0aC4wMSIvPjxwYXRoIGQ9Ik0xMiAxNGguMDEiLz48cGF0aCBkPSJNMTYgMTRoLjAxIi8+PHBhdGggZD0iTTggMThoLjAxIi8+PHBhdGggZD0iTTEyIDE4aC4wMSIvPjxwYXRoIGQ9Ik0xNiAxOGguMDEiLz48L3N2Zz4=); }
-    .view-tab[data-view="book"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNOCAxMmg4Ii8+PHBhdGggZD0iTTEyIDh2OCIvPjwvc3ZnPg==); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNOCAxMmg4Ii8+PHBhdGggZD0iTTEyIDh2OCIvPjwvc3ZnPg==); }
-    .view-tab[data-view="openweek"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIvPjwvc3ZnPg==); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiLz48cGF0aCBkPSJNMTIgNnY2bDQgMiIvPjwvc3ZnPg==); }
-    .view-tab[data-view="myteam"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTE2IDIxdi0yYTQgNCAwIDAgMC00LTRINmE0IDQgMCAwIDAtNCA0djIiLz48cGF0aCBkPSJNMTYgMy4xMjhhNCA0IDAgMCAxIDAgNy43NDQiLz48cGF0aCBkPSJNMjIgMjF2LTJhNCA0IDAgMCAwLTMtMy44NyIvPjxjaXJjbGUgY3g9IjkiIGN5PSI3IiByPSI0Ii8+PC9zdmc+); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTE2IDIxdi0yYTQgNCAwIDAgMC00LTRINmE0IDQgMCAwIDAtNCA0djIiLz48cGF0aCBkPSJNMTYgMy4xMjhhNCA0IDAgMCAxIDAgNy43NDQiLz48cGF0aCBkPSJNMjIgMjF2LTJhNCA0IDAgMCAwLTMtMy44NyIvPjxjaXJjbGUgY3g9IjkiIGN5PSI3IiByPSI0Ii8+PC9zdmc+); }
-    .view-tab[data-view="league"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEwIDE0LjY2djEuNjI2YTIgMiAwIDAgMS0uOTc2IDEuNjk2QTUgNSAwIDAgMCA3IDIxLjk3OCIvPjxwYXRoIGQ9Ik0xNCAxNC42NnYxLjYyNmEyIDIgMCAwIDAgLjk3NiAxLjY5NkE1IDUgMCAwIDEgMTcgMjEuOTc4Ii8+PHBhdGggZD0iTTE4IDloMS41YTEgMSAwIDAgMCAwLTVIMTgiLz48cGF0aCBkPSJNNCAyMmgxNiIvPjxwYXRoIGQ9Ik02IDlhNiA2IDAgMCAwIDEyIDBWM2ExIDEgMCAwIDAtMS0xSDdhMSAxIDAgMCAwLTEgMXoiLz48cGF0aCBkPSJNNiA5SDQuNWExIDEgMCAwIDEgMC01SDYiLz48L3N2Zz4=); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEwIDE0LjY2djEuNjI2YTIgMiAwIDAgMS0uOTc2IDEuNjk2QTUgNSAwIDAgMCA3IDIxLjk3OCIvPjxwYXRoIGQ9Ik0xNCAxNC42NnYxLjYyNmEyIDIgMCAwIDAgLjk3NiAxLjY5NkE1IDUgMCAwIDEgMTcgMjEuOTc4Ii8+PHBhdGggZD0iTTE4IDloMS41YTEgMSAwIDAgMCAwLTVIMTgiLz48cGF0aCBkPSJNNCAyMmgxNiIvPjxwYXRoIGQ9Ik02IDlhNiA2IDAgMCAwIDEyIDBWM2ExIDEgMCAwIDAtMS0xSDdhMSAxIDAgMCAwLTEgMXoiLz48cGF0aCBkPSJNNiA5SDQuNWExIDEgMCAwIDEgMC01SDYiLz48L3N2Zz4=); }
-    .view-tab[data-view="admin"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTkuNjcxIDQuMTM2YTIuMzQgMi4zNCAwIDAgMSA0LjY1OSAwIDIuMzQgMi4zNCAwIDAgMCAzLjMxOSAxLjkxNSAyLjM0IDIuMzQgMCAwIDEgMi4zMyA0LjAzMyAyLjM0IDIuMzQgMCAwIDAgMCAzLjgzMSAyLjM0IDIuMzQgMCAwIDEtMi4zMyA0LjAzMyAyLjM0IDIuMzQgMCAwIDAtMy4zMTkgMS45MTUgMi4zNCAyLjM0IDAgMCAxLTQuNjU5IDAgMi4zNCAyLjM0IDAgMCAwLTMuMzItMS45MTUgMi4zNCAyLjM0IDAgMCAxLTIuMzMtNC4wMzMgMi4zNCAyLjM0IDAgMCAwIDAtMy44MzFBMi4zNCAyLjM0IDAgMCAxIDYuMzUgNi4wNTFhMi4zNCAyLjM0IDAgMCAwIDMuMzE5LTEuOTE1Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMyIvPjwvc3ZnPg==); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTkuNjcxIDQuMTM2YTIuMzQgMi4zNCAwIDAgMSA0LjY1OSAwIDIuMzQgMi4zNCAwIDAgMCAzLjMxOSAxLjkxNSAyLjM0IDIuMzQgMCAwIDEgMi4zMyA0LjAzMyAyLjM0IDIuMzQgMCAwIDAgMCAzLjgzMSAyLjM0IDIuMzQgMCAwIDEtMi4zMyA0LjAzMyAyLjM0IDIuMzQgMCAwIDAtMy4zMTkgMS45MTUgMi4zNCAyLjM0IDAgMCAxLTQuNjU5IDAgMi4zNCAyLjM0IDAgMCAwLTMuMzItMS45MTUgMi4zNCAyLjM0IDAgMCAxLTIuMzMtNC4wMzMgMi4zNCAyLjM0IDAgMCAwIDAtMy44MzFBMi4zNCAyLjM0IDAgMCAxIDYuMzUgNi4wNTFhMi4zNCAyLjM0IDAgMCAwIDMuMzE5LTEuOTE1Ii8+PGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMyIvPjwvc3ZnPg==); }
+    .view-tab[data-view="schedule"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTcuMiAxLjZhMS4zIDEuMyAwIDAgMSAxLjMgMS4zdi45aDd2LS45YTEuMyAxLjMgMCAwIDEgMi42IDB2LjloLjdhMy40IDMuNCAwIDAgMSAzLjQgMy40djExLjZhMy40IDMuNCAwIDAgMS0zLjQgMy40SDUuMmEzLjQgMy40IDAgMCAxLTMuNC0zLjRWNy4yYTMuNCAzLjQgMCAwIDEgMy40LTMuNGguN3YtLjlhMS4zIDEuMyAwIDAgMSAxLjMtMS4zWk00LjQgMTAuNHY4LjRjMCAuNDQuMzYuOC44LjhoMTMuNmMuNDQgMCAuOC0uMzYuOC0uOHYtOC40SDQuNFoiLz48Y2lyY2xlIGN4PSI4IiBjeT0iMTQuOSIgcj0iMS4zNSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTQuOSIgcj0iMS4zNSIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTQuOSIgcj0iMS4zNSIvPjwvc3ZnPg==); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTcuMiAxLjZhMS4zIDEuMyAwIDAgMSAxLjMgMS4zdi45aDd2LS45YTEuMyAxLjMgMCAwIDEgMi42IDB2LjloLjdhMy40IDMuNCAwIDAgMSAzLjQgMy40djExLjZhMy40IDMuNCAwIDAgMS0zLjQgMy40SDUuMmEzLjQgMy40IDAgMCAxLTMuNC0zLjRWNy4yYTMuNCAzLjQgMCAwIDEgMy40LTMuNGguN3YtLjlhMS4zIDEuMyAwIDAgMSAxLjMtMS4zWk00LjQgMTAuNHY4LjRjMCAuNDQuMzYuOC44LjhoMTMuNmMuNDQgMCAuOC0uMzYuOC0uOHYtOC40SDQuNFoiLz48Y2lyY2xlIGN4PSI4IiBjeT0iMTQuOSIgcj0iMS4zNSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTQuOSIgcj0iMS4zNSIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTQuOSIgcj0iMS4zNSIvPjwvc3ZnPg==); }
+    .view-tab[data-view="book"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyIDEuOGExMC4yIDEwLjIgMCAxIDAgMCAyMC40IDEwLjIgMTAuMiAwIDAgMCAwLTIwLjRabS0xLjE1IDQuOGgyLjN2NC4yNWg0LjI1djIuM2gtNC4yNXY0LjI1aC0yLjN2LTQuMjVINi42di0yLjNoNC4yNVY2LjZaIi8+PC9zdmc+); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyIDEuOGExMC4yIDEwLjIgMCAxIDAgMCAyMC40IDEwLjIgMTAuMiAwIDAgMCAwLTIwLjRabS0xLjE1IDQuOGgyLjN2NC4yNWg0LjI1djIuM2gtNC4yNXY0LjI1aC0yLjN2LTQuMjVINi42di0yLjNoNC4yNVY2LjZaIi8+PC9zdmc+); }
+    .view-tab[data-view="openweek"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyIDEuOGExMC4yIDEwLjIgMCAxIDAgMCAyMC40IDEwLjIgMTAuMiAwIDAgMCAwLTIwLjRabS0xLjE1IDQuNGgyLjN2NS40NWg0LjA1djIuM2gtNi4zNVY2LjJaIi8+PC9zdmc+); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyIDEuOGExMC4yIDEwLjIgMCAxIDAgMCAyMC40IDEwLjIgMTAuMiAwIDAgMCAwLTIwLjRabS0xLjE1IDQuNGgyLjN2NS40NWg0LjA1djIuM2gtNi4zNVY2LjJaIi8+PC9zdmc+); }
+    .view-tab[data-view="myteam"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGQ9Ik05LjQgMi4yIDQuNiA0LjRhMi44IDIuOCAwIDAgMC0xLjYgMi4zbC0uNCAzLjJhMS4xIDEuMSAwIDAgMCAuOSAxLjJsMi4zLjRWMjBhMS45IDEuOSAwIDAgMCAxLjkgMS45aDguNmExLjkgMS45IDAgMCAwIDEuOS0xLjl2LTguNWwyLjMtLjRhMS4xIDEuMSAwIDAgMCAuOS0xLjJsLS40LTMuMmEyLjggMi44IDAgMCAwLTEuNi0yLjNMMTQuNiAyLjJhMi43IDIuNyAwIDAgMS01LjIgMFoiLz48L3N2Zz4=); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGQ9Ik05LjQgMi4yIDQuNiA0LjRhMi44IDIuOCAwIDAgMC0xLjYgMi4zbC0uNCAzLjJhMS4xIDEuMSAwIDAgMCAuOSAxLjJsMi4zLjRWMjBhMS45IDEuOSAwIDAgMCAxLjkgMS45aDguNmExLjkgMS45IDAgMCAwIDEuOS0xLjl2LTguNWwyLjMtLjRhMS4xIDEuMSAwIDAgMCAuOS0xLjJsLS40LTMuMmEyLjggMi44IDAgMCAwLTEuNi0yLjNMMTQuNiAyLjJhMi43IDIuNyAwIDAgMS01LjIgMFoiLz48L3N2Zz4=); }
+    .view-tab[data-view="league"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxyZWN0IHg9IjMiIHk9IjQuOSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjMuNSIgcng9IjEuNzUiLz48cmVjdCB4PSIzIiB5PSIxMC4yNSIgd2lkdGg9IjEzLjIiIGhlaWdodD0iMy41IiByeD0iMS43NSIvPjxyZWN0IHg9IjMiIHk9IjE1LjYiIHdpZHRoPSI4LjQiIGhlaWdodD0iMy41IiByeD0iMS43NSIvPjwvc3ZnPg==); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxyZWN0IHg9IjMiIHk9IjQuOSIgd2lkdGg9IjE4IiBoZWlnaHQ9IjMuNSIgcng9IjEuNzUiLz48cmVjdCB4PSIzIiB5PSIxMC4yNSIgd2lkdGg9IjEzLjIiIGhlaWdodD0iMy41IiByeD0iMS43NSIvPjxyZWN0IHg9IjMiIHk9IjE1LjYiIHdpZHRoPSI4LjQiIGhlaWdodD0iMy41IiByeD0iMS43NSIvPjwvc3ZnPg==); }
+    .view-tab[data-view="admin"]::before { -webkit-mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxyZWN0IHg9IjUuMiIgeT0iMi42IiB3aWR0aD0iMS44IiBoZWlnaHQ9IjE4LjgiIHJ4PSIuOSIvPjxjaXJjbGUgY3g9IjYuMSIgY3k9IjguMiIgcj0iMy4yIi8+PHJlY3QgeD0iMTEuMSIgeT0iMi42IiB3aWR0aD0iMS44IiBoZWlnaHQ9IjE4LjgiIHJ4PSIuOSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTUiIHI9IjMuMiIvPjxyZWN0IHg9IjE3IiB5PSIyLjYiIHdpZHRoPSIxLjgiIGhlaWdodD0iMTguOCIgcng9Ii45Ii8+PGNpcmNsZSBjeD0iMTcuOSIgY3k9IjYuNiIgcj0iMy4yIi8+PC9zdmc+); mask-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxyZWN0IHg9IjUuMiIgeT0iMi42IiB3aWR0aD0iMS44IiBoZWlnaHQ9IjE4LjgiIHJ4PSIuOSIvPjxjaXJjbGUgY3g9IjYuMSIgY3k9IjguMiIgcj0iMy4yIi8+PHJlY3QgeD0iMTEuMSIgeT0iMi42IiB3aWR0aD0iMS44IiBoZWlnaHQ9IjE4LjgiIHJ4PSIuOSIvPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTUiIHI9IjMuMiIvPjxyZWN0IHg9IjE3IiB5PSIyLjYiIHdpZHRoPSIxLjgiIGhlaWdodD0iMTguOCIgcng9Ii45Ii8+PGNpcmNsZSBjeD0iMTcuOSIgY3k9IjYuNiIgcj0iMy4yIi8+PC9zdmc+); }
     /* Sliding pill (mirrors .mode-toggle-thumb) instead of each tab flipping
        its own background instantly — this is what makes the drag-across
        gesture read as one continuous glide instead of a jump-cut per icon. */
@@ -3160,7 +3160,7 @@ async function buildShareCard(teamKey, teamLabelText){
   const W = 1080, H = 1350;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
-  try { await Promise.all(['700 72px Quicksand', '600 40px Inter', '400 34px Inter', '700 30px Inter'].map(f => document.fonts.load(f))); } catch(e){}
+  try { await Promise.all(['700 72px Quicksand', '600 40px Manrope', '400 34px Manrope', '700 30px Manrope'].map(f => document.fonts.load(f))); } catch(e){}
 
   // Ground: deep turf green with a soft highlight and faint field markings.
   ctx.fillStyle = '#14371f'; ctx.fillRect(0, 0, W, H);
@@ -3177,7 +3177,7 @@ async function buildShareCard(teamKey, teamLabelText){
   let textX = 72;
   if(badge){ const bh = 140, bw = Math.round(bh * badge.width / badge.height); ctx.drawImage(badge, 72, 72, bw, bh); textX = 72 + bw + 36; }
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#9fd0b4'; ctx.font = '700 30px Inter';
+  ctx.fillStyle = '#9fd0b4'; ctx.font = '700 30px Manrope';
   try { ctx.letterSpacing = '4px'; } catch(e){}
   ctx.fillText('SEAFORD LACROSSE  ·  NEXT 7 DAYS', textX, 118);
   try { ctx.letterSpacing = '0px'; } catch(e){}
@@ -3189,14 +3189,14 @@ async function buildShareCard(teamKey, teamLabelText){
   const end = addDays(today, 6);
   const startISO = fmtDateISO(today), endISO = fmtDateISO(end);
   const items = getTeamBookingsSorted(teamKey).filter(b => b.date >= startISO && b.date <= endISO);
-  ctx.fillStyle = '#cfe3d5'; ctx.font = '600 36px Inter';
+  ctx.fillStyle = '#cfe3d5'; ctx.font = '600 36px Manrope';
   ctx.fillText(`${DOW_SHORT[today.getDay()]} ${MONTHS[today.getMonth()].slice(0,3)} ${today.getDate()} – ${DOW_SHORT[end.getDay()]} ${MONTHS[end.getMonth()].slice(0,3)} ${end.getDate()}`, 72, 296);
 
   let y = 372;
   const rowH = 124, maxRows = 6;
   if(!items.length){
     ctx.fillStyle = '#ffffff'; ctx.font = '700 48px Quicksand'; ctx.fillText('No practices scheduled', 72, y + 60);
-    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 34px Inter'; ctx.fillText('for the next seven days. Check seafordlax.com for updates.', 72, y + 116);
+    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 34px Manrope'; ctx.fillText('for the next seven days. Check seafordlax.com for updates.', 72, y + 116);
   }
   items.slice(0, maxRows).forEach((b, i) => {
     const d = parseISO(b.date);
@@ -3208,29 +3208,29 @@ async function buildShareCard(teamKey, teamLabelText){
     // Day chip
     ctx.fillStyle = '#4fae76';
     roundRect(ctx, 80, ry + 12, 150, rowH - 38, 18); ctx.fill();
-    ctx.fillStyle = '#0f2a19'; ctx.font = '700 26px Inter'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#0f2a19'; ctx.font = '700 26px Manrope'; ctx.textAlign = 'center';
     ctx.fillText(DOW_SHORT[d.getDay()].toUpperCase(), 155, ry + 44);
     ctx.font = '700 38px Quicksand'; ctx.fillText(`${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`, 155, ry + 84);
     ctx.textAlign = 'left';
     // Time + place
-    ctx.fillStyle = '#ffffff'; ctx.font = '600 40px Inter'; ctx.fillText(b.time, 262, ry + 52);
-    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 32px Inter';
+    ctx.fillStyle = '#ffffff'; ctx.font = '600 40px Manrope'; ctx.fillText(b.time, 262, ry + 52);
+    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 32px Manrope';
     ctx.fillText(`${field ? field.name : b.field_id}${b.subfield ? ' · ' + b.subfield : ''}`, 262, ry + 94);
     // Rain warning
     const w = weatherCache[b.date];
     if(w && w.precip >= 50){
-      ctx.textAlign = 'right'; ctx.fillStyle = '#e9c46a'; ctx.font = '700 30px Inter';
+      ctx.textAlign = 'right'; ctx.fillStyle = '#e9c46a'; ctx.font = '700 30px Manrope';
       ctx.fillText(`${w.precip}% rain`, W - 88, ry + 62); ctx.textAlign = 'left';
     }
   });
   if(items.length > maxRows){
-    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 32px Inter';
+    ctx.fillStyle = '#cfe3d5'; ctx.font = '400 32px Manrope';
     ctx.fillText(`+ ${items.length - maxRows} more this week`, 80, y + maxRows * rowH + 40);
   }
 
   // Footer
-  ctx.fillStyle = '#9fd0b4'; ctx.font = '700 30px Inter'; ctx.fillText('seafordlax.com', 72, H - 72);
-  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(207,227,213,.7)'; ctx.font = '400 28px Inter';
+  ctx.fillStyle = '#9fd0b4'; ctx.font = '700 30px Manrope'; ctx.fillText('seafordlax.com', 72, H - 72);
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(207,227,213,.7)'; ctx.font = '400 28px Manrope';
   ctx.fillText(`Updated ${MONTHS[new Date().getMonth()].slice(0,3)} ${new Date().getDate()}`, W - 72, H - 72); ctx.textAlign = 'left';
 
   return new Promise(resolve => c.toBlob(resolve, 'image/png'));

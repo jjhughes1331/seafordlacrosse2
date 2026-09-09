@@ -590,7 +590,9 @@
   .cal-day.pad { visibility: hidden; cursor: default; }
   .cal-day.out { opacity: .28; cursor: default; }
   .cal-num { position: relative; z-index: 1; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-md); font-weight: 600; color: var(--ink); }
-  .cal-day.today:not(.selected) .cal-num { background: var(--turf); color: #fff; font-weight: 800; }
+  /* One filled disc per calendar. Selection is filled because it's what you
+     acted on; today is a ring, the way iOS marks it. */
+  .cal-day.today:not(.selected) .cal-num { box-shadow: inset 0 0 0 2px var(--turf); color: var(--turf); font-weight: 800; }
   .cal-day.selected .cal-num { color: var(--card); font-weight: 800; }
   /* The filled selection disc is its own element rather than a background on
      the number, so GSAP Flip can slide the one disc from the old day to the
@@ -610,7 +612,7 @@
   /* A quantity, not a status: ink at low strength so the bar reads as a
      measurement rather than an alarm. Only a genuinely full day earns colour. */
   .cal-fill i { display: block; height: 100%; border-radius: 999px; background: var(--ink); opacity: .34; }
-  .cal-fill.hot i { background: var(--danger); opacity: .85; }
+  .cal-fill.hot i { background: var(--ink); opacity: .8; }
   /* Forecast says wet: a quiet tint so a soggy stretch is visible without
      tapping each day. Only the ~16 days inside the forecast window get it. */
   .cal-day.wet { background: linear-gradient(180deg, rgba(90,130,160,.16), rgba(90,130,160,.04)); }
@@ -660,8 +662,8 @@
   .util-name { font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .util-bar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
   .util-fill { display: block; height: 100%; border-radius: 999px; background: var(--turf); transition: width .5s var(--ease); }
-  .util-fill.hot { background: var(--danger); }
-  .util-fill.cold { background: var(--mine); }
+  .util-fill.hot { background: var(--ink); opacity: .8; }
+  .util-fill.cold { background: var(--muted); opacity: .55; }
   .util-num { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
   .util-num small { display: block; font-size: var(--fs-2xs); color: var(--muted); font-weight: 600; }
   /* "Since you were here" strip */
@@ -929,6 +931,11 @@
     }
     .view-tab { position: relative; z-index: 1; }
     .view-tab.active { color: var(--turf-deep); }
+    /* Six identical tabs meant nothing stood out, and booking is the whole
+       point of the app. One filled tab in a row of six is the cheapest
+       isolation there is, and it sits on every screen. */
+    .view-tab[data-view="book"] { background: var(--accent-fill); color: #fff; }
+    .view-tab[data-view="book"].active { background: var(--turf-deep); color: #fff; }
     .view-tab:active { transform: scale(.94); }
     /* Keep the toast above the new bottom bar instead of colliding with it */
     .actions { bottom: calc(var(--navbar-h) + var(--safe-bottom) + 14px); }
@@ -1133,7 +1140,7 @@
       <label>Time slot</label>
       <select id="recurringSlotSelect"><option value="">Pick day(s) first</option></select>
     </div>
-    <button class="btn-primary" style="width:auto;padding:12px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
+    <button class="allbtn" style="width:auto;padding:12px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
     <div id="recurringResults"></div>
   </div>
 </div>
@@ -1269,13 +1276,13 @@
   <div class="admin-card" id="scheduleLockCard">
     <h3>Schedule lock</h3>
     <p class="hint" id="lockHint">When locked, nobody (including admins and directors) can book or cancel anything until it's unlocked again.</p>
-    <button class="btn-primary" id="lockToggleBtn" style="width:auto;padding:12px 20px"></button>
+    <button class="allbtn" id="lockToggleBtn" style="width:auto;padding:12px 20px"></button>
   </div>
 
   <div class="admin-card" style="margin-top:16px" id="priorityBookingCard">
     <h3>Priority booking (grade hierarchy)</h3>
     <p class="hint">When on, teams can only book once every older grade has finished — 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
-    <button class="btn-primary" id="priorityToggleBtn" style="width:auto;padding:12px 20px"></button>
+    <button class="allbtn" id="priorityToggleBtn" style="width:auto;padding:12px 20px"></button>
     <div id="priorityTierStatus" class="priority-tier-status"></div>
     <button class="allbtn" id="priorityForceAdvanceBtn" style="margin-top:12px;display:none"></button>
     <p class="hint" id="priorityForceHint" style="margin-top:8px"></p>

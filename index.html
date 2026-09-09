@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-title" content="Seaford Lax">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Motion + 3D. Everything that uses these is guarded (window.gsap / window.THREE)
@@ -60,7 +60,7 @@
     --radius-md: 10px;
     --radius-chip: 8px;
     --radius-sm: 6px;
-    --font-display: "Quicksand", "Trebuchet MS", sans-serif;
+    --font-display: "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
     --font-body: "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
     /* Spacing scale — consistent rhythm instead of ad-hoc values */
     --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
@@ -241,7 +241,7 @@
   .header-logo-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
   .header-hero img { height: 68px; width: auto; display: block; filter: drop-shadow(0 3px 8px rgba(20,55,31,.14)); }
   .header-text { position: relative; z-index: 1; text-align: center; }
-  h1 { font-family: var(--font-display); font-size: clamp(28px, 5.5vw, 44px); font-weight: 600; letter-spacing: .2px; color: var(--turf-deep); line-height: 1.1; }
+  h1 { font-family: var(--font-display); font-size: clamp(28px, 5.5vw, 44px); font-weight: 800; letter-spacing: -.6px; color: var(--turf-deep); line-height: 1.1; }
   .sub { color: var(--muted); margin-top: 4px; font-size: var(--fs-base); }
 
   .view-tabs { position: relative; z-index: 1; display: flex; justify-content: center; gap: 4px; margin-top: 22px; flex-wrap: wrap; padding-bottom: 2px; }
@@ -3160,7 +3160,7 @@ async function buildShareCard(teamKey, teamLabelText){
   const W = 1080, H = 1350;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
-  try { await Promise.all(['700 72px Quicksand', '600 40px Manrope', '400 34px Manrope', '700 30px Manrope'].map(f => document.fonts.load(f))); } catch(e){}
+  try { await Promise.all(['700 72px Manrope', '600 40px Manrope', '400 34px Manrope', '700 30px Manrope'].map(f => document.fonts.load(f))); } catch(e){}
 
   // Ground: deep turf green with a soft highlight and faint field markings.
   ctx.fillStyle = '#14371f'; ctx.fillRect(0, 0, W, H);
@@ -3181,7 +3181,7 @@ async function buildShareCard(teamKey, teamLabelText){
   try { ctx.letterSpacing = '4px'; } catch(e){}
   ctx.fillText('SEAFORD LACROSSE  ·  NEXT 7 DAYS', textX, 118);
   try { ctx.letterSpacing = '0px'; } catch(e){}
-  ctx.fillStyle = '#ffffff'; ctx.font = '700 72px Quicksand';
+  ctx.fillStyle = '#ffffff'; ctx.font = '700 72px Manrope';
   ctx.fillText(teamLabelText, textX, 196);
 
   // The next seven days, starting today.
@@ -3195,7 +3195,7 @@ async function buildShareCard(teamKey, teamLabelText){
   let y = 372;
   const rowH = 124, maxRows = 6;
   if(!items.length){
-    ctx.fillStyle = '#ffffff'; ctx.font = '700 48px Quicksand'; ctx.fillText('No practices scheduled', 72, y + 60);
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 48px Manrope'; ctx.fillText('No practices scheduled', 72, y + 60);
     ctx.fillStyle = '#cfe3d5'; ctx.font = '400 34px Manrope'; ctx.fillText('for the next seven days. Check seafordlax.com for updates.', 72, y + 116);
   }
   items.slice(0, maxRows).forEach((b, i) => {
@@ -3210,7 +3210,7 @@ async function buildShareCard(teamKey, teamLabelText){
     roundRect(ctx, 80, ry + 12, 150, rowH - 38, 18); ctx.fill();
     ctx.fillStyle = '#0f2a19'; ctx.font = '700 26px Manrope'; ctx.textAlign = 'center';
     ctx.fillText(DOW_SHORT[d.getDay()].toUpperCase(), 155, ry + 44);
-    ctx.font = '700 38px Quicksand'; ctx.fillText(`${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`, 155, ry + 84);
+    ctx.font = '700 38px Manrope'; ctx.fillText(`${MONTHS[d.getMonth()].slice(0,3)} ${d.getDate()}`, 155, ry + 84);
     ctx.textAlign = 'left';
     // Time + place
     ctx.fillStyle = '#ffffff'; ctx.font = '600 40px Manrope'; ctx.fillText(b.time, 262, ry + 52);

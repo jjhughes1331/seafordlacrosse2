@@ -2146,7 +2146,7 @@ function renderWelcome(){
     if(allDone && !flags.dismissed){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e){} }
   } else {
     const row = (done, text, action) => `<button type="button" class="welcome-row${done ? ' done' : ''}" data-welcome="${action}"><span class="welcome-check">${done ? '&#10003;' : ''}</span><span>${text}</span></button>`;
-    card.innerHTML = `<h3>Welcome, ${escSafe(el.whoName.textContent || 'coach')} &#128075;</h3><p class="hint">Three quick things and you're set up.</p>
+    card.innerHTML = `<h3>Welcome, ${escSafe(el.whoName.textContent || 'coach')}</h3><p class="hint">Three quick things and you're set up.</p>
       ${row(favDone, 'Star your favorite field', 'book')}
       ${row(bookDone, myProfile.role === 'coach' ? 'Book your first practice' : 'Book a first practice', 'book')}
       ${row(pushDone, 'Turn on notifications', 'push')}

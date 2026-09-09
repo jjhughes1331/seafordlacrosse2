@@ -1222,9 +1222,22 @@
     <button class="mtab" data-pane="reports">Reports</button>
   </div>
 
-  <div class="admin-pane" data-adminpane="people">
-<p class="admin-section-label">People</p>
-  <div class="admin-card">
+  <div class="admin-pane" data-adminpane="people"><p class="admin-section-label">People</p>
+    <div class="mode-toggle" id="peoplePaneToggle" style="margin:0 0 16px">
+      <span class="mode-toggle-thumb"></span>
+      <button class="mtab active" data-people="users">Users</button>
+      <button class="mtab" data-people="invite">Invite</button>
+      <button class="mtab" data-people="bulk">Bulk</button>
+    </div>
+    <div data-peoplepane="users"><div class="admin-card"><div class="coach-list">
+      <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
+      <table>
+        <thead id="userListHead"><tr><th>Team</th><th>Email</th><th></th></tr></thead>
+        <tbody id="coachListBody"></tbody>
+
+      </table>
+    </div></div></div>
+    <div data-peoplepane="invite" hidden><div class="admin-card">
     <h3 id="adminHeading">Invite a coach</h3>
     <p class="hint" id="adminHint"></p>
     <div class="mode-toggle" id="inviteModeToggle" style="margin:0 0 14px">
@@ -1266,17 +1279,9 @@
       <button id="inviteBtn">Send invite</button>
     </div>
     <div class="status" id="inviteStatus"></div>
-    <div class="coach-list">
-      <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
-      <table>
-        <thead id="userListHead"><tr><th>Team</th><th>Email</th><th></th></tr></thead>
-        <tbody id="coachListBody"></tbody>
-
-      </table>
-    </div>
-  </div>
-
-  <div class="admin-card" style="margin-top:16px">
+    
+  </div></div>
+    <div data-peoplepane="bulk" hidden><div class="admin-card" style="margin-top:16px">
     <h3>Bulk invite from spreadsheet</h3>
     <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b> — one row per coach.
       <a href="coach-roster-template.xlsx" download style="color:var(--turf);font-weight:700">Download the template</a>.
@@ -1293,8 +1298,7 @@
   </div>
 
   
-  </div>
-
+  </div></div>
   <div class="admin-pane" data-adminpane="booking" hidden>
 <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
   <div class="admin-card" id="scheduleLockCard">
@@ -4325,6 +4329,13 @@ el.openWeekFieldChips.addEventListener('click', e => {
 el.openWeekResults.addEventListener('click', e => {
   if(e.target.closest('#finderMoreBtn')){ finderLimit += 40; renderOpenWeek(); }
 });
+document.getElementById('peoplePaneToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-people]'); if(!btn) return;
+  document.querySelectorAll('#peoplePaneToggle .mtab').forEach(t => t.classList.toggle('active', t === btn));
+  document.querySelectorAll('[data-peoplepane]').forEach(pane => { pane.hidden = pane.dataset.peoplepane !== btn.dataset.people; });
+  positionModeThumb(document.getElementById('peoplePaneToggle'));
+  haptic('light');
+});
 document.getElementById('adminPaneToggle').addEventListener('click', e => {
   const btn = e.target.closest('[data-pane]'); if(!btn) return;
   document.querySelectorAll('#adminPaneToggle .mtab').forEach(t => t.classList.toggle('active', t === btn));
@@ -4409,7 +4420,10 @@ el.openWeekResults.addEventListener('click', async e => {
 // ============ ADMIN VIEW ============
 function renderAdmin(){
   // The pane toggle can only measure itself once the view is on screen.
-  requestAnimationFrame(() => positionModeThumb(document.getElementById('adminPaneToggle')));
+  requestAnimationFrame(() => {
+    positionModeThumb(document.getElementById('adminPaneToggle'));
+    positionModeThumb(document.getElementById('peoplePaneToggle'));
+  });
   if(myProfile.role === 'admin'){
     el.adminHeading.textContent = 'Invite a director or coach';
     el.adminHint.textContent = 'As admin you can invite directors (either gender) or coaches (any team). Each team can have more than one coach.';

@@ -765,6 +765,13 @@
   .admin-card-collapsible .hint { margin-top: 12px; }
   .admin-card h3 { font-family: var(--font-body); color: var(--turf-deep); font-size: var(--fs-lg); margin-bottom: 4px; font-weight: 600; }
   .admin-card-danger h3 { color: var(--danger); }
+  /* The danger card borrows .invite-form for its layout and so silently
+     inherited that form's green primary button, which made 'permanently
+     delete this team's bookings' look exactly like 'send invite'. On this
+     screen the only thing that should shout is the thing you can't undo. */
+  .admin-card-danger .invite-form button { background: var(--card); color: var(--danger); border: 1.5px solid var(--danger); }
+  .admin-card-danger .invite-form button:hover:not(:disabled) { background: var(--danger); color: #fff; }
+  .admin-card-danger .invite-form button.armed { background: var(--danger); color: #fff; border-color: var(--danger); }
   .admin-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 16px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }

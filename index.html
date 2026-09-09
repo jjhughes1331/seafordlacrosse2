@@ -1215,6 +1215,10 @@
     <button class="mtab" data-gender="girls">Girls Only</button>
     <button class="mtab" data-gender="boys">Boys Only</button>
   </div>
+  <div class="field" style="margin:12px 0 0">
+    <label for="leagueTeamSelect">Team</label>
+    <select id="leagueTeamSelect"></select>
+  </div>
   <div class="mode-toggle" id="leagueModeToggle">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab" data-mode="list">List</button>
@@ -1555,6 +1559,7 @@ const el = {
   myTeamCount: document.getElementById('myTeamCount'),
   myTeamResults: document.getElementById('myTeamResults'),
   leagueGenderToggle: document.getElementById('leagueGenderToggle'),
+  leagueTeamSelect: document.getElementById('leagueTeamSelect'),
   leagueCount: document.getElementById('leagueCount'),
   leagueResults: document.getElementById('leagueResults'),
   leagueModeToggle: document.getElementById('leagueModeToggle'),
@@ -3432,11 +3437,34 @@ let leagueGenderFilter = 'all'; // 'all' | 'girls' | 'boys'
 let leagueViewMode = 'month'; // 'list' | 'month'
 let leagueMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
 
-function leagueFilteredBookings(){
+let leagueTeamFilter = 'all';   // 'all' | <team id>
+// Gender scope only. The field-fullness panel must stay on this, never on a
+// single team, or "how full is Seamans" would silently become "how much of
+// Seamans does this one team have".
+function leagueGenderScopedBookings(){
   return leagueGenderFilter === 'all'
     ? bookingsCache
     : bookingsCache.filter(b => { const t = teamsById[b.team_id]; return t && t.gender === leagueGenderFilter; });
 }
+function leagueFilteredBookings(){
+  const base = leagueGenderScopedBookings();
+  return leagueTeamFilter === 'all' ? base : base.filter(b => b.team_id === leagueTeamFilter);
+}
+function buildLeagueTeamSelect(){
+  const genders = leagueGenderFilter === 'all' ? ['girls','boys'] : [leagueGenderFilter];
+  const opts = genders.flatMap(g => GRADES
+    .filter(gr => teamsByKey[g+'|'+gr])
+    .map(gr => `<option value="${escSafe(teamsByKey[g+'|'+gr])}">${escSafe(teamLabel(g, gr))}</option>`));
+  el.leagueTeamSelect.innerHTML = '<option value="all">All teams</option>' + opts.join('');
+  // A team chosen under one gender is not in scope once you switch to the other.
+  if(leagueTeamFilter !== 'all' && !el.leagueTeamSelect.querySelector(`option[value="${leagueTeamFilter}"]`)) leagueTeamFilter = 'all';
+  el.leagueTeamSelect.value = leagueTeamFilter;
+}
+el.leagueTeamSelect.addEventListener('change', () => {
+  leagueTeamFilter = el.leagueTeamSelect.value;
+  calState.league.selected = null;
+  renderLeague();
+});
 function leagueLabel(){ return leagueGenderFilter === 'all' ? 'all teams' : (leagueGenderFilter === 'girls' ? 'Girls teams' : 'Boys teams'); }
 
 el.leagueGenderToggle.addEventListener('click', e => {
@@ -3463,6 +3491,7 @@ el.leagueNextMonth.addEventListener('click', () => {
 });
 
 function renderLeague(){
+  buildLeagueTeamSelect();
   const isMonth = leagueViewMode === 'month';
   el.leagueMonthGrid.style.display = isMonth ? 'block' : 'none';
   document.getElementById('leagueUtil').style.display = isMonth ? 'block' : 'none';
@@ -3473,12 +3502,13 @@ function renderLeague(){
   if(isMonth){
     renderMonthCalendar('league', el.leagueMonthGrid);
     const first = firstDayOfMonth(calState.league.monthFirst), last = lastDayOfMonth(calState.league.monthFirst);
-    renderLeagueUtil(first, last, leagueFilteredBookings());
+    renderLeagueUtil(first, last, leagueGenderScopedBookings()); // capacity is a field question, not a team one
     return;
   }
 
   const filtered = leagueFilteredBookings();
-  const label = leagueLabel();
+  const label = leagueTeamFilter === 'all' ? leagueLabel()
+    : (teamsById[leagueTeamFilter] ? teamLabel(teamsById[leagueTeamFilter].gender, teamsById[leagueTeamFilter].grade) : leagueLabel());
   if(!filtered.length){
     el.leagueResults.innerHTML = `<div class="empty-schedule"><b>No bookings yet</b>Nothing booked for ${escSafe(label)} so far this season.</div>`;
     el.leagueCount.innerHTML = '';

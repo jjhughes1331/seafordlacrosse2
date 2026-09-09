@@ -55,9 +55,13 @@
   // booking sits on a slot that genuinely exists — otherwise the calendar
   // would show practices at times no field actually offers.
   const bookings = [];
+  let seeded = false;
   function seedBookings(){
-    const F = (typeof FIELDS !== 'undefined') ? FIELDS : [];
-    if(!F.length) return;
+    if(seeded) return;
+    let F;
+    try { F = FIELDS; } catch(e) { return; }   // still in the TDZ; try again next query
+    if(!F || !F.length) return;
+    seeded = true;
     let id = 1000;
     const start = new Date(2027, 2, 1);
     for(let d = 0; d < 28; d++){
@@ -91,6 +95,7 @@
     let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false;
     const rows = () => (store[table] = store[table] || []);
     async function exec(){
+      seedBookings();
       const hit = rows().filter(r => match(r, filters));
       let data;
       if(op === 'select') data = hit.map(r => ({ ...r }));
@@ -147,7 +152,7 @@
 
   const realCreate = window.supabase && window.supabase.createClient;
   window.supabase = window.supabase || {};
-  window.supabase.createClient = function(){ seedBookings(); return client; };
+  window.supabase.createClient = function(){ return client; };
   window.__fixtureRealCreateClient = realCreate;
 
   // Unmistakable on screen: nobody should ever confuse this for real data.

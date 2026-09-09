@@ -780,6 +780,9 @@
   .cal-time { font-weight: 800; font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .cal-team { font-weight: 700; color: var(--turf-deep); font-size: var(--fs-sm); }
   .cal-where { color: var(--muted); font-size: var(--fs-xs); margin-top: 1px; }
+  .cal-swipe { position: relative; overflow: hidden; border-radius: var(--radius-chip); margin-bottom: 6px; }
+  .cal-swipe .cal-item { margin-bottom: 0; touch-action: pan-y; will-change: transform; }
+  .cal-swipe-del { position: absolute; top: 0; right: 0; bottom: 0; width: 104px; border: none; background: var(--danger); color: #fff; font-family: inherit; font-size: var(--fs-xs); font-weight: 800; cursor: pointer; }
   .cal-item-cancel { min-width: 44px; min-height: 44px; align-self: center; border: none; background: none; color: var(--mine-deep); font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; border-radius: var(--radius-chip); }
   .cal-item-cancel:hover { background: rgba(0,0,0,.07); }
   .cal-empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0 2px; }
@@ -1965,7 +1968,7 @@ function attachSwipeNav(gridEl, getPrevBtn, getNextBtn){
   let startX = 0, startY = 0, tracking = false;
   gridEl.addEventListener('touchstart', e => {
     if(!e.touches.length) return;
-    if(inHorizontalScroller(e.target, gridEl)){ tracking = false; return; }
+    if(inHorizontalScroller(e.target, gridEl) || e.target.closest('[data-swipe]')){ tracking = false; return; }
     startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
   }, { passive: true });
   gridEl.addEventListener('touchend', e => {
@@ -4264,7 +4267,11 @@ function renderMonthCalendar(which, host){
     // small x inside a chip — even though this agenda is where a coach actually
     // looks at their own schedule. Your own team's rows are cancellable here now.
     const cancel = isMine ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">&times;</button>` : '';
-    return `<div class="cal-item${isMine ? ' mine' : ''}"><span class="cal-time">${escSafe(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
+    const row = `<div class="cal-item${isMine ? ' mine' : ''}"${isMine ? ' data-swipe' : ''}><span class="cal-time">${escSafe(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
+    // Swipe-left-to-delete is what a phone user reaches for on a list row, but
+    // it is invisible and unavailable to a mouse or a screen reader, so the x
+    // stays as the discoverable, accessible path. Same action, two routes.
+    return isMine ? `<div class="cal-swipe"><button type="button" class="cal-swipe-del" data-cancel="${escSafe(b.id)}" tabindex="-1">Cancel</button>${row}</div>` : row;
   }).join('') : `<p class="cal-empty">Nothing booked${st.field === 'all' ? '' : ' at ' + escSafe(FIELD_MAP[st.field].name)} on this day.</p>`;
 
   host.innerHTML = `<div class="cal">
@@ -4284,9 +4291,50 @@ function renderMonthCalendar(which, host){
     </div>
   </div>`;
 }
+// Swipe a row left to reveal Cancel. Deliberately does not delete on release:
+// a full-swipe-to-delete has no undo here, and this routes into the same
+// confirmation sheet as every other destructive action.
+(function(){
+  const OPEN = -104, GRAB = 8;
+  let row = null, startX = 0, startY = 0, base = 0, axis = null;
+  const setX = (el, x) => { el.style.transform = x ? `translateX(${x}px)` : ''; };
+  function closeAll(except){
+    document.querySelectorAll('[data-swipe]').forEach(r => { if(r !== except){ r.style.transition = 'transform .2s'; setX(r, 0); r.dataset.open = ''; } });
+  }
+  document.addEventListener('touchstart', e => {
+    const r = e.target.closest('[data-swipe]');
+    if(!r){ closeAll(null); return; }
+    row = r; axis = null;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    base = r.dataset.open === '1' ? OPEN : 0;
+    r.style.transition = 'none';
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if(!row) return;
+    const dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+    if(axis === null){
+      if(Math.abs(dx) < GRAB && Math.abs(dy) < GRAB) return;
+      axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if(axis === 'y'){ row = null; return; }   // it's a scroll; let the page have it
+      closeAll(row);
+    }
+    setX(row, Math.max(OPEN, Math.min(0, base + dx)));
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if(!row || axis !== 'x'){ row = null; return; }
+    const now = parseFloat((row.style.transform.match(/-?[\d.]+/) || [0])[0]) || 0;
+    const open = now < OPEN / 2;
+    row.style.transition = 'transform .22s var(--ease)';
+    setX(row, open ? OPEN : 0);
+    row.dataset.open = open ? '1' : '';
+    if(open) haptic('light');
+    row = null;
+  }, { passive: true });
+})();
+
 // Cancelling from the agenda: same confirmation sheet as everywhere else.
 document.addEventListener('click', async e => {
-  const x = e.target.closest('.cal-item-cancel');
+  const x = e.target.closest('.cal-item-cancel, .cal-swipe-del');
   if(!x) return;
   if(scheduleLocked){ flash('The schedule is currently locked. No changes can be made right now.', 'err'); return; }
   const bk = bookingsCache.find(b => b.id === x.dataset.cancel);

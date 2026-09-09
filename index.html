@@ -615,6 +615,11 @@
      tapping each day. Only the ~16 days inside the forecast window get it. */
   .cal-day.wet { background: linear-gradient(180deg, rgba(90,130,160,.16), rgba(90,130,160,.04)); }
   .cal-day.wet:hover { background: linear-gradient(180deg, rgba(90,130,160,.24), rgba(90,130,160,.08)); }
+  .priority-clock { margin-top: 10px; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
+  .priority-clock.overdue { color: var(--danger); }
+  .finder-days { display: flex; gap: 6px; }
+  .finder-days .daytoggle { flex: 1 1 0; min-width: 0; padding: 10px 0; }
+  .finder-more { display: block; width: 100%; margin-top: 12px; }
   .cal-agenda-date .weather-badge { font-size: var(--fs-xs); vertical-align: 1px; margin-left: 6px; }
   .cal-more { font-size: 9px; font-weight: 800; color: var(--muted); line-height: 1; }
   @media (min-width: 701px) { .cal-day { min-height: 92px; } .cal-num { width: 44px; height: 44px; font-size: var(--fs-lg); } .cal-sel-ring { width: 44px; height: 44px; margin-left: -22px; } }
@@ -1008,7 +1013,7 @@
     <span class="view-tabs-thumb" id="viewTabsThumb"></span>
     <button class="view-tab active" data-view="schedule" data-short="Calendar">Calendar</button>
     <button class="view-tab" data-view="book" data-short="Book">Book A Practice Time</button>
-    <button class="view-tab" data-view="openweek" data-short="Openings">Fields Open This Week</button>
+    <button class="view-tab" data-view="openweek" data-short="Find a Time">Find an Open Time</button>
     <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
     <button class="view-tab" data-view="league" id="leagueTab" data-short="League" style="display:none">League Overview</button>
     <button class="view-tab" data-view="admin" id="adminTab" data-short="Admin" style="display:none">Admin</button>
@@ -1086,7 +1091,7 @@
   <!-- The one-tap path. It was a small grey button buried under the field
        list; the thing that does the most should be the biggest thing. -->
   <button class="btn-primary next-slot-hero" id="findNextSlotBtn" type="button">
-    <span class="next-slot-main"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Show me the next open slot</span>
+    <span class="next-slot-main"><svg class="inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg> Find a time that works</span>
     <span class="next-slot-sub" id="findNextSlotSub"></span>
   </button>
   <p class="section-label">Pick a field</p>
@@ -1136,8 +1141,13 @@
 <!-- ============ OPEN THIS WEEK VIEW ============ -->
 <div id="viewOpenWeek" style="display:none">
   <div class="wrap">
-    <p class="section-label">Filter by field</p>
+    <p class="section-label">Which days?</p>
+    <div class="finder-days" id="finderDays"></div>
+    <p class="section-label" style="margin-top:14px">What time?</p>
+    <div class="field-chips" id="finderTimes"></div>
+    <p class="section-label" style="margin-top:14px">Which field?</p>
     <div class="field-chips" id="openWeekFieldChips"></div>
+    <p class="hint" id="finderUsualNote" style="margin:10px 0 0"></p>
     <p class="count" id="openWeekCount"></p>
     <p class="field-note" id="openWeekBookingAs" style="margin:-6px 0 14px"></p>
     <div id="openWeekResults"></div>
@@ -1458,6 +1468,9 @@ const el = {
   recurringResults: document.getElementById('recurringResults'),
   scheduleCalendar: document.getElementById('scheduleCalendar'),
   openWeekFieldChips: document.getElementById('openWeekFieldChips'),
+  finderDays: document.getElementById('finderDays'),
+  finderTimes: document.getElementById('finderTimes'),
+  finderUsualNote: document.getElementById('finderUsualNote'),
   openWeekCount: document.getElementById('openWeekCount'),
   openWeekBookingAs: document.getElementById('openWeekBookingAs'),
   openWeekResults: document.getElementById('openWeekResults'),
@@ -2274,6 +2287,7 @@ async function loadProfileAndStartInner(){
   await refreshBookings();
   await refreshWaitlist();
   await refreshLockState();
+  autoAdvanceOverdueTier(); // fire-and-forget; no-op unless an admin and a tier is past its deadline
   setupRealtime();
   loadWeather(); // fire-and-forget — never block sign-in on a third-party API
 
@@ -2427,6 +2441,54 @@ async function refreshLockState(){
 // Mirrors the exact same logic as the grade_rank/team_priority_unlocked
 // Postgres functions — this is a UI convenience/preview, the database is the
 // real enforcement (see supabase/priority_booking.sql).
+// A tier gets a clock, and the clock is derived — no new column. A tier opened
+// the moment the tier above it finished, which is exactly max(priority_finished_at)
+// across that tier. Before this, priority_finished_at was set only by a manual
+// tap with no deadline at all: one coach who forgot blocked every team below
+// until a director happened to notice and press Override. The director was
+// serving as a human timer.
+const PRIORITY_TIER_DAYS = 3;
+function tierOpenedAt(rank){
+  const above = [];
+  for(let r = rank + 1; r <= 6; r++) above.push(...teamsAtGradeRank(r));
+  if(!above.length) return SEASON_START > new Date() ? null : null;
+  const stamps = above.map(t => t.priority_finished_at).filter(Boolean);
+  if(stamps.length !== above.length) return null;   // tier above isn't done, so this one hasn't opened
+  return new Date(stamps.sort().slice(-1)[0]);
+}
+function tierDeadline(rank){
+  const opened = tierOpenedAt(rank);
+  return opened ? new Date(opened.getTime() + PRIORITY_TIER_DAYS * 86400000) : null;
+}
+function tierOverdue(rank){
+  const dl = tierDeadline(rank);
+  return !!dl && new Date() > dl;
+}
+function tierTimeLeftText(rank){
+  const dl = tierDeadline(rank);
+  if(!dl) return '';
+  const ms = dl - new Date();
+  if(ms <= 0) return 'past its deadline';
+  const hrs = Math.ceil(ms / 3600000);
+  return hrs <= 48 ? (hrs + (hrs === 1 ? ' hour left' : ' hours left'))
+                   : (Math.ceil(hrs / 24) + ' days left');
+}
+// Writing the rank into priority_forced_ranks is the same mechanism the manual
+// Override button uses, and the one the Postgres gate already honours — so the
+// database and the UI can't disagree. Only admins may write app_settings, so
+// this fires when an admin has the app open rather than on a server timer.
+async function autoAdvanceOverdueTier(){
+  if(!priorityBookingEnabled || myProfile?.role !== 'admin') return;
+  const r = currentBlockingRank();
+  if(r === null || r === undefined || !tierOverdue(r)) return;
+  const next = new Set(priorityForcedRanks); next.add(r);
+  const { error } = await sb.from('app_settings')
+    .update({ priority_forced_ranks: [...next] }).eq('id', true);
+  if(error) return;
+  priorityForcedRanks = next;
+  flash(GRADES[r] + ' passed its ' + PRIORITY_TIER_DAYS + '-day deadline, so the next grade opened automatically.', 'ok');
+  renderPriorityBookingGate();
+}
 function gradeRank(grade){ return GRADES.indexOf(grade); } // 0=Kindergarten ... 6=6th Grade (highest = oldest/most senior)
 function teamsAtGradeRank(rank){ return teams.filter(t => gradeRank(t.grade) === rank); }
 function isTierUnlocked(grade){
@@ -2517,7 +2579,10 @@ function renderPriorityBookingGate(){
   if(!unlocked){
     const blockers = blockingTeamsFor(team.grade);
     const blockerList = blockers.map(t => teamLabel(t.gender, t.grade)).join(', ');
-    el.priorityLockedBanner.innerHTML = `<b>Not ${escSafe(teamLabelText)}'s turn yet.</b> Here's the line:${priorityLadderHTML(team)}`;
+    const blockRank = currentBlockingRank();
+    const left = (blockRank === null || blockRank === undefined) ? '' : tierTimeLeftText(blockRank);
+    const clock = left ? `<div class="priority-clock${tierOverdue(blockRank) ? ' overdue' : ''}">${escSafe(GRADES[blockRank])} has <b>${escSafe(left)}</b> to finish booking${tierOverdue(blockRank) ? ' \u2014 the next grade opens automatically' : ''}.</div>` : '';
+    el.priorityLockedBanner.innerHTML = `<b>Not ${escSafe(teamLabelText)}'s turn yet.</b> Here's the line:${priorityLadderHTML(team)}${clock}`;
     el.priorityLockedBanner.style.display = 'block';
     el.priorityFinishedRow.style.display = 'none';
     document.querySelectorAll('#viewBook > .section-label, #viewBook > .field-chips, #viewBook > .field-note, #viewBook > #findNextSlotBtn, #viewBook > .mode-toggle, #viewBook > #calendarSection, #viewBook > #recurringCard')
@@ -2530,7 +2595,9 @@ function renderPriorityBookingGate(){
     if(team.priority_finished_at){
       el.priorityFinishedRow.innerHTML = `<span class="priority-finished-badge">&#10003; ${escSafe(teamLabelText)} marked finished booking</span>`;
     } else {
-      el.priorityFinishedRow.innerHTML = `<button class="allbtn" id="priorityFinishedBtn">Finished booking for ${escSafe(teamLabelText)}: unlock the next grade</button>`;
+      const myLeft = tierTimeLeftText(gradeRank(team.grade));
+      el.priorityFinishedRow.innerHTML = `<button class="allbtn" id="priorityFinishedBtn">Finished booking for ${escSafe(teamLabelText)}: unlock the next grade</button>`
+        + (myLeft ? `<div class="priority-clock${tierOverdue(gradeRank(team.grade)) ? ' overdue' : ''}">Your grade has <b>${escSafe(myLeft)}</b> before the next grade opens automatically.</div>` : '');
     }
     el.priorityFinishedRow.style.display = 'block';
   }
@@ -3409,7 +3476,7 @@ function buildFieldChips(){
     </button>`).join('');
   el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
   const nextSub = document.getElementById('findNextSlotSub');
-  if(nextSub) nextSub.textContent = 'at ' + FIELD_MAP[selectedField].name;
+  if(nextSub) nextSub.textContent = 'every field, whole season';
 }
 el.fieldChips.addEventListener('click', e => {
   const starBtn = e.target.closest('.fav-star');
@@ -3428,52 +3495,14 @@ el.fieldChips.addEventListener('click', e => {
   renderWeek();
 });
 
-// ============ FIND NEXT OPEN SLOT (smart suggestion — like OpenTable's "next available") ============
-// Scans forward day-by-day on the selected field, from today (or the season
-// start if today is before it) through the end of the season, and returns
-// the first date/subfield/time combo with no matching booking.
-function findNextOpenSlot(fieldId){
-  const field = FIELD_MAP[fieldId];
-  if(!field) return null;
-  const today = new Date(); today.setHours(0,0,0,0);
-  let cursor = today > SEASON_START ? new Date(today) : new Date(SEASON_START);
-  while(cursor <= SEASON_END){
-    const dateStr = fmtDateISO(cursor);
-    const avail = field.availability.find(a => a.days.includes(cursor.getDay()));
-    if(avail){
-      for(const time of avail.times){
-        for(const sub of avail.subfields){
-          const taken = bookingsCache.some(b => b.field_id===fieldId && b.date===dateStr && b.subfield===sub && b.time===time);
-          if(!taken) return { date: dateStr, subfield: sub, time };
-        }
-      }
-    }
-    cursor = addDays(cursor, 1);
-  }
-  return null;
-}
 
 el.findNextSlotBtn.addEventListener('click', () => {
-  const found = findNextOpenSlot(selectedField);
-  if(!found){
-    flash(`No open slots left at ${FIELD_MAP[selectedField].name} this season.`, 'err');
-    return;
-  }
-  bookViewMode = 'week';
-  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
-  currentWeekMonday = mondayOf(parseISO(found.date));
-  renderWeek();
-  flash(`Next open: ${found.subfield} at ${found.time}, ${fmtDateLong(found.date)}. Highlighted below.`, 'ok');
-  // Find the matching rendered button and pulse-highlight it so it's easy to spot on a busy week.
-  requestAnimationFrame(() => {
-    const targetPayload = JSON.stringify({fieldId:selectedField, date:found.date, subfield:found.subfield, time:found.time});
-    const btn = Array.from(document.querySelectorAll('#weekGrid [data-book]')).find(b => b.dataset.book === targetPayload);
-    if(btn){
-      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      btn.classList.add('found-highlight');
-      setTimeout(() => btn.classList.remove('found-highlight'), 2600);
-    }
-  });
+  // Hand the whole question to the search: every field, the whole season,
+  // opened on this team's usual days and time.
+  finderPrefilled = false;
+  finderLimit = 40;
+  openWeekField = null;
+  switchView('openweek');
 });
 el.prevWeek.addEventListener('click', () => {
   const next = addDays(currentWeekMonday, -7);
@@ -4083,22 +4112,108 @@ attachSwipeNav(el.leagueMonthGrid,
 
 
 
-// ============ OPEN THIS WEEK VIEW (all fields, next 7 days, everyone) ============
-let openWeekField = null; // null = all fields
+// ============ FIND A TIME (all fields, whole season, everyone) ============
+// This used to be "fields open this week": a 7-day, all-fields list. The Book
+// tab meanwhile asked for a field FIRST, and findNextOpenSlot() only ever
+// searched the one field it was handed. So a coach who wanted "Tuesday at 6"
+// had to pick a field, scan it, fail, pick the next field, and repeat — the
+// machine ran the inner loop and the human ran the outer one. Now the search
+// takes the question a coach actually has (which days, roughly what time) and
+// answers it across every field for the whole season.
+let openWeekField = null;              // null = all fields
+let finderDays = new Set();            // empty = any day
+let finderTime = 'any';                // 'any' | 'early' | 'evening' | 'late'
+let finderLimit = 40;                  // results shown before "show more"
+const FINDER_TIMES = [
+  { id: 'any',     name: 'Any time' },
+  { id: 'early',   name: 'Before 5' },
+  { id: 'evening', name: '5 - 7' },
+  { id: 'late',    name: 'After 7' },
+];
+function slotStartHour(time){
+  const p = parseTimeRangeTo24h(time);
+  return p ? p.startHour24 + p.startMin / 60 : null;
+}
+function finderTimeMatches(time){
+  if(finderTime === 'any') return true;
+  const h = slotStartHour(time);
+  if(h === null) return true;
+  if(finderTime === 'early') return h < 17;
+  if(finderTime === 'evening') return h >= 17 && h < 19;
+  return h >= 19;
+}
+// The team's own history is the best guess at what they want, and it costs the
+// coach nothing to supply. Most-booked weekday and time band, from their own
+// bookings — so the search opens already pointed at their usual slot.
+function usualPattern(){
+  const teamId = myBookingTeamId();
+  if(!teamId) return null;
+  const mine = bookingsCache.filter(b => b.team_id === teamId);
+  if(mine.length < 3) return null;
+  const dayCount = {}, bandCount = {};
+  mine.forEach(b => {
+    const d = parseISO(b.date).getDay();
+    dayCount[d] = (dayCount[d] || 0) + 1;
+    const h = slotStartHour(b.time);
+    if(h !== null){
+      const band = h < 17 ? 'early' : h < 19 ? 'evening' : 'late';
+      bandCount[band] = (bandCount[band] || 0) + 1;
+    }
+  });
+  const topDays = Object.keys(dayCount).filter(d => dayCount[d] >= 2).map(Number);
+  const topBand = Object.keys(bandCount).sort((a,b) => bandCount[b] - bandCount[a])[0];
+  if(!topDays.length) return null;
+  return { days: topDays, band: topBand || 'any' };
+}
+let finderPrefilled = false;
+function prefillFinderFromHistory(){
+  if(finderPrefilled) return;
+  const u = usualPattern();
+  if(!u) return;
+  finderPrefilled = true;
+  finderDays = new Set(u.days);
+  finderTime = u.band;
+}
 function buildOpenWeekFieldChips(){
   const chipsHtml = [`<button class="fchip${openWeekField===null?' active':''}" data-id="">All fields</button>`]
-    .concat(FIELDS.map(f => `<button class="fchip${f.id===openWeekField?' active':''}" data-id="${f.id}"><span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span></button>`));
+    .concat(FIELDS.map(f => `<button class="fchip${f.id===openWeekField?' active':''}" data-id="${f.id}"><span class="fchip-name">${escSafe(f.short || f.name)}</span></button>`));
   el.openWeekFieldChips.innerHTML = chipsHtml.join('');
 }
-el.openWeekFieldChips.addEventListener('click', e => {
-  const chip = e.target.closest('.fchip'); if(!chip) return;
-  openWeekField = chip.dataset.id || null;
-  buildOpenWeekFieldChips();
-  renderOpenWeek();
-});
-
+function buildFinderChips(){
+  el.finderDays.innerHTML = DOW_SHORT.map((d, i) =>
+    `<button class="daytoggle${finderDays.has(i) ? ' active' : ''}" data-finderday="${i}">${escSafe(d[0])}</button>`).join('');
+  el.finderTimes.innerHTML = FINDER_TIMES.map(t =>
+    `<button class="fchip${finderTime === t.id ? ' active' : ''}" data-findertime="${t.id}">${escSafe(t.name)}</button>`).join('');
+}
+// Every open slot in the season matching the current filters, in date order.
+function findOpenSlots(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  let d = today < SEASON_START ? new Date(SEASON_START) : new Date(today);
+  const out = [];
+  while(d <= SEASON_END){
+    const dow = d.getDay();
+    if(finderDays.size === 0 || finderDays.has(dow)){
+      const dateStr = fmtDateISO(d);
+      FIELDS.filter(f => !openWeekField || f.id === openWeekField).forEach(field => {
+        const avail = field.availability.find(a => a.days.includes(dow));
+        if(!avail) return;
+        avail.times.forEach(time => {
+          if(!finderTimeMatches(time)) return;
+          avail.subfields.forEach(sub => {
+            const taken = bookingsCache.some(b => b.field_id===field.id && b.date===dateStr && b.subfield===sub && b.time===time);
+            if(!taken) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
+          });
+        });
+      });
+    }
+    d = addDays(d, 1);
+  }
+  return out;
+}
 function renderOpenWeek(){
+  prefillFinderFromHistory();
   buildOpenWeekFieldChips();
+  buildFinderChips();
   const teamId = myBookingTeamId();
   if(teamId){
     const key = teamKeyFor(teamId);
@@ -4106,65 +4221,96 @@ function renderOpenWeek(){
   } else {
     el.openWeekBookingAs.textContent = '';
   }
+  const u = usualPattern();
+  el.finderUsualNote.textContent = (u && finderPrefilled)
+    ? 'Set to your team’s usual pattern. Change it above to look elsewhere.'
+    : '';
 
-  const today = new Date(); today.setHours(0,0,0,0);
-  const start = today < SEASON_START ? SEASON_START : today;
-  const cappedEnd = addDays(start, 6);
-  const end = cappedEnd > SEASON_END ? SEASON_END : cappedEnd;
-
+  const all = findOpenSlots();
+  const shown = all.slice(0, finderLimit);
   const byDay = {};
-  let d = new Date(start);
-  while(d <= end){
-    const dow = d.getDay();
-    const dateStr = fmtDateISO(d);
-    FIELDS.filter(f => !openWeekField || f.id === openWeekField).forEach(field => {
-      const avail = field.availability.find(a => a.days.includes(dow));
-      if(!avail) return;
-      avail.times.forEach(time => {
-        avail.subfields.forEach(sub => {
-          const existing = bookingsCache.find(b => b.field_id===field.id && b.date===dateStr && b.subfield===sub && b.time===time);
-          if(!existing){
-            if(!byDay[dateStr]) byDay[dateStr] = [];
-            byDay[dateStr].push({ fieldId: field.id, fieldName: field.name, sub, time });
-          }
-        });
-      });
-    });
-    d = addDays(d, 1);
-  }
+  shown.forEach(s => { (byDay[s.dateStr] = byDay[s.dateStr] || []).push(s); });
 
-  const dates = Object.keys(byDay).sort();
-  let total = 0;
   let html = '';
-  dates.forEach(dateStr => {
+  Object.keys(byDay).sort().forEach(dateStr => {
     const slots = byDay[dateStr].sort((a,b) => a.fieldName.localeCompare(b.fieldName) || a.time.localeCompare(b.time));
-    total += slots.length;
     const byField = {};
-    slots.forEach(s => { if(!byField[s.fieldName]) byField[s.fieldName] = []; byField[s.fieldName].push(s); });
+    slots.forEach(s => { (byField[s.fieldName] = byField[s.fieldName] || []).push(s); });
     html += `<section class="venue"><div class="venue-head"><h3>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</h3><span class="n">${slots.length} open</span></div><div class="rows">`;
     Object.keys(byField).forEach(fieldName => {
-      const fieldSlots = byField[fieldName];
       html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slots">`;
-      fieldSlots.forEach(s => {
-        const payload = JSON.stringify({fieldId:s.fieldId, date:dateStr, subfield:s.sub, time:s.time});
-        html += `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.sub)}</span><span class="plus">+ Book</span></button>`;
+      byField[fieldName].forEach(sl => {
+        const payload = JSON.stringify({fieldId:sl.fieldId, date:dateStr, subfield:sl.sub, time:sl.time});
+        html += `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(sl.time)}</span> <span class="sub">${escSafe(sl.sub)}</span> <span class="plus">+ Book</span></button>`;
       });
       html += `</div></div>`;
     });
     html += `</div></section>`;
   });
 
-  if(!total){
-    const emptyFieldLabel = openWeekField ? FIELD_MAP[openWeekField].name : 'all fields';
-    el.openWeekResults.innerHTML = `<div class="empty-schedule"><b>No open slots in the coming week</b>Everything's booked across ${escSafe(emptyFieldLabel)} for the next 7 days.</div>`;
+  if(!all.length){
+    const where = openWeekField ? FIELD_MAP[openWeekField].name : 'any field';
+    el.openWeekResults.innerHTML = `<div class="empty-schedule"><b>Nothing open that matches</b>No open slots at ${escSafe(where)} on those days at that time for the rest of the season. Try more days, or a different time.</div>`;
     el.openWeekCount.innerHTML = '';
     return;
   }
+  if(all.length > shown.length){
+    html += `<button type="button" class="allbtn finder-more" id="finderMoreBtn">Show more (${all.length - shown.length} more)</button>`;
+  }
   el.openWeekResults.innerHTML = html;
   const fieldLabel = openWeekField ? FIELD_MAP[openWeekField].name : 'all fields';
-  el.openWeekCount.innerHTML = `<b>${total}</b> open slot${total!==1?'s':''} across ${escSafe(fieldLabel)}, ${MONTHS[start.getMonth()]} ${start.getDate()} through ${MONTHS[end.getMonth()]} ${end.getDate()}.`;
+  const dayLabel = finderDays.size ? [...finderDays].sort().map(d => DOW_SHORT[d]).join(', ') : 'any day';
+  el.openWeekCount.innerHTML = `<b>${all.length}</b> open slot${all.length!==1?'s':''} across ${escSafe(fieldLabel)} on ${escSafe(dayLabel)}, rest of season.`;
 }
+el.openWeekFieldChips.addEventListener('click', e => {
+  const chip = e.target.closest('.fchip'); if(!chip) return;
+  openWeekField = chip.dataset.id || null;
+  finderLimit = 40; haptic('light'); renderOpenWeek();
+});
+el.openWeekResults.addEventListener('click', e => {
+  if(e.target.closest('#finderMoreBtn')){ finderLimit += 40; renderOpenWeek(); }
+});
+el.finderDays.addEventListener('click', e => {
+  const b = e.target.closest('[data-finderday]'); if(!b) return;
+  const d = Number(b.dataset.finderday);
+  if(finderDays.has(d)) finderDays.delete(d); else finderDays.add(d);
+  finderLimit = 40; haptic('light'); renderOpenWeek();
+});
+el.finderTimes.addEventListener('click', e => {
+  const b = e.target.closest('[data-findertime]'); if(!b) return;
+  finderTime = b.dataset.findertime;
+  finderLimit = 40; haptic('light'); renderOpenWeek();
+});
 
+// Booking the same weekday and time for the rest of the season used to require
+// entering a separate "Season" mode BEFORE picking anything. Making it an offer
+// on the booking you just made means the repeat decision happens when the coach
+// actually has it — right after they've chosen a slot they like.
+async function repeatForSeason(payload, teamId){
+  const dow = parseISO(payload.date).getDay();
+  const rows = [];
+  let d = addDays(parseISO(payload.date), 7);
+  while(d <= SEASON_END){
+    const dateStr = fmtDateISO(d);
+    const taken = bookingsCache.some(b => b.field_id===payload.fieldId && b.date===dateStr && b.subfield===payload.subfield && b.time===payload.time);
+    if(!taken) rows.push({ field_id: payload.fieldId, date: dateStr, subfield: payload.subfield,
+                           time: payload.time, team_id: teamId, booked_by: session.user.id });
+    d = addDays(d, 7);
+  }
+  if(!rows.length){ flash('Nothing left to repeat: every later ' + DOW_FULL[dow] + ' is already taken.', 'err'); return; }
+  const { data, error } = await sb.from('bookings').insert(rows).select();
+  await refreshBookings();
+  renderOpenWeek();
+  if(error) flash('Could not repeat: ' + error.message, 'err');
+  else flash('Booked ' + (data ? data.length : rows.length) + ' more ' + DOW_FULL[dow] + 's at ' + payload.time + '.', 'ok');
+}
+// A team can legitimately want two fields at once, so this warns rather than
+// blocks — but nothing warned at all before, and a clash only surfaced when a
+// parent turned up at the wrong field.
+function clashingBooking(payload, teamId){
+  return bookingsCache.find(b => b.team_id === teamId && b.date === payload.date && b.time === payload.time
+    && !(b.field_id === payload.fieldId && b.subfield === payload.subfield));
+}
 el.openWeekResults.addEventListener('click', async e => {
   const bookBtn = e.target.closest('[data-book]');
   if(!bookBtn) return;
@@ -4172,6 +4318,13 @@ el.openWeekResults.addEventListener('click', async e => {
   const payload = JSON.parse(bookBtn.dataset.book);
   const teamId = myBookingTeamId();
   if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
+  const clash = clashingBooking(payload, teamId);
+  if(clash && bookBtn.dataset.clashOk !== '1'){
+    bookBtn.dataset.clashOk = '1';
+    const where = FIELD_MAP[clash.field_id] ? FIELD_MAP[clash.field_id].name : clash.field_id;
+    flash('Heads up: this team already has ' + clash.time + ' at ' + where + ' that day. Tap Book again to add it anyway.', 'err');
+    return;
+  }
   bookBtn.disabled = true;
   const { data: inserted, error } = await sb.from('bookings').insert({
     field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
@@ -4182,7 +4335,10 @@ el.openWeekResults.addEventListener('click', async e => {
     else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
     else flash('Booking failed: '+error.message, 'err');
   } else {
-    flashBooked(payload, inserted?.id);
+    const dow = DOW_FULL[parseISO(payload.date).getDay()];
+    flash('Booked ' + payload.time + ' on ' + fmtDateLong(payload.date) + '.', 'ok',
+      { label: 'Repeat every ' + dow, onClick: () => repeatForSeason(payload, teamId) });
+    haptic('success');
   }
   await refreshBookings();
   renderOpenWeek();

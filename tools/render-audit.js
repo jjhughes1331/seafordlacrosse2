@@ -42,9 +42,9 @@
   // elementFromPoint. Read the overlay's computed height instead. A ::before of
   // 44px, or an inset that grows the box to 44, is a real 44px target.
   const hitOK = e => {
-    if (e.getBoundingClientRect().height >= 44) return true;
+    if (e.getBoundingClientRect().height >= 43.5) return true;   // sub-pixel layout: a 44px select measures 43.99
     const b = getComputedStyle(e, '::before');
-    return b.content !== 'none' && parseFloat(b.height) >= 44;
+    return b.content !== 'none' && parseFloat(b.height) >= 43.5;
   };
   out.under44 = els.filter(e => /^(BUTTON|A|SELECT|INPUT)$/.test(e.tagName))
     .filter(e => e.getBoundingClientRect().height > 0 && !hitOK(e))

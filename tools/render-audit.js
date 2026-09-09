@@ -37,12 +37,14 @@
   // small but carry a ::before overlay that expands what a thumb can hit (the
   // toast close is 26px with a 44px target). Measuring box height alone reports
   // those as failures, and an audit that cries wolf stops being read.
+  // Deterministic rather than positional: this script force-displays every view
+  // at once so nothing hides from it, which makes elements overlap and breaks
+  // elementFromPoint. Read the overlay's computed height instead. A ::before of
+  // 44px, or an inset that grows the box to 44, is a real 44px target.
   const hitOK = e => {
-    const r = e.getBoundingClientRect();
-    if (r.height >= 44) return true;
-    const cx = r.left + r.width / 2, pad = (44 - r.height) / 2;
-    const lands = y => { const el = document.elementFromPoint(cx, y); return !!el && (el === e || e.contains(el) || el.parentElement === e); };
-    return lands(r.top - pad + 1) && lands(r.bottom + pad - 1);
+    if (e.getBoundingClientRect().height >= 44) return true;
+    const b = getComputedStyle(e, '::before');
+    return b.content !== 'none' && parseFloat(b.height) >= 44;
   };
   out.under44 = els.filter(e => /^(BUTTON|A|SELECT|INPUT)$/.test(e.tagName))
     .filter(e => e.getBoundingClientRect().height > 0 && !hitOK(e))

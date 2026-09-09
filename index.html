@@ -20,6 +20,146 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- ============ FIXTURE MODE (?fixture=1) ============
+     Every signed-in surface in this app was previously unverifiable without a
+     human typing a password, which meant UI bugs only surfaced against live
+     data. This boots the whole app against an in-memory dataset instead.
+
+     It works by replacing supabase.createClient BEFORE the app calls it, so no
+     application code knows the difference. The safety property that makes it
+     safe to ship: the mock REPLACES the client rather than authenticating
+     against anything, so in this mode there is no database to read or write.
+     It cannot touch production data because it cannot reach it. -->
+<script>
+(function(){
+  if(new URLSearchParams(location.search).get('fixture') !== '1') return;
+
+  const uuid = (n) => 'ffffffff-0000-4000-8000-' + String(n).padStart(12, '0');
+  const ADMIN_ID = uuid(1);
+  const GRADES_F = ["Kindergarten","1st Grade","2nd Grade","3rd Grade","4th Grade","5th Grade","6th Grade"];
+
+  const teams = [];
+  let n = 100;
+  ['girls','boys'].forEach(g => GRADES_F.forEach(grade =>
+    teams.push({ id: uuid(++n), gender: g, grade, priority_finished_at: null })));
+  const teamId = (g, grade) => teams.find(t => t.gender === g && t.grade === grade).id;
+
+  const profiles = [
+    { id: ADMIN_ID, email: 'admin@fixture.test',  role: 'admin',    gender: null,    team_id: null },
+    { id: uuid(2),  email: 'dana@fixture.test',   role: 'director', gender: 'girls', team_id: null },
+    { id: uuid(3),  email: 'sam.coach@fixture.test', role: 'coach', gender: 'girls', team_id: teamId('girls','6th Grade') },
+    { id: uuid(4),  email: 'jordan.reallylongaddress@fixture.test', role: 'coach', gender: 'boys', team_id: teamId('boys','5th Grade') },
+  ];
+
+  // Seeded off the real FIELDS table further down the page, so every fixture
+  // booking sits on a slot that genuinely exists — otherwise the calendar
+  // would show practices at times no field actually offers.
+  const bookings = [];
+  function seedBookings(){
+    const F = (typeof FIELDS !== 'undefined') ? FIELDS : [];
+    if(!F.length) return;
+    let id = 1000;
+    const start = new Date(2027, 2, 1);
+    for(let d = 0; d < 28; d++){
+      const day = new Date(2027, 2, 1 + d);
+      F.forEach((f, fi) => {
+        const avail = f.availability.find(a => a.days.includes(day.getDay()));
+        if(!avail) return;
+        // deterministic, roughly half-full, so fullness bars have a range
+        avail.times.forEach((time, ti) => avail.subfields.forEach((sub, si) => {
+          if((d * 7 + fi * 3 + ti * 2 + si) % 3 !== 0) return;
+          const t = teams[(d + fi + ti + si) % teams.length];
+          bookings.push({ id: uuid(++id), field_id: f.id, date:
+            day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0'),
+            subfield: sub, time, team_id: t.id, booked_by: ADMIN_ID });
+        }));
+      });
+    }
+  }
+
+  const store = {
+    teams, profiles, bookings,
+    waitlist: [],
+    app_settings: [{ id: true, schedule_locked: false, priority_booking_enabled: false, priority_forced_ranks: [], locked_by: null }],
+  };
+  window.__fixtureStore = store;
+
+  const match = (row, filters) => filters.every(([k, op, v]) =>
+    op === 'eq' ? row[k] === v : op === 'neq' ? row[k] !== v : op === 'in' ? v.includes(row[k]) : true);
+
+  function from(table){
+    let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false;
+    const rows = () => (store[table] = store[table] || []);
+    async function exec(){
+      const hit = rows().filter(r => match(r, filters));
+      let data;
+      if(op === 'select') data = hit.map(r => ({ ...r }));
+      else if(op === 'insert'){
+        const list = (Array.isArray(payload) ? payload : [payload]).map(r => ({ id: crypto.randomUUID(), ...r }));
+        // mirror the real unique constraint on a slot
+        for(const r of list){
+          if(table === 'bookings' && rows().some(x => x.field_id===r.field_id && x.date===r.date && x.subfield===r.subfield && x.time===r.time))
+            return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
+        }
+        list.forEach(r => rows().push(r));
+        data = list.map(r => ({ ...r }));
+      }
+      else if(op === 'update'){ hit.forEach(r => Object.assign(r, payload)); data = hit.map(r => ({ ...r })); }
+      else if(op === 'delete'){ data = hit.map(r => ({ ...r })); store[table] = rows().filter(r => !match(r, filters)); }
+      if(wantSingle){
+        if(!data.length && !maybe) return { data: null, error: { code: 'PGRST116', message: 'no rows returned' } };
+        return { data: data[0] || null, error: null };
+      }
+      return { data, error: null };
+    }
+    const api = {
+      select(){ if(op === 'select') op = 'select'; return api; },
+      insert(d){ op = 'insert'; payload = d; return api; },
+      update(d){ op = 'update'; payload = d; return api; },
+      delete(){ op = 'delete'; return api; },
+      eq(k, v){ filters.push([k, 'eq', v]); return api; },
+      neq(k, v){ filters.push([k, 'neq', v]); return api; },
+      in(k, v){ filters.push([k, 'in', v]); return api; },
+      order(){ return api; }, limit(){ return api; }, like(){ return api; },
+      single(){ wantSingle = true; return api; },
+      maybeSingle(){ wantSingle = true; maybe = true; return api; },
+      then(res, rej){ return exec().then(res, rej); },
+    };
+    return api;
+  }
+
+  const session = { access_token: 'fixture-token', user: { id: ADMIN_ID, email: 'admin@fixture.test' } };
+  const client = {
+    __fixture: true,
+    auth: {
+      getSession: async () => ({ data: { session }, error: null }),
+      getUser:    async () => ({ data: { user: session.user }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }),
+      signInWithPassword: async () => ({ data: { session }, error: null }),
+      signOut: async () => { location.href = location.pathname; return { error: null }; },
+      resetPasswordForEmail: async () => ({ data: {}, error: null }),
+      updateUser: async () => ({ data: { user: session.user }, error: null }),
+    },
+    from,
+    channel: () => ({ on(){ return this; }, subscribe(){ return this; } }),
+    removeChannel: () => {},
+  };
+
+  const realCreate = window.supabase && window.supabase.createClient;
+  window.supabase = window.supabase || {};
+  window.supabase.createClient = function(){ seedBookings(); return client; };
+  window.__fixtureRealCreateClient = realCreate;
+
+  // Unmistakable on screen: nobody should ever confuse this for real data.
+  addEventListener('DOMContentLoaded', () => {
+    const bar = document.createElement('div');
+    bar.textContent = 'FIXTURE MODE — sample data, nothing is saved';
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#b0402a;color:#fff;'
+      + 'font:800 11px/1 system-ui,sans-serif;letter-spacing:1px;text-align:center;padding:6px 8px;text-transform:uppercase';
+    document.body.appendChild(bar);
+  });
+})();
+</script>
 <!-- Motion + 3D. Everything that uses these is guarded (window.gsap / window.THREE)
      and degrades to the plain CSS behavior if a CDN is blocked or offline. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>

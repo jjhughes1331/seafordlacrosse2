@@ -40,6 +40,7 @@
   // Anything wider than its own container (the bug a short test email hides)
   out.overflowing = els.filter(e => {
     const p = e.parentElement; if (!p) return false;
+    if (cs(e).position === 'fixed') return false;   // fixed elements escape their parent by design
     return e.getBoundingClientRect().width > p.getBoundingClientRect().width + 1;
   }).map(e => e.tagName + '.' + String(e.className).slice(0, 24)).slice(0, 10);
   out.pageScrollsSideways = document.documentElement.scrollWidth - window.innerWidth;

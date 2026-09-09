@@ -7,6 +7,29 @@ parents.** One static file, no build step, no framework.
 > Next.js on Netlify, Geist + Anton). Memory entries mentioning Netlify,
 > `components/icons.tsx` or `--stage-*` tokens are that project, not this one.
 
+## Keeping this file true
+This file loads in full at the start of every session here, so it is both the
+cheapest place to put knowledge and a file that costs tokens forever. Both
+halves of that matter.
+
+**Update it in the same commit as the change** — not afterwards, not "later".
+A stale CLAUDE.md is worse than none, because it is trusted.
+
+Write a line here when a change would otherwise have to be *rediscovered*:
+- a decision a future session might reasonably reverse without knowing why
+- something the database or a third party enforces that the code doesn't show
+- a gotcha that cost more than a few minutes to diagnose
+- a domain rule that surprised someone
+
+Do **not** write a line for: what a file already says plainly, anything `git
+log` answers, routine fixes, or work in progress. If it is not worth re-reading
+in six months, it is not worth loading in every session.
+
+**Delete as readily as you add.** When a section stops being true, cut it in the
+same commit that made it untrue. Superseded decisions go entirely — leaving
+"we used to do X" invites someone to weigh a dead option. If a section has
+grown past a screen, it wants its own file with one line pointing to it here.
+
 ## Structure
 - `index.html` — the entire site: markup, styles and script in one file (~5,200 lines)
 - `sw.js`, `manifest.json` — PWA. The SW is **network-first** and skips Supabase, so it never serves stale data

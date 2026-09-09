@@ -4341,6 +4341,10 @@ document.getElementById('adminPaneToggle').addEventListener('click', e => {
   document.querySelectorAll('#adminPaneToggle .mtab').forEach(t => t.classList.toggle('active', t === btn));
   document.querySelectorAll('[data-adminpane]').forEach(pane => { pane.hidden = pane.dataset.adminpane !== btn.dataset.pane; });
   positionModeThumb(document.getElementById('adminPaneToggle'));
+  // The People sub-toggle lives inside the People pane, so it has no geometry
+  // while that pane is hidden and its sliding pill can't be measured. Re-measure
+  // it the moment the pane comes back.
+  if(btn.dataset.pane === 'people') positionModeThumb(document.getElementById('peoplePaneToggle'));
   haptic('light');
 });
 el.finderDays.addEventListener('click', e => {

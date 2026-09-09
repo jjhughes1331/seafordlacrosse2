@@ -184,10 +184,8 @@
   header.scrolled::before { opacity: 0; transition: opacity .25s var(--ease); } /* the glow behind the crest reads as noise once condensed */
   header.scrolled .header-hero img { height: 32px; }
   header.scrolled h1 { font-size: 19px; }
-  header.scrolled .eyebrow { max-height: 0; opacity: 0; margin: 0; overflow: hidden; }
   header.scrolled .view-tabs { margin-top: 10px; }
   header .header-hero img, header h1 { transition: height .25s var(--ease), font-size .25s var(--ease); }
-  header .eyebrow { transition: max-height .25s var(--ease), opacity .2s var(--ease), margin .25s var(--ease); }
   header::before {
     content: '';
     position: absolute;
@@ -234,7 +232,7 @@
     border-bottom: 1px solid var(--line);
   }
   .hamburger-identity .who { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hamburger-identity .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 3px 9px; border-radius: var(--radius-pill); flex: none; }
+  .hamburger-identity .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 4px 8px; border-radius: var(--radius-pill); flex: none; }
   .hamburger-menu .hamburger-signout {
     color: var(--danger); font-weight: 700; border-top: 1px solid var(--line); margin-top: 2px; padding-top: 12px; border-radius: 0 0 var(--radius-chip) var(--radius-chip);
   }
@@ -243,7 +241,6 @@
   .header-logo-col { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
   .header-hero img { height: 68px; width: auto; display: block; filter: drop-shadow(0 3px 8px rgba(20,55,31,.14)); }
   .header-text { position: relative; z-index: 1; text-align: center; }
-  .eyebrow { font-size: var(--fs-2xs); letter-spacing: 3px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
   h1 { font-family: var(--font-display); font-size: clamp(28px, 5.5vw, 44px); font-weight: 600; letter-spacing: .2px; color: var(--turf-deep); line-height: 1.1; }
   .sub { color: var(--muted); margin-top: 4px; font-size: var(--fs-base); }
 
@@ -262,7 +259,7 @@
   #lockBanner.show { max-height: 60px; opacity: 1; padding: 10px 20px; }
   .signed-in .label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
   .signed-in .who { font-size: var(--fs-md); font-weight: 800; color: var(--turf-deep); }
-  .signed-in .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 3px 9px; border-radius: var(--radius-pill); }
+  .signed-in .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 4px 8px; border-radius: var(--radius-pill); }
   .signout-btn { margin-left: auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 6px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .signout-btn:hover { border-color: var(--danger); color: var(--danger); }
 
@@ -272,7 +269,7 @@
   .auth-screen h2 { font-family: var(--font-display); font-size: var(--fs-xl); color: var(--turf-deep); margin-bottom: 6px; font-weight: 600; }
   .auth-screen p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 20px; }
   .field { text-align: left; margin-bottom: 14px; }
-  .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; }
+  .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
   .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; }
   .field input:focus { outline: none; border-color: var(--hover-edge); }
   .btn-primary { width: 100%; background: var(--accent-fill); color: #fff; border: none; padding: 12px; border-radius: var(--radius-chip); font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
@@ -301,7 +298,7 @@
     display: block; width: 100%; max-width: 320px;
     border: 1.5px solid var(--line); background-color: var(--card); color: var(--ink);
     font-family: inherit; font-size: var(--fs-sm); font-weight: 700;
-    padding: 13px 40px 13px 18px; border-radius: var(--radius-pill); cursor: pointer;
+    padding: 12px 40px 12px 18px; border-radius: var(--radius-pill); cursor: pointer;
     box-shadow: var(--shadow-card);
     background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2ZTdiNzAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJtNiA5IDYgNiA2LTYiLz48L3N2Zz4=");
     background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;
@@ -332,27 +329,27 @@
   .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
   .now-showing { font-size: var(--fs-lg); font-weight: 800; color: var(--ink); }
   .now-showing .tag { color: var(--turf-deep); }
-  .allbtn { margin-left: auto; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 7px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .allbtn { margin-left: auto; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .allbtn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .count { color: var(--muted); font-size: var(--fs-sm); margin: 12px 0 16px; }
   .count b { color: var(--ink); }
   .venue { margin-bottom: 26px; }
-  .venue-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; margin-bottom: 6px; border-bottom: 2px solid var(--turf-deep); }
+  .venue-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 2px solid var(--turf-deep); }
   .venue-head h3 { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; color: var(--turf-deep); }
   .venue-head .n { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
-  .venue-note { font-size: var(--fs-xs); color: var(--muted); margin: 7px 0 12px; font-style: italic; }
+  .venue-note { font-size: var(--fs-xs); color: var(--muted); margin: 8px 0 12px; font-style: italic; }
   .rows { display: grid; gap: 7px; }
-  .row { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 11px 13px; box-shadow: var(--shadow-card); display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
+  .row { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px 12px; box-shadow: var(--shadow-card); display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
   .row .date { font-weight: 700; font-size: var(--fs-sm); color: var(--ink); }
   .row .date .dow { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
   .slots { display: flex; flex-wrap: wrap; gap: 6px; }
-  .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 9px; color: var(--turf-deep); }
+  .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 8px; color: var(--turf-deep); }
   .slots .slot.mine { background: var(--mine-bg); border-color: var(--mine); color: var(--mine-deep); font-weight: 700; }
-  .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 800; margin-right: 3px; }
+  .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 800; margin-right: 4px; }
   .slots .slot .time { color: var(--muted); font-weight: 600; }
   .slots .slot.mine .time { color: var(--mine-deep); }
   .slots .slot .sub { font-weight: 700; }
-  .empty-schedule { text-align: center; padding: 45px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
+  .empty-schedule { text-align: center; padding: 44px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
   .empty-schedule::before {
     content: ''; display: block; width: 32px; height: 32px; margin: 0 auto 10px; opacity: .5;
     background-color: var(--muted);
@@ -388,7 +385,7 @@
     .fchip-full { display: none; }
     .fchip-short { display: inline; }
   }
-  .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
   .fchip { display: inline-flex; align-items: center; gap: 6px; }
@@ -405,7 +402,7 @@
   .fchip.active .fav-star.active { color: #ffd76a; fill: #ffd76a; }
   .fchip.active .fav-star.active svg { fill: #ffd76a; }
   .field-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin-bottom: 14px; }
-  .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 9px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
+  .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
   .pull-refresh-indicator {
     position: fixed; top: 0; left: 50%; z-index: 800;
     transform: translate(-50%, -60px); opacity: 0; pointer-events: none;
@@ -428,7 +425,7 @@
      iOS-native segmented-control look. */
   .mode-toggle, .gender-tabs {
     display: flex; width: fit-content; margin: 10px auto 14px; position: relative;
-    background: var(--line); border-radius: var(--radius-pill); padding: 3px; gap: 0;
+    background: var(--line); border-radius: var(--radius-pill); padding: 4px; gap: 0;
   }
   .mode-toggle-thumb {
     position: absolute; top: 3px; left: 3px; height: calc(100% - 6px);
@@ -438,7 +435,7 @@
   }
   .mtab, .gtab {
     position: relative; z-index: 1; border: none; background: none; color: var(--muted);
-    padding: 7px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
+    padding: 8px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
     cursor: pointer; transition: color .2s var(--ease);
   }
   .mtab:hover, .gtab:hover { color: var(--hover-edge); }
@@ -477,7 +474,7 @@
   .cal-cell.closed { background: var(--chalk); }
   .cal-daynum { font-size: var(--fs-xs); font-weight: 800; color: var(--turf-deep); margin-bottom: 4px; flex: none; }
   .cal-slots { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; max-height: 100px; }
-  .cal-slot { font-size: 10.5px; padding: 2px 5px; border-radius: var(--radius-chip); background: var(--chip-bg); color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
+  .cal-slot { font-size: 10.5px; padding: 2px 6px; border-radius: var(--radius-chip); background: var(--chip-bg); color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
   .cal-slot.empty { background: none; border: 1px dashed var(--line); color: var(--muted); cursor: pointer; width: 100%; }
   .cal-slot.empty:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-slot.mine { background: var(--mine-bg); color: var(--mine-deep); font-weight: 700; border: 1px solid var(--mine); }
@@ -485,7 +482,7 @@
     .cal-grid { gap: 3px; }
     .cal-cell { min-height: 72px; padding: 4px; }
     .cal-daynum { font-size: 10px; }
-    .cal-slot { font-size: 10px; padding: 4px 5px; min-height: 22px; }
+    .cal-slot { font-size: 10px; padding: 4px 6px; min-height: 22px; }
     .cal-slots { max-height: 84px; }
   }
   /* Under ~480px a 7-col grid can't fit real touch targets — switch month view
@@ -517,23 +514,23 @@
   select:hover { border-color: var(--hover-edge); }
   select:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
   .field select { width: 100%; }
-  .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 7px 13px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
+  .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
   .weeknav button:hover:not(:disabled) { border-color: var(--hover-edge); color: var(--hover-edge); }
   .weeknav button:disabled { opacity: .35; cursor: not-allowed; }
   @media (max-width: 420px) {
     .weeknav button .navlabel { display: none; } /* arrow-only — "Prev month" was wrapping mid-word on narrow phones */
-    .weeknav button { padding: 9px 14px; font-size: var(--fs-md); }
+    .weeknav button { padding: 8px 14px; font-size: var(--fs-md); }
   }
   .weeknav .label { flex: 1; text-align: center; font-weight: 800; font-size: var(--fs-base); color: var(--ink); }
-  .day { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 13px; margin-bottom: 11px; box-shadow: var(--shadow-card); }
-  .day h3 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 9px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+  .day { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
+  .day h3 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
   .day h3 .past { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 6px; }
-  .timerow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 5px 8px; align-items: start; border-radius: var(--radius-chip); }
+  .timerow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 6px 8px; align-items: start; border-radius: var(--radius-chip); }
   /* Every open slot looked identical regardless of time — nothing to latch onto
      while scanning a day. Zebra-striping alternate time groups gives the eye
      a pattern to scan by by without reading every label. */
   .timerow:nth-of-type(even) { background: var(--chip-bg); }
-  .timerow + .timerow { border-top: 1px dashed var(--line); padding-top: 7px; margin-top: 3px; }
+  .timerow + .timerow { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 4px; }
   .timelabel { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); padding-top: 6px; }
   .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
   .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
@@ -557,7 +554,7 @@
   /* Two-tap confirm countdown ring — shows how long the armed state lasts
      instead of leaving people guessing when it silently disarms. */
   .armed:has(> .arm-ring) { position: relative; padding-right: 28px !important; }
-  .arm-ring { position: absolute; right: 7px; top: 50%; width: 14px; height: 14px; margin-top: -7px; pointer-events: none; }
+  .arm-ring { position: absolute; right: 7px; top: 50%; width: 14px; height: 14px; margin-top: -8px; pointer-events: none; }
   .arm-ring svg { width: 14px; height: 14px; display: block; transform: rotate(-90deg); }
   .arm-ring circle { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: armRing 3s linear forwards; opacity: .95; }
   @keyframes armRing { to { stroke-dashoffset: 50.27; } }
@@ -582,7 +579,7 @@
      well not have existed — half of why the sideways drag got attempted at
      all. Fade the trailing edge so there's visibly more to reach. */
   .cal-filter { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); }
-  .cal-chip { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 7px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
+  .cal-chip { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
   .cal-chip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .cal-weekdays, .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
@@ -623,24 +620,24 @@
   @media (min-width: 701px) { .cal-day { min-height: 92px; } .cal-num { width: 44px; height: 44px; font-size: var(--fs-lg); } .cal-sel-ring { width: 44px; height: 44px; margin-left: -22px; } }
   .cal-agenda { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
   .cal-agenda-date { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
-  .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 11px 13px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--turf); margin-bottom: 6px; }
+  .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 12px 12px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line); margin-bottom: 6px; }
   .cal-item.mine { border-left-color: var(--mine); background: var(--mine-bg); }
   .cal-time { font-weight: 800; font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .cal-team { font-weight: 700; color: var(--turf-deep); font-size: var(--fs-sm); }
   .cal-where { color: var(--muted); font-size: var(--fs-xs); margin-top: 1px; }
   .cal-empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0 2px; }
   .cal-legend { display: flex; gap: 14px; margin-top: 12px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
-  .cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+  .cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
   /* Big one-tap "next open slot" button */
   .next-slot-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 0 0 18px; padding: 14px 18px; border-radius: var(--radius-pill); font-size: var(--fs-md); line-height: 1.2; }
   .next-slot-hero .next-slot-main { display: inline-flex; align-items: center; gap: 8px; }
   .next-slot-hero .next-slot-sub { font-size: var(--fs-xs); font-weight: 600; opacity: .85; }
   /* Toast action (Undo) */
-  .toast-action { margin-left: 6px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 999px; padding: 6px 13px; font-weight: 800; font-size: var(--fs-xs); cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .toast-action { margin-left: 6px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: var(--fs-xs); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .toast-action:hover { background: rgba(255,255,255,.26); }
   /* Priority ladder */
   .ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
-  .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: var(--radius-chip); background: rgba(255,255,255,.55); color: var(--ink); font-size: var(--fs-sm); }
+  .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-chip); background: rgba(255,255,255,.55); color: var(--ink); font-size: var(--fs-sm); }
   .ladder-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; background: var(--line); color: var(--muted); }
   .ladder-note { font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
   .ladder-row.done { opacity: .75; }
@@ -673,7 +670,7 @@
   @media (min-width: 1041px) { .welcome-card, .install-nudge { margin-left: auto; margin-right: auto; } }
   .welcome-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 2px; font-weight: 600; }
   .welcome-card .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
-  .welcome-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--chip-bg); border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 11px 14px; margin-bottom: 8px; font-family: inherit; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); cursor: pointer; }
+  .welcome-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--chip-bg); border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 12px 14px; margin-bottom: 8px; font-family: inherit; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); cursor: pointer; }
   .welcome-row:hover { border-color: var(--hover-edge); }
   .welcome-row.done { background: var(--ok-bg); color: var(--muted); text-decoration: line-through; cursor: default; }
   .welcome-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--turf); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex: none; }
@@ -681,7 +678,7 @@
   .welcome-card .link-btn { margin-top: 2px; }
   .nudge-text { font-size: var(--fs-sm); color: var(--ink); line-height: 1.5; }
   .nudge-actions { display: flex; gap: 8px; }
-  .kbd { display: inline-block; background: var(--chip-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: var(--fs-xs); }
+  .kbd { display: inline-block; background: var(--chip-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; font-weight: 700; font-size: var(--fs-xs); }
   .cal-title { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 4px; font-weight: 600; }
   .share-sheet .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
   .cal-google-hint { margin: 12px 0 0 !important; }
@@ -691,7 +688,7 @@
   .share-sheet { position: relative; z-index: 1; width: min(420px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card-hover); padding: 14px; }
   .share-sheet img { display: block; width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; background: var(--turf-deep); }
   .share-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-  .share-actions .btn-primary { width: auto; flex: 1 1 140px; margin-top: 0; padding: 11px 16px; }
+  .share-actions .btn-primary { width: auto; flex: 1 1 140px; margin-top: 0; padding: 12px 16px; }
   .share-actions .allbtn { flex: 1 1 110px; }
   .weather-badge svg { animation: drip 2.6s ease-in-out infinite; transform-origin: 50% 30%; }
   @keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
@@ -701,7 +698,7 @@
   }
   .waitlist-btn {
     border: 1px dashed var(--mine); background: none; color: var(--mine-deep); font-size: var(--fs-2xs);
-    font-weight: 700; padding: 2px 7px; border-radius: var(--radius-chip); cursor: pointer; font-family: inherit; margin-left: 2px;
+    font-weight: 700; padding: 2px 8px; border-radius: var(--radius-chip); cursor: pointer; font-family: inherit; margin-left: 2px;
   }
   .waitlist-btn:hover { background: var(--mine-bg); }
   .waitlist-btn.on { border-style: solid; background: var(--mine-bg); }
@@ -718,7 +715,7 @@
   }
   .field-map-toggle {
     display: inline-block; margin: 6px 8px 0 0; border: 1px dashed var(--line); background: none;
-    color: var(--turf); font-size: var(--fs-2xs); font-weight: 700; padding: 3px 9px; font-style: normal;
+    color: var(--turf); font-size: var(--fs-2xs); font-weight: 700; padding: 4px 8px; font-style: normal;
     border-radius: var(--radius-chip); cursor: pointer; font-family: inherit;
   }
   .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--hover-edge); background: var(--chip-hover-bg); }
@@ -728,7 +725,7 @@
   .field-map-box iframe { width: 100%; height: 220px; border: 0; display: block; }
   .weather-badge {
     display: inline-block; font-size: var(--fs-2xs); font-weight: 700; color: var(--danger);
-    background: var(--danger-bg); padding: 2px 7px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
+    background: var(--danger-bg); padding: 2px 8px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
   }
   .book-slot.mine .cancel.armed { background: var(--danger) !important; color: #fff !important; }
   .plus { color: var(--muted); font-weight: 700; }
@@ -766,7 +763,7 @@
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
   .invite-form .bulk-file-field { flex-basis: 260px; }
   .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: var(--fs-base); background: var(--card); }
-  .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 11px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
+  .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 12px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 700; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
   /* Per-user actions live in a row that opens *under* the user's row rather
@@ -783,7 +780,7 @@
   .user-actions-status { flex-basis: 100%; }
   .credential-box { background: var(--chip-bg); border: 1.5px solid var(--line); border-radius: var(--radius-chip); padding: 12px 14px; margin-top: 8px; }
   .credential-box > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .credential-box code { font-family: monospace; font-size: var(--fs-base); background: var(--card); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); word-break: break-all; }
+  .credential-box code { font-family: monospace; font-size: var(--fs-base); background: var(--card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); word-break: break-all; }
   .credential-label { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); min-width: 64px; }
   .coach-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
   .coach-list table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
@@ -828,7 +825,7 @@
   .skeleton-wrap { max-width: 1000px; margin: 24px auto 0; padding: 0 20px; }
   .skel { background: linear-gradient(90deg, var(--line) 25%, var(--chalk) 37%, var(--line) 63%); background-size: 400% 100%; animation: skelShine 1.4s ease infinite; border-radius: var(--radius-chip); }
   @keyframes skelShine { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-  .skel-row { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 11px 13px; margin-bottom: 7px; display: flex; gap: 12px; align-items: center; }
+  .skel-row { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px 12px; margin-bottom: 8px; display: flex; gap: 12px; align-items: center; }
   .skel-row .skel-date { width: 90px; height: 14px; flex: none; }
   .skel-row .skel-chip { width: 120px; height: 22px; }
   .skel-row .skel-chip:nth-child(3) { width: 84px; }
@@ -841,7 +838,7 @@
   #themeToggleBtn {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--line); background: var(--card); color: var(--ink);
-    padding: 9px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
+    padding: 8px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
     cursor: pointer; font-family: inherit;
   }
   #themeToggleBtn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
@@ -871,7 +868,6 @@
        for guaranteed no overlap with the button. */
     .header-hero { gap: 10px; padding: 0 4px 0 52px; }
     .header-hero img { height: 52px; }
-    .eyebrow { font-size: 9.5px; letter-spacing: 2px; white-space: nowrap; }
   }
 
   /* ===== Mobile app shell: floating pill tab bar instead of a scrolling top strip ===== */
@@ -979,7 +975,7 @@
     <h3 class="cal-title" id="calSheetTitle">Add to your calendar</h3>
     <p class="hint" id="calSheetHint">Sync it and your calendar updates itself whenever a practice is booked or cancelled. Download it and you get today's schedule, frozen.</p>
     <div class="share-actions" style="flex-direction:column">
-      <button class="btn-primary" id="calSubscribeBtn" type="button">Sync — updates itself</button>
+      <button class="btn-primary" id="calSubscribeBtn" type="button">Sync (updates itself)</button>
       <button class="allbtn" id="calCopyBtn" type="button">Copy link (for Google Calendar)</button>
       <button class="allbtn" id="calDownloadBtn" type="button">Download once (.ics)</button>
       <button class="allbtn" type="button" data-cal-close>Close</button>
@@ -1004,14 +1000,13 @@
 <header>
   <div class="header-hero">
     <div class="header-text">
-      <div class="eyebrow">Seaford, New York</div>
       <h1>Seaford Lacrosse</h1>
     </div>
     <div class="header-logo-col"><img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse"></div>
   </div>
   <nav class="view-tabs" id="viewTabs" style="display:none">
     <span class="view-tabs-thumb" id="viewTabsThumb"></span>
-    <button class="view-tab active" data-view="schedule" data-short="Schedule">View Full Schedule</button>
+    <button class="view-tab active" data-view="schedule" data-short="Calendar">Calendar</button>
     <button class="view-tab" data-view="book" data-short="Book">Book A Practice Time</button>
     <button class="view-tab" data-view="openweek" data-short="Openings">Fields Open This Week</button>
     <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
@@ -1060,7 +1055,7 @@
   <div class="install-nudge" id="installNudge" style="display:none"></div>
   <div class="mode-toggle" id="scheduleModeToggle">
     <span class="mode-toggle-thumb"></span>
-    <button class="mtab active" data-mode="calendar">Calendar</button>
+    <button class="mtab active" data-mode="calendar">Month</button>
     <button class="mtab" data-mode="list">List</button>
   </div>
 
@@ -1127,13 +1122,13 @@
 
   <div class="recurring-card" id="recurringCard" style="display:none">
     <h3>Book for the season</h3>
-    <p class="hint">Pick one or more days of the week and a time slot at <b id="recurringFieldName"></b> &mdash; every matching open date from now through the end of the season gets booked in one go.</p>
+    <p class="hint">Pick one or more days of the week and a time slot at <b id="recurringFieldName"></b> every matching open date from now through the end of the season gets booked in one go.</p>
     <div class="recurring-days" id="recurringDays"></div>
     <div class="field" style="max-width:360px">
       <label>Time slot</label>
       <select id="recurringSlotSelect"><option value="">Pick day(s) first</option></select>
     </div>
-    <button class="btn-primary" style="width:auto;padding:11px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
+    <button class="btn-primary" style="width:auto;padding:12px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
     <div id="recurringResults"></div>
   </div>
 </div>
@@ -1263,14 +1258,14 @@
   <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
   <div class="admin-card" id="scheduleLockCard">
     <h3>Schedule lock</h3>
-    <p class="hint" id="lockHint">When locked, nobody — including admins and directors — can book or cancel anything until it's unlocked again.</p>
-    <button class="btn-primary" id="lockToggleBtn" style="width:auto;padding:11px 20px"></button>
+    <p class="hint" id="lockHint">When locked, nobody (including admins and directors) can book or cancel anything until it's unlocked again.</p>
+    <button class="btn-primary" id="lockToggleBtn" style="width:auto;padding:12px 20px"></button>
   </div>
 
   <div class="admin-card" style="margin-top:16px" id="priorityBookingCard">
     <h3>Priority booking (grade hierarchy)</h3>
     <p class="hint">When on, teams can only book once every older grade has finished — 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
-    <button class="btn-primary" id="priorityToggleBtn" style="width:auto;padding:11px 20px"></button>
+    <button class="btn-primary" id="priorityToggleBtn" style="width:auto;padding:12px 20px"></button>
     <div id="priorityTierStatus" class="priority-tier-status"></div>
     <button class="allbtn" id="priorityForceAdvanceBtn" style="margin-top:12px;display:none"></button>
     <p class="hint" id="priorityForceHint" style="margin-top:8px"></p>
@@ -1395,7 +1390,7 @@ let currentView = 'schedule';
 let scheduleGender = 'girls';
 let scheduleGrade = null;        // filter for schedule view, null = all
 let scheduleGradeTouched = false; // has the user actually opened the picker and chosen something (even "All teams")? Distinguishes that from "hasn't touched it yet", since both leave scheduleGrade null.
-let scheduleMode = 'calendar';   // 'calendar' | 'list' — which sub-view of View Full Schedule is showing
+let scheduleMode = 'calendar';   // 'calendar' | 'list': which sub-view of the Calendar tab is showing
 // Favorite field — per-device convenience (localStorage), not synced. Coaches
 // book the same 1-2 fields all season, so pre-selecting it saves a tap every visit.
 function getFavoriteField(){ try { return localStorage.getItem('seaford-fav-field'); } catch(e){ return null; } }
@@ -1689,7 +1684,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
 })();
 
 // ============ HEADER CONDENSE-ON-SCROLL (iOS large-title style) ============
-// On mobile, the full hero (logo + big title + eyebrow) is only worth the
+// On mobile, the full hero (logo + big title) is only worth the
 // ~140px it costs on the very first view (Schedule). Every other view opens
 // already condensed — re-showing the full hero on every tab switch would
 // waste that space repeatedly for no reason once you're past the front door.
@@ -1893,7 +1888,7 @@ function renderChangesSinceLastVisit(){
     parts.push(`${added.length} new booking${added.length !== 1 ? 's' : ''}`);
     added.slice(0, 2).forEach(b => parts.push(describeBooking(b)));
   }
-  if(removed) parts.push(`${removed} cancelled — a slot may have opened up`);
+  if(removed) parts.push(`${removed} cancelled. A slot may have opened up`);
   if(seen.locked !== !!scheduleLocked) parts.push(scheduleLocked ? 'the schedule was locked' : 'the schedule was unlocked');
   showChangesStrip(parts.slice(0, 4)); // one line on a phone, not a paragraph
 }
@@ -1951,7 +1946,7 @@ function renderWelcome(){
       const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
       nudge.innerHTML = `<div class="nudge-text"><b>Put Seaford Lax on your home screen.</b><br>${ios
         ? 'Tap <span class="kbd">Share</span> at the bottom of Safari, then <span class="kbd">Add to Home Screen</span>.'
-        : (deferredInstallPrompt ? 'One tap — it opens like an app, no browser bar.' : 'Open your browser menu and choose <span class="kbd">Add to Home screen</span>.')}</div>
+        : (deferredInstallPrompt ? 'One tap. It opens like an app, no browser bar.' : 'Open your browser menu and choose <span class="kbd">Add to Home screen</span>.')}</div>
         <div class="nudge-actions">${(!ios && deferredInstallPrompt) ? '<button type="button" class="allbtn" data-install="go">Add it</button>' : ''}<button type="button" class="allbtn" data-install="dismiss">Not now</button></div>`;
       nudge.style.display = 'flex';
     } else nudge.style.display = 'none';
@@ -2298,7 +2293,7 @@ async function loadProfileAndStartInner(){
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
 
   if(myProfile.role === 'coach'){
-    // View Full Schedule opens on the whole program's calendar. A coach's own
+    // The Calendar tab opens on the whole program's calendar. A coach's own
     // practices live in My Team's Practices, so narrowing this view to their
     // team just duplicated that tab and made this one's name untrue.
     scheduleGender = myProfile.gender;
@@ -2409,7 +2404,7 @@ function checkWaitlistOpenings(){
     if(!stillBooked){
       waitlistNotified.add(w.id);
       const fieldName = FIELD_MAP[w.field_id] ? FIELD_MAP[w.field_id].name : w.field_id;
-      flash(`A slot opened up: ${w.subfield} at ${w.time}, ${fmtDateLong(w.date)} at ${fieldName} — book it now!`, 'ok');
+      flash(`A slot opened up: ${w.subfield} at ${w.time}, ${fmtDateLong(w.date)} at ${fieldName}. Book it now.`, 'ok');
     }
   });
 }
@@ -2535,7 +2530,7 @@ function renderPriorityBookingGate(){
     if(team.priority_finished_at){
       el.priorityFinishedRow.innerHTML = `<span class="priority-finished-badge">&#10003; ${escSafe(teamLabelText)} marked finished booking</span>`;
     } else {
-      el.priorityFinishedRow.innerHTML = `<button class="allbtn" id="priorityFinishedBtn">Finished booking for ${escSafe(teamLabelText)} &mdash; unlock the next grade</button>`;
+      el.priorityFinishedRow.innerHTML = `<button class="allbtn" id="priorityFinishedBtn">Finished booking for ${escSafe(teamLabelText)}: unlock the next grade</button>`;
     }
     el.priorityFinishedRow.style.display = 'block';
   }
@@ -2543,7 +2538,7 @@ function renderPriorityBookingGate(){
 document.addEventListener('click', async e => {
   const btn = e.target.closest('#priorityFinishedBtn');
   if(!btn) return;
-  if(!armTwoTap(btn, 'Tap again to confirm — this unlocks the next grade')) return;
+  if(!armTwoTap(btn, 'Tap again to confirm. This unlocks the next grade')) return;
   const teamId = myBookingTeamId();
   if(!teamId) return;
   btn.disabled = true;
@@ -2551,12 +2546,12 @@ document.addEventListener('click', async e => {
   if(error){ flash('Could not mark finished: '+error.message, 'err'); btn.disabled = false; return; }
   await loadTeams();
   haptic('success');
-  flash('Marked finished — thanks! The next grade unlocks once every team in this tier is done.', 'ok');
+  flash('Marked finished. The next grade unlocks once every team in this tier is done.', 'ok');
   renderPriorityBookingGate();
 });
 function renderLockBanner(){
   el.lockBanner.classList.toggle('show', scheduleLocked);
-  el.lockBanner.textContent = scheduleLocked ? '🔒 The schedule is locked — bookings and cancellations are paused right now.' : '';
+  el.lockBanner.textContent = scheduleLocked ? 'The schedule is locked. Bookings and cancellations are paused right now.' : '';
   if(myProfile && myProfile.role === 'admin'){ renderLockToggleButton(); renderPriorityToggleButton(); }
 }
 
@@ -3126,13 +3121,13 @@ document.getElementById('calSubscribeBtn').addEventListener('click', () => {
   // webcal:// is what makes Apple Calendar (iOS + Mac) treat it as a
   // subscription rather than a one-time import.
   window.location.href = calSheetTeam.https.replace(/^https:/, 'webcal:');
-  flash('Opening your calendar app — tap Subscribe there.', 'ok');
+  flash('Opening your calendar app. Tap Subscribe there.', 'ok');
   closeCalendarSheet();
 });
 document.getElementById('calCopyBtn').addEventListener('click', async e => {
   if(!calSheetTeam) return;
   try { await navigator.clipboard.writeText(calSheetTeam.https); e.target.textContent = 'Copied ✓'; haptic('success'); setTimeout(() => { e.target.textContent = 'Copy link (for Google Calendar)'; }, 2000); }
-  catch(err){ flash('Could not copy — long-press the link instead: ' + calSheetTeam.https, 'err'); }
+  catch(err){ flash('Could not copy. Long-press the link instead: ' + calSheetTeam.https, 'err'); }
 });
 document.getElementById('calDownloadBtn').addEventListener('click', () => {
   if(!calSheetTeam) return;
@@ -3246,7 +3241,7 @@ async function openShareCard(teamKey, teamLabelText){
   if(!blob){ flash('Could not build the share card.', 'err'); return; }
   if(currentShare?.url) URL.revokeObjectURL(currentShare.url);
   const filename = `${teamLabelText.replace(/\s+/g,'-').toLowerCase()}-this-week.png`;
-  currentShare = { blob, url: URL.createObjectURL(blob), filename, title: `${teamLabelText} — this week's practices` };
+  currentShare = { blob, url: URL.createObjectURL(blob), filename, title: `${teamLabelText}: this week's practices` };
   el.shareImg.src = currentShare.url;
   el.shareModal.style.display = 'flex';
   const sheet = el.shareModal.querySelector('.share-sheet'), backdrop = el.shareModal.querySelector('.share-backdrop');
@@ -3277,7 +3272,7 @@ el.shareSaveBtn.addEventListener('click', () => {
   if(!currentShare) return;
   const a = document.createElement('a'); a.href = currentShare.url; a.download = currentShare.filename;
   document.body.appendChild(a); a.click(); a.remove();
-  flash('Saved — drop it in the team chat.', 'ok');
+  flash('Saved. Drop it in the team chat.', 'ok');
 });
 
 // ============ LEAGUE OVERVIEW (directors and admin) ============
@@ -3344,7 +3339,7 @@ function renderLeague(){
 
   const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, null);
   el.leagueResults.innerHTML = html;
-  el.leagueCount.innerHTML = `<b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''} &mdash; ${escSafe(label)}.`;
+  el.leagueCount.innerHTML = `<b>${totalSlots}</b> booked slot${totalSlots!==1?'s':''} across <b>${venuesShown}</b> field${venuesShown!==1?'s':''} for ${escSafe(label)}.`;
 }
 // How many slots a field can offer between two dates, from its availability
 // table — the denominator for "how full is this field".
@@ -3468,7 +3463,7 @@ el.findNextSlotBtn.addEventListener('click', () => {
   document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
   currentWeekMonday = mondayOf(parseISO(found.date));
   renderWeek();
-  flash(`Next open: ${found.subfield} at ${found.time}, ${fmtDateLong(found.date)} — highlighted below.`, 'ok');
+  flash(`Next open: ${found.subfield} at ${found.time}, ${fmtDateLong(found.date)}. Highlighted below.`, 'ok');
   // Find the matching rendered button and pulse-highlight it so it's easy to spot on a busy week.
   requestAnimationFrame(() => {
     const targetPayload = JSON.stringify({fieldId:selectedField, date:found.date, subfield:found.subfield, time:found.time});
@@ -3725,7 +3720,7 @@ function updateRecurringSlotOptions(){
 }
 
 el.recurringBookBtn.addEventListener('click', async () => {
-  if(scheduleLocked){ el.recurringResults.innerHTML = `<div class="status err">The schedule is currently locked — no bookings can be made right now.</div>`; return; }
+  if(scheduleLocked){ el.recurringResults.innerHTML = `<div class="status err">The schedule is currently locked. No bookings can be made right now.</div>`; return; }
   const pair = el.recurringSlotSelect.value;
   if(!pair) return;
   const [sub, time] = pair.split('||');
@@ -3819,7 +3814,7 @@ el.weekGrid.addEventListener('click', async e => {
       if(error.code === '23505') flash('Already on the waitlist for that slot.', 'err');
       else flash('Could not join waitlist: '+error.message, 'err');
     } else {
-      flash('Added to the waitlist — you\'ll get a heads-up here if it opens up.', 'ok');
+      flash('Added to the waitlist. You\'ll get a heads-up here if it opens up.', 'ok');
     }
     await refreshWaitlist();
     renderWeek();
@@ -3833,7 +3828,7 @@ el.weekGrid.addEventListener('click', async e => {
     renderWeek();
     return;
   }
-  if((bookBtn || cancelBtn) && scheduleLocked){ flash('The schedule is currently locked — no changes can be made right now.', 'err'); return; }
+  if((bookBtn || cancelBtn) && scheduleLocked){ flash('The schedule is currently locked. No changes can be made right now.', 'err'); return; }
   if(bookBtn){
     const teamId = myBookingTeamId();
     if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
@@ -3870,7 +3865,7 @@ el.weekGrid.addEventListener('click', async e => {
     if(!armTwoTap(cancelBtn, '!')) return;
     const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();
     if(error){ flash('Cancel failed: '+error.message, 'err'); }
-    else if(!data || !data.length){ flash('Could not cancel — you may not have permission.', 'err'); }
+    else if(!data || !data.length){ flash('Could not cancel. You may not have permission.', 'err'); }
     else { flash('Booking cancelled', 'ok'); }
     await refreshBookings();
     renderWeek();
@@ -4173,7 +4168,7 @@ function renderOpenWeek(){
 el.openWeekResults.addEventListener('click', async e => {
   const bookBtn = e.target.closest('[data-book]');
   if(!bookBtn) return;
-  if(scheduleLocked){ flash('The schedule is currently locked — no bookings can be made right now.', 'err'); return; }
+  if(scheduleLocked){ flash('The schedule is currently locked. No bookings can be made right now.', 'err'); return; }
   const payload = JSON.parse(bookBtn.dataset.book);
   const teamId = myBookingTeamId();
   if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
@@ -4374,7 +4369,7 @@ function renderPriorityTierStatus(){
     const nextGrade = blockingRank > 0 ? GRADES[blockingRank - 1] : null;
     el.priorityForceAdvanceBtn.style.display = 'inline-block';
     el.priorityForceAdvanceBtn.textContent = `Override: push past ${blockingGrade}${nextGrade ? ` so ${nextGrade} can book` : ''}`;
-    el.priorityForceHint.textContent = `Still waiting on: ${pending.map(t => teamLabel(t.gender, t.grade)).join(', ')}. This doesn't mark them finished — it just stops them from blocking the next grade.`;
+    el.priorityForceHint.textContent = `Still waiting on: ${pending.map(t => teamLabel(t.gender, t.grade)).join(', ')}. This doesn't mark them finished, it just stops them from blocking the next grade.`;
   }
 }
 el.priorityToggleBtn.addEventListener('click', async () => {
@@ -4408,7 +4403,7 @@ el.priorityForceAdvanceBtn.addEventListener('click', async () => {
   else {
     priorityForcedRanks = new Set(newRanks);
     haptic('success');
-    flash(`Pushed past ${GRADES[blockingRank]} — the next grade can book now.`, 'ok');
+    flash(`Pushed past ${GRADES[blockingRank]}. The next grade can book now.`, 'ok');
     renderPriorityTierStatus();
   }
   el.priorityForceAdvanceBtn.disabled = false;
@@ -4433,7 +4428,7 @@ function renderClearControls(){
   // Clear by field: same 6 fields for everyone with access to this tab
   el.clearFieldSelect.innerHTML = FIELDS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
   el.clearFieldHint.textContent = myProfile.role === 'director'
-    ? `As a director, this only clears ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} bookings at this field — any bookings for the other gender will remain.`
+    ? `As a director, this only clears ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} bookings at this field. Bookings for the other gender will remain.`
     : '';
 }
 
@@ -4505,7 +4500,7 @@ function syncInviteMode(){
   const isPw = inviteMode === 'password';
   el.invitePasswordField.style.display = isPw ? 'block' : 'none';
   el.inviteModeHint.textContent = isPw
-    ? 'You set the password and share it with them yourself — no email is sent.'
+    ? 'You set the password and share it with them yourself. No email is sent.'
     : "They'll get an email with a link to set their own password.";
   el.inviteBtn.textContent = isPw ? 'Create account' : 'Send invite';
   if(isPw && !el.invitePassword.value) el.invitePassword.value = generatePassword();
@@ -4552,7 +4547,7 @@ el.inviteBtn.addEventListener('click', async () => {
       if(usingPassword){
         // No email went out — this is the one place they can get the password,
         // so make it easy to copy rather than just flashing a success line.
-        el.inviteStatus.innerHTML = `<div class="status ok">Account created for ${escSafe(email)}. Share these with them — they won't be shown again:</div>
+        el.inviteStatus.innerHTML = `<div class="status ok">Account created for ${escSafe(email)}. Share these with them, they won't be shown again:</div>
           <div class="credential-box">
             <div><span class="credential-label">Email</span><code>${escSafe(email)}</code></div>
             <div><span class="credential-label">Password</span><code>${escSafe(payload.password)}</code></div>
@@ -4563,7 +4558,7 @@ el.inviteBtn.addEventListener('click', async () => {
             await navigator.clipboard.writeText(`Seaford Lacrosse sign-in\nEmail: ${email}\nPassword: ${payload.password}`);
             e.target.textContent = 'Copied ✓'; haptic('success');
             setTimeout(() => { if(e.target) e.target.textContent = 'Copy both'; }, 2000);
-          } catch(err) { flash('Could not copy — select the text manually.', 'err'); }
+          } catch(err) { flash('Could not copy. Select the text manually.', 'err'); }
         });
         el.invitePassword.value = '';
       } else {
@@ -4685,7 +4680,7 @@ el.coachListBody.addEventListener('click', async e => {
     const result = await manageUser({ action: 'reset-password', userId: uid, password }).catch(err => ({ ok:false, error: err.message }));
     if(result.ok){
       // Nothing is emailed, so this box is the only place the password exists.
-      setStatus(`<div class="status ok">New password set. Share these — they won't be shown again:</div>
+      setStatus(`<div class="status ok">New password set. Share these, they won't be shown again:</div>
         <div class="credential-box">
           <div><span class="credential-label">Email</span><code>${escSafe(email)}</code></div>
           <div><span class="credential-label">Password</span><code>${escSafe(password)}</code></div>
@@ -4704,7 +4699,7 @@ el.coachListBody.addEventListener('click', async e => {
       await navigator.clipboard.writeText(`Seaford Lacrosse sign-in\nEmail: ${btn.dataset.email}\nPassword: ${btn.dataset.pw}`);
       btn.textContent = 'Copied ✓'; haptic('success');
       setTimeout(() => { if(btn) btn.textContent = 'Copy both'; }, 2000);
-    } catch(err) { flash('Could not copy — select the text manually.', 'err'); }
+    } catch(err) { flash('Could not copy. Select the text manually.', 'err'); }
     return;
   }
 
@@ -4788,16 +4783,16 @@ el.bulkUploadBtn.addEventListener('click', async () => {
 
   let html = `<table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px">
     <thead><tr>
-      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Name</th>
-      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Email</th>
-      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Team</th>
-      <th style="text-align:left;padding:7px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Result</th>
+      <th style="text-align:left;padding:8px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Name</th>
+      <th style="text-align:left;padding:8px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Email</th>
+      <th style="text-align:left;padding:8px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Team</th>
+      <th style="text-align:left;padding:8px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Result</th>
     </tr></thead><tbody>`;
   sent.forEach(r => {
-    html += `<tr><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(r.name)}</td><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(r.email)}</td><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(teamLabel(r.gender, r.grade))}</td><td style="padding:7px;border-bottom:1px solid var(--line);color:${r.ok?'var(--turf-deep)':'var(--danger)'};font-weight:${r.ok?400:700}">${r.ok ? 'Invited' : escSafe(r.error||'Failed')}</td></tr>`;
+    html += `<tr><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.name)}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.email)}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(teamLabel(r.gender, r.grade))}</td><td style="padding:8px;border-bottom:1px solid var(--line);color:${r.ok?'var(--turf-deep)':'var(--danger)'};font-weight:${r.ok?400:700}">${r.ok ? 'Invited' : escSafe(r.error||'Failed')}</td></tr>`;
   });
   skipped.forEach(s => {
-    html += `<tr><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(s.name||'—')}</td><td style="padding:7px;border-bottom:1px solid var(--line)">${escSafe(s.email||'—')}</td><td style="padding:7px;border-bottom:1px solid var(--line)">—</td><td style="padding:7px;border-bottom:1px solid var(--line);color:var(--danger);font-weight:700">${escSafe(s.reason)}</td></tr>`;
+    html += `<tr><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(s.name||'—')}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(s.email||'—')}</td><td style="padding:8px;border-bottom:1px solid var(--line)">—</td><td style="padding:8px;border-bottom:1px solid var(--line);color:var(--danger);font-weight:700">${escSafe(s.reason)}</td></tr>`;
   });
   html += `</tbody></table>`;
   el.bulkResults.innerHTML = html;

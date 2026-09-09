@@ -805,10 +805,12 @@
   .credential-box > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .credential-box code { font-family: monospace; font-size: var(--fs-base); background: var(--card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); word-break: break-all; }
   .credential-label { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); min-width: 64px; }
-  .coach-list { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .coach-list { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .coach-list table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
   .coach-list th { text-align: left; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1.5px solid var(--line); }
-  .coach-list td { padding: 8px; border-bottom: 1px solid var(--line); }
+  .coach-list td { padding: 8px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .coach-list th:last-child, .coach-list td:last-child { width: 1%; white-space: nowrap; }
+  .coach-list .user-actions td { overflow-wrap: normal; width: auto; white-space: normal; }
   .coach-list .empty-row td { text-align: center; color: var(--muted); font-style: italic; padding: 20px; }
 
   /* ===== Shared action bar / status ===== */

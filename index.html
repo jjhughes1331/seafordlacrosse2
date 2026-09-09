@@ -4286,7 +4286,10 @@ function renderOpenWeek(){
       };
       html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slot-bands">`;
       if(list.length > 7){
-        const bands = [['Morning', 0, 12], ['Afternoon', 12, 17], ['Evening', 17, 24]];
+        // Three bands still left Harbor's Saturday afternoon holding 10 slots,
+        // which is outside 7 +/- 2. Splitting the afternoon puts every band on
+        // the worst day in the season at six or fewer.
+        const bands = [['Morning', 0, 12], ['Early afternoon', 12, 15], ['Late afternoon', 15, 17], ['Evening', 17, 24]];
         bands.forEach(([label, from, to]) => {
           const inBand = list.filter(sl => { const h = slotStartHour(sl.time); return h !== null && h >= from && h < to; });
           if(!inBand.length) return;

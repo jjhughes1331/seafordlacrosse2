@@ -343,6 +343,8 @@
   .row .date { font-weight: 700; font-size: var(--fs-sm); color: var(--ink); }
   .row .date .dow { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
   .slots { display: flex; flex-wrap: wrap; gap: 10px; }
+  .slot-bands { display: flex; flex-direction: column; gap: 14px; }
+  .slot-band-label { display: block; font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
   .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 8px; color: var(--turf-deep); }
   .slots .slot.mine { background: var(--mine-bg); border-color: var(--mine); color: var(--mine-deep); font-weight: 700; }
   .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 800; margin-right: 4px; }
@@ -1211,7 +1213,17 @@
 
 <!-- ============ ADMIN VIEW ============ -->
 <div id="viewAdmin" style="display:none">
-  <p class="admin-section-label">People</p>
+  
+  <div class="mode-toggle" id="adminPaneToggle" style="margin:0 0 18px">
+    <span class="mode-toggle-thumb"></span>
+    <button class="mtab active" data-pane="people">People</button>
+    <button class="mtab" data-pane="booking">Booking</button>
+    <button class="mtab" data-pane="danger">Danger</button>
+    <button class="mtab" data-pane="reports">Reports</button>
+  </div>
+
+  <div class="admin-pane" data-adminpane="people">
+<p class="admin-section-label">People</p>
   <div class="admin-card">
     <h3 id="adminHeading">Invite a coach</h3>
     <p class="hint" id="adminHint"></p>
@@ -1280,7 +1292,11 @@
     <div id="bulkResults"></div>
   </div>
 
-  <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
+  
+  </div>
+
+  <div class="admin-pane" data-adminpane="booking" hidden>
+<p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
   <div class="admin-card" id="scheduleLockCard">
     <h3>Schedule lock</h3>
     <p class="hint" id="lockHint">When locked, nobody (including admins and directors) can book or cancel anything until it's unlocked again.</p>
@@ -1297,7 +1313,11 @@
     <button class="allbtn" id="priorityResetBtn" style="margin-top:12px">Reset all teams' finished &amp; overrides</button>
   </div>
 
-  <p class="admin-section-label danger">Danger zone</p>
+  
+  </div>
+
+  <div class="admin-pane" data-adminpane="danger" hidden>
+<p class="admin-section-label danger">Danger zone</p>
   <div class="admin-card admin-card-danger">
     <h3>Clear bookings</h3>
     <p class="hint">This permanently deletes bookings and cannot be undone.</p>
@@ -1331,12 +1351,18 @@
     <div id="clearFieldStatus"></div>
   </div>
 
-  <p class="admin-section-label">Reports</p>
+  
+  </div>
+
+  <div class="admin-pane" data-adminpane="reports" hidden>
+<p class="admin-section-label">Reports</p>
   <details class="admin-card admin-card-collapsible" id="usageDashboardCard">
     <summary><h3>Usage &amp; analytics</h3></summary>
     <p class="hint" id="usageHint"></p>
     <div id="usageDashboard"></div>
   </details>
+
+  </div>
 </div>
 
 <div class="actions" id="actionsBar">
@@ -4253,11 +4279,22 @@ function renderOpenWeek(){
     slots.forEach(s => { (byField[s.fieldName] = byField[s.fieldName] || []).push(s); });
     html += `<section class="venue"><div class="venue-head"><h3>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</h3><span class="n">${slots.length} open</span></div><div class="rows">`;
     Object.keys(byField).forEach(fieldName => {
-      html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slots">`;
-      byField[fieldName].forEach(sl => {
+      const list = byField[fieldName];
+      const slotBtn = sl => {
         const payload = JSON.stringify({fieldId:sl.fieldId, date:dateStr, subfield:sl.sub, time:sl.time});
-        html += `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(sl.time)}</span> <span class="sub">${escSafe(sl.sub)}</span> <span class="plus">+ Book</span></button>`;
-      });
+        return `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(sl.time)}</span> <span class="sub">${escSafe(sl.sub)}</span> <span class="plus">+ Book</span></button>`;
+      };
+      html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slot-bands">`;
+      if(list.length > 7){
+        const bands = [['Morning', 0, 12], ['Afternoon', 12, 17], ['Evening', 17, 24]];
+        bands.forEach(([label, from, to]) => {
+          const inBand = list.filter(sl => { const h = slotStartHour(sl.time); return h !== null && h >= from && h < to; });
+          if(!inBand.length) return;
+          html += `<div class="slot-band"><span class="slot-band-label">${label}</span><div class="slots">${inBand.map(slotBtn).join('')}</div></div>`;
+        });
+      } else {
+        html += `<div class="slots">${list.map(slotBtn).join('')}</div>`;
+      }
       html += `</div></div>`;
     });
     html += `</div></section>`;
@@ -4284,6 +4321,13 @@ el.openWeekFieldChips.addEventListener('click', e => {
 });
 el.openWeekResults.addEventListener('click', e => {
   if(e.target.closest('#finderMoreBtn')){ finderLimit += 40; renderOpenWeek(); }
+});
+document.getElementById('adminPaneToggle').addEventListener('click', e => {
+  const btn = e.target.closest('[data-pane]'); if(!btn) return;
+  document.querySelectorAll('#adminPaneToggle .mtab').forEach(t => t.classList.toggle('active', t === btn));
+  document.querySelectorAll('[data-adminpane]').forEach(pane => { pane.hidden = pane.dataset.adminpane !== btn.dataset.pane; });
+  positionModeThumb(document.getElementById('adminPaneToggle'));
+  haptic('light');
 });
 el.finderDays.addEventListener('click', e => {
   const b = e.target.closest('[data-finderday]'); if(!b) return;
@@ -4361,6 +4405,8 @@ el.openWeekResults.addEventListener('click', async e => {
 
 // ============ ADMIN VIEW ============
 function renderAdmin(){
+  // The pane toggle can only measure itself once the view is on screen.
+  requestAnimationFrame(() => positionModeThumb(document.getElementById('adminPaneToggle')));
   if(myProfile.role === 'admin'){
     el.adminHeading.textContent = 'Invite a director or coach';
     el.adminHint.textContent = 'As admin you can invite directors (either gender) or coaches (any team). Each team can have more than one coach.';

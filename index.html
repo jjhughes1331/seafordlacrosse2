@@ -693,6 +693,8 @@
   .share-sheet .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
   .cal-google-hint { margin: 12px 0 0 !important; }
   /* Share card sheet */
+  #confirmModal .btn-primary { background: var(--danger); }
+  #confirmModal .btn-primary:hover { background: var(--danger); filter: brightness(.9); }
   .share-modal { position: fixed; inset: 0; z-index: 800; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .share-backdrop { position: absolute; inset: 0; background: rgba(8,16,11,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .share-sheet { position: relative; z-index: 1; width: min(420px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card-hover); padding: 14px; }
@@ -1003,6 +1005,22 @@
       <button class="allbtn" type="button" data-cal-close>Close</button>
     </div>
     <p class="hint cal-google-hint">Google Calendar: paste the copied link under <span class="kbd">Other calendars</span> → <span class="kbd">From URL</span>.</p>
+  </div>
+</div>
+<!-- One confirmation sheet for every destructive action. The app previously had
+     three models at once: a custom "tap again to confirm", the browser's native
+     confirm() dialog, and in one case the literal string "!" as its prompt. This
+     is the shape a coach already knows from iOS: what will happen, a red verb,
+     and a way out. -->
+<div class="share-modal" id="confirmModal" style="display:none">
+  <div class="share-backdrop" data-confirm-close></div>
+  <div class="share-sheet" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle" style="margin:0 0 8px"></h3>
+    <p class="hint" id="confirmBody"></p>
+    <div class="share-actions">
+      <button class="btn-primary" id="confirmGoBtn" type="button"></button>
+      <button class="allbtn" type="button" data-confirm-close>Cancel</button>
+    </div>
   </div>
 </div>
 <!-- Share card: a generated PNG of the next 7 days' practices, built for the
@@ -2630,7 +2648,11 @@ function renderPriorityBookingGate(){
 document.addEventListener('click', async e => {
   const btn = e.target.closest('#priorityFinishedBtn');
   if(!btn) return;
-  if(!armTwoTap(btn, 'Tap again to confirm. This unlocks the next grade')) return;
+  if(!await confirmAction({
+    title: 'Finished booking?',
+    body: 'This unlocks the next grade down. You can still book afterwards, but the teams below you will start taking slots.',
+    verb: 'Mark finished',
+  })) return;
   const teamId = myBookingTeamId();
   if(!teamId) return;
   btn.disabled = true;
@@ -3349,6 +3371,34 @@ function closeShareCard(){
   currentShare = null;
 }
 el.shareModal.addEventListener('click', e => { if(e.target.closest('[data-share-close]')) closeShareCard(); });
+
+// confirmAction({title, body, verb}) -> Promise<boolean>
+let _confirmResolve = null;
+function closeConfirm(ok){
+  document.getElementById('confirmModal').style.display = 'none';
+  const r = _confirmResolve; _confirmResolve = null;
+  if(r) r(ok);
+}
+function confirmAction({ title, body, verb }){
+  const m = document.getElementById('confirmModal');
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmBody').textContent = body;
+  document.getElementById('confirmGoBtn').textContent = verb;
+  m.style.display = 'flex';
+  haptic('light');
+  if(hasGSAP() && motionOK()){
+    gsap.fromTo(m.querySelector('.share-sheet'), { y: 36, opacity: 0, scale: .96 },
+      { y: 0, opacity: 1, scale: 1, duration: .38, ease: 'power3.out', clearProps: 'transform' });
+  }
+  return new Promise(res => { _confirmResolve = res; });
+}
+document.getElementById('confirmModal').addEventListener('click', e => {
+  if(e.target.closest('[data-confirm-close]')) closeConfirm(false);
+  else if(e.target.closest('#confirmGoBtn')) closeConfirm(true);
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && document.getElementById('confirmModal').style.display === 'flex') closeConfirm(false);
+});
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && el.shareModal.style.display !== 'none') closeShareCard(); });
 el.shareSendBtn.addEventListener('click', async () => {
   if(!currentShare) return;
@@ -3916,7 +3966,14 @@ el.weekGrid.addEventListener('click', async e => {
     }
     if(burstAt) burstConfetti(burstAt.x, burstAt.y, 24);
   } else if(cancelBtn){
-    if(!armTwoTap(cancelBtn, '!')) return;
+    const cx = bookingsCache.find(b => b.id === cancelBtn.dataset.cancel);
+    const ok = await confirmAction({
+      title: 'Cancel this practice?',
+      body: cx ? `${cx.time} on ${fmtDateLong(cx.date)} at ${FIELD_MAP[cx.field_id] ? FIELD_MAP[cx.field_id].name : cx.field_id}. The slot goes back to everyone else.`
+               : 'This releases the slot back to everyone else.',
+      verb: 'Cancel practice',
+    });
+    if(!ok) return;
     const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();
     if(error){ flash('Cancel failed: '+error.message, 'err'); }
     else if(!data || !data.length){ flash('Could not cancel. You may not have permission.', 'err'); }
@@ -4599,7 +4656,11 @@ el.priorityToggleBtn.addEventListener('click', async () => {
   el.priorityToggleBtn.disabled = false;
 });
 el.priorityResetBtn.addEventListener('click', async () => {
-  if(!armTwoTap(el.priorityResetBtn, 'Tap again to confirm reset')) return;
+  if(!await confirmAction({
+    title: 'Reset every team to not finished?',
+    body: 'The priority ladder starts over from the most senior grade. Bookings already made are not touched.',
+    verb: 'Reset ladder',
+  })) return;
   el.priorityResetBtn.disabled = true;
   const [{ error: teamsErr }, { error: settingsErr }] = await Promise.all([
     sb.from('teams').update({ priority_finished_at: null }).not('id', 'is', null),
@@ -4613,7 +4674,11 @@ el.priorityResetBtn.addEventListener('click', async () => {
 el.priorityForceAdvanceBtn.addEventListener('click', async () => {
   const blockingRank = currentBlockingRank();
   if(blockingRank === null) return;
-  if(!armTwoTap(el.priorityForceAdvanceBtn, 'Tap again to confirm override')) return;
+  if(!await confirmAction({
+    title: 'Push past this grade?',
+    body: 'The next grade can book immediately, even though this one has not finished. This cannot be undone from here.',
+    verb: 'Override',
+  })) return;
   el.priorityForceAdvanceBtn.disabled = true;
   const newRanks = Array.from(new Set([...priorityForcedRanks, blockingRank]));
   const { error } = await sb.from('app_settings').update({ priority_forced_ranks: newRanks }).eq('id', true);
@@ -4656,7 +4721,11 @@ el.clearTeamBtn.addEventListener('click', async () => {
   const teamName = teamOpt ? teamOpt.textContent : 'this team';
   const count = bookingsCache.filter(b => b.team_id === teamId).length;
   if(!count){ el.clearTeamStatus.innerHTML = `<span class="status">No bookings found for ${escSafe(teamName)}.</span>`; return; }
-  if(!confirm(`This will permanently delete ${count} booking${count!==1?'s':''} for ${teamName}. This cannot be undone. Continue?`)) return;
+  if(!await confirmAction({
+    title: `Delete this team's bookings?`,
+    body: `${count} booking${count!==1?'s':''} for ${teamName} will be permanently deleted. This cannot be undone.`,
+    verb: 'Delete bookings',
+  })) return;
 
   el.clearTeamBtn.disabled = true;
   const { data, error } = await sb.from('bookings').delete().eq('team_id', teamId).select();
@@ -4673,7 +4742,11 @@ el.clearFieldBtn.addEventListener('click', async () => {
   const fieldName = FIELD_MAP[fieldId] ? FIELD_MAP[fieldId].name : fieldId;
   const count = bookingsCache.filter(b => b.field_id === fieldId).length;
   if(!count){ el.clearFieldStatus.innerHTML = `<span class="status">No bookings found at ${escSafe(fieldName)}.</span>`; return; }
-  if(!confirm(`This will permanently delete ${count} booking${count!==1?'s':''} at ${fieldName}. This cannot be undone. Continue?`)) return;
+  if(!await confirmAction({
+    title: `Delete this field's bookings?`,
+    body: `${count} booking${count!==1?'s':''} for ${fieldName} will be permanently deleted. This cannot be undone.`,
+    verb: 'Delete bookings',
+  })) return;
 
   el.clearFieldBtn.disabled = true;
   const { data, error } = await sb.from('bookings').delete().eq('field_id', fieldId).select();
@@ -4922,7 +4995,11 @@ el.coachListBody.addEventListener('click', async e => {
   }
 
   if(act === 'remove'){
-    if(!armTwoTap(btn, 'Tap again to remove')) return;
+    if(!await confirmAction({
+      title: 'Remove this account?',
+      body: `${email} loses access immediately. Any practices they booked stay on the schedule and transfer to you.`,
+      verb: 'Remove account',
+    })) return;
     btn.disabled = true; btn.textContent = 'Removing…';
     const result = await manageUser({ action: 'remove', userId: uid }).catch(err => ({ ok:false, error: err.message }));
     if(result.ok){

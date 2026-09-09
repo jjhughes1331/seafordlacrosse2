@@ -70,6 +70,21 @@ different project** — drive the dashboard in the browser instead.
 - Changing a field's hours in `FIELDS` also requires updating `field_slots`, or
   new bookings get rejected
 
+## Known gap: nobody has a name
+`profiles` has **no name column**. The name shown in the header is derived from
+role — admin becomes "Site Admin", a director "Girls Director", a coach "Girls
+6th Grade". It reads like a name and is not one.
+
+Worse, the bulk-invite spreadsheet template asks for a `Name` column, parses it,
+and validates rows against it — then sends only `{email, inviteRole, teamId}`
+to `invite-coach`. Names typed into that template are silently discarded.
+
+Closing this means: `first_name`/`last_name` on `profiles`, a name field on the
+single invite form, actually forwarding the bulk name, showing it in the user
+table, and falling back to the role label when it is absent (the two existing
+accounts predate the column). `invite-coach` creates the profile row and its
+source exists only in the Supabase dashboard — read it there before changing it.
+
 ## Design system (decided, don't relitigate)
 - **One typeface: Manrope.** Hierarchy from weight and size
 - **Icons are custom and solid.** No Lucide, no stroked icons — mixing the two

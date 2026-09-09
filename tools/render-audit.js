@@ -32,10 +32,21 @@
     .filter(s => s.getAttribute('fill') === 'none' && (s.getAttribute('stroke') || '') !== '').length;
   out.solidIcons = document.querySelectorAll('svg[fill="currentColor"]').length;
 
-  // Tap targets under Apple's 44pt minimum
+  // Tap targets under Apple's 44pt minimum.
+  // Measures the HIT AREA, not the box. Several controls here are deliberately
+  // small but carry a ::before overlay that expands what a thumb can hit (the
+  // toast close is 26px with a 44px target). Measuring box height alone reports
+  // those as failures, and an audit that cries wolf stops being read.
+  const hitOK = e => {
+    const r = e.getBoundingClientRect();
+    if (r.height >= 44) return true;
+    const cx = r.left + r.width / 2, pad = (44 - r.height) / 2;
+    const lands = y => { const el = document.elementFromPoint(cx, y); return !!el && (el === e || e.contains(el) || el.parentElement === e); };
+    return lands(r.top - pad + 1) && lands(r.bottom + pad - 1);
+  };
   out.under44 = els.filter(e => /^(BUTTON|A|SELECT|INPUT)$/.test(e.tagName))
-    .map(e => ({ el: e.tagName + '.' + String(e.className).slice(0,20), h: Math.round(e.getBoundingClientRect().height) }))
-    .filter(x => x.h > 0 && x.h < 44);
+    .filter(e => e.getBoundingClientRect().height > 0 && !hitOK(e))
+    .map(e => ({ el: e.tagName + '.' + String(e.className).slice(0,20), h: Math.round(e.getBoundingClientRect().height) }));
 
   // Anything wider than its own container (the bug a short test email hides)
   out.overflowing = els.filter(e => {

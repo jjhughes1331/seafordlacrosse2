@@ -940,6 +940,24 @@
   /* Per-user actions live in a row that opens *under* the user's row rather
      than in extra columns — a 4-column table with buttons is unusable on a
      phone, and these are rare, deliberate actions that deserve full width. */
+  /* Sweeping every rendered button, link, select and input - rather than the
+     hand-listed selectors of the first Fitts pass - turned up eleven more
+     controls under 44px, nearly all bare <button id> or <a>, which is exactly
+     what a curated selector list cannot see. */
+  #hamburgerBtn { width: 44px; height: 44px; }
+  #hamburgerBtn svg { width: 20px; height: 20px; }
+  .signout-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  #dateJumpInput { min-height: 44px; }
+  .invite-form button { min-height: 44px; }
+  #statusClose { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  #themeToggleBtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .field-map-toggle { min-height: 44px; display: inline-flex; align-items: center; }
+  /* Inline text links can't grow to 44px without wrecking the paragraph, so
+     they get an invisible 44px hit area instead - the trick .fav-star uses. */
+  .link-btn, .field-map-directions, .template-link { position: relative; display: inline-block; }
+  .link-btn::before, .field-map-directions::before, .template-link::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%);
+  }
   #userSearch { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
   #userSearch:focus { outline: none; border-color: var(--hover-edge); }
   .manage-btn { background: none; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 700; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
@@ -1464,7 +1482,7 @@
     <div data-peoplepane="bulk" hidden><div class="admin-card" style="margin-top:16px">
     <h3>Bulk invite from spreadsheet</h3>
     <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b> — one row per coach.
-      <a href="coach-roster-template.xlsx" download style="color:var(--turf);font-weight:700">Download the template</a>.
+      <a href="coach-roster-template.xlsx" download class="template-link" style="color:var(--turf);font-weight:700">Download the template</a>.
       Directors can only upload coaches for their own gender; other rows are skipped.
     </p>
     <div class="invite-form">
@@ -1489,7 +1507,7 @@
 
   <div class="admin-card" style="margin-top:16px" id="priorityBookingCard">
     <h3>Priority booking (grade hierarchy)</h3>
-    <p class="hint">When on, teams can only book once every older grade has finished — 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
+    <p class="hint">When on, teams can only book once every older grade has finished: 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
     <button class="allbtn" id="priorityToggleBtn" style="width:auto;padding:12px 20px"></button>
     <div id="priorityTierStatus" class="priority-tier-status"></div>
     <button class="allbtn" id="priorityForceAdvanceBtn" style="margin-top:12px;display:none"></button>

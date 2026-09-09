@@ -270,7 +270,7 @@
   .auth-screen p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 20px; }
   .field { text-align: left; margin-bottom: 14px; }
   .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
-  .field input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; }
+  .field input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; }
   .field input:focus { outline: none; border-color: var(--hover-edge); }
   .btn-primary { width: 100%; background: var(--accent-fill); color: #fff; border: none; padding: 12px; border-radius: var(--radius-chip); font-size: var(--fs-md); font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
   .btn-primary:hover { background: var(--turf); }
@@ -329,11 +329,11 @@
   .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
   .now-showing { font-size: var(--fs-lg); font-weight: 800; color: var(--ink); }
   .now-showing .tag { color: var(--turf-deep); }
-  .allbtn { margin-left: auto; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .allbtn { margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .allbtn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .count { color: var(--muted); font-size: var(--fs-sm); margin: 12px 0 16px; }
   .count b { color: var(--ink); }
-  .venue { margin-bottom: 26px; }
+  .venue { margin-bottom: 32px; }
   .venue-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 2px solid var(--turf-deep); }
   .venue-head h3 { font-family: var(--font-body); font-size: var(--fs-lg); font-weight: 600; color: var(--turf-deep); }
   .venue-head .n { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
@@ -342,7 +342,7 @@
   .row { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px 12px; box-shadow: var(--shadow-card); display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
   .row .date { font-weight: 700; font-size: var(--fs-sm); color: var(--ink); }
   .row .date .dow { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 700; }
-  .slots { display: flex; flex-wrap: wrap; gap: 6px; }
+  .slots { display: flex; flex-wrap: wrap; gap: 10px; }
   .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 8px; color: var(--turf-deep); }
   .slots .slot.mine { background: var(--mine-bg); border-color: var(--mine); color: var(--mine-deep); font-weight: 700; }
   .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 800; margin-right: 4px; }
@@ -388,7 +388,7 @@
   .fchip { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .fchip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; box-shadow: var(--shadow-turf); }
-  .fchip { display: inline-flex; align-items: center; gap: 6px; }
+  .fchip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; }
   .fav-star {
     display: inline-flex; width: 15px; height: 15px; flex: none; color: var(--muted);
     position: relative;
@@ -435,6 +435,7 @@
   }
   .mtab, .gtab {
     position: relative; z-index: 1; border: none; background: none; color: var(--muted);
+    min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
     padding: 8px 16px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700;
     cursor: pointer; transition: color .2s var(--ease);
   }
@@ -498,7 +499,7 @@
     .cal-slot { font-size: var(--fs-xs); padding: 8px 10px; min-height: 40px; display: flex; align-items: center; gap: 5px; }
     .cal-slot.empty { justify-content: flex-start; }
   }
-  .daytoggle { border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
+  .daytoggle { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
   .daytoggle:hover:not(:disabled) { border-color: var(--hover-edge); color: var(--hover-edge); }
   .daytoggle.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .daytoggle:disabled { opacity: .3; cursor: not-allowed; }
@@ -514,7 +515,7 @@
   select:hover { border-color: var(--hover-edge); }
   select:focus-visible { outline: 2px solid var(--turf); outline-offset: 2px; }
   .field select { width: 100%; }
-  .weeknav button { border: 1.5px solid var(--line); background: var(--card); padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
+  .weeknav button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line); background: var(--card); padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; color: var(--muted); cursor: pointer; }
   .weeknav button:hover:not(:disabled) { border-color: var(--hover-edge); color: var(--hover-edge); }
   .weeknav button:disabled { opacity: .35; cursor: not-allowed; }
   @media (max-width: 420px) {
@@ -533,7 +534,7 @@
   .timerow + .timerow { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 4px; }
   .timelabel { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); padding-top: 6px; }
   .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
-  .book-slot { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
+  .book-slot { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
   .book-slot:hover { border-style: solid; border-color: var(--hover-edge); color: var(--hover-edge); background: var(--chip-hover-bg); }
   .book-slot .sub { font-weight: 700; color: var(--ink); }
   .book-slot.booked { border-style: solid; border-color: var(--line); background: var(--chip-bg); color: var(--turf-deep); cursor: default; }
@@ -568,10 +569,10 @@
   .cal-filter { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
   .cal-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .cal-month { flex: 1; font-family: var(--font-body); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
-  .cal-nav { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-size: 17px; line-height: 1; cursor: pointer; font-family: inherit; }
+  .cal-nav { width: 44px; height: 44px; flex: none; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-size: 17px; line-height: 1; cursor: pointer; font-family: inherit; }
   .cal-nav:hover:not(:disabled) { border-color: var(--hover-edge); }
   .cal-nav:disabled { opacity: .35; cursor: not-allowed; }
-  .cal-today-btn { flex: none; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-weight: 700; font-size: var(--fs-xs); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+  .cal-today-btn { flex: none; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-weight: 700; font-size: var(--fs-xs); padding: 8px 14px; border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
   .cal-today-btn:hover { border-color: var(--hover-edge); }
   .cal-filter { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; margin-bottom: 12px; -webkit-overflow-scrolling: touch; }
   .cal-filter::-webkit-scrollbar { display: none; }
@@ -579,7 +580,7 @@
      well not have existed — half of why the sideways drag got attempted at
      all. Fade the trailing edge so there's visibly more to reach. */
   .cal-filter { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); }
-  .cal-chip { flex: 0 0 auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
+  .cal-chip { flex: 0 0 auto; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit; }
   .cal-chip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
   .cal-weekdays, .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
@@ -625,7 +626,7 @@
   .cal-agenda-date .weather-badge { font-size: var(--fs-xs); vertical-align: 1px; margin-left: 6px; }
   .cal-more { font-size: 9px; font-weight: 800; color: var(--muted); line-height: 1; }
   @media (min-width: 701px) { .cal-day { min-height: 92px; } .cal-num { width: 44px; height: 44px; font-size: var(--fs-lg); } .cal-sel-ring { width: 44px; height: 44px; margin-left: -22px; } }
-  .cal-agenda { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .cal-agenda { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 16px; }
   .cal-agenda-date { font-family: var(--font-body); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
   .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 12px 12px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line); margin-bottom: 6px; }
   .cal-item.mine { border-left-color: var(--mine); background: var(--mine-bg); }
@@ -633,7 +634,7 @@
   .cal-team { font-weight: 700; color: var(--turf-deep); font-size: var(--fs-sm); }
   .cal-where { color: var(--muted); font-size: var(--fs-xs); margin-top: 1px; }
   .cal-empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0 2px; }
-  .cal-legend { display: flex; gap: 14px; margin-top: 12px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
+  .cal-legend { display: flex; gap: 14px; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
   .cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
   /* Big one-tap "next open slot" button */
   .next-slot-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 0 0 18px; padding: 14px 18px; border-radius: var(--radius-pill); font-size: var(--fs-md); line-height: 1.2; }
@@ -783,7 +784,7 @@
   /* Per-user actions live in a row that opens *under* the user's row rather
      than in extra columns — a 4-column table with buttons is unusable on a
      phone, and these are rare, deliberate actions that deserve full width. */
-  .manage-btn { background: none; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 700; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
+  .manage-btn { background: none; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 700; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
   .manage-btn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .manage-btn[aria-expanded="true"] { background: var(--turf); border-color: var(--turf); color: #fff; }
   .user-actions > td { background: var(--chip-bg); padding: 14px !important; }

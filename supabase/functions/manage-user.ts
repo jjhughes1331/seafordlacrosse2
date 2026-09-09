@@ -15,6 +15,7 @@
 //   { "action": "reset-password", "userId": "<uuid>", "password": "<8+ chars>" }
 //   { "action": "remove",         "userId": "<uuid>" }
 //   { "action": "set-name",       "userId": "<uuid>", "firstName": "...", "lastName": "..." }
+//   { "action": "last-seen" }   -> { ok, seen: { "<uuid>": "<iso>" | null } }
 // RESPONSE: { "ok": true, ... } or { "ok": false, "error": "..." }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -62,6 +63,18 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON body" }, 400); }
 
   const action = body.action;
+
+  if (action === "last-seen") {
+    // auth.users.last_sign_in_at is maintained by Supabase itself, so there is
+    // no column to add and nothing for a client to fake. It lives in the auth
+    // schema, which only the service role can read - hence this detour.
+    const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (error) return json({ ok: false, error: error.message }, 400);
+    const seen: Record<string, string | null> = {};
+    for (const u of data.users) seen[u.id] = u.last_sign_in_at ?? null;
+    return json({ ok: true, seen });
+  }
+
   const userId = (body.userId || "").trim();
   if (!userId) return json({ ok: false, error: "userId is required" }, 400);
   // Acting on yourself is how you lock yourself out - except for naming

@@ -371,6 +371,11 @@
     padding: 10px 12px; border-radius: var(--radius-chip); cursor: pointer; width: 100%;
   }
   .hamburger-menu button:hover { background: var(--chip-bg); }
+  .activity-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .activity-what { font-weight: 700; color: var(--ink); font-size: var(--fs-sm); }
+  .activity-who { color: var(--muted); font-size: var(--fs-xs); grid-column: 1; }
+  .activity-when { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; grid-row: 1; grid-column: 2; }
+  .activity-empty { color: var(--muted); font-size: var(--fs-sm); padding: 14px 0; }
   .hamburger-name { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
   .hamburger-name input { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
   .hamburger-name .allbtn { margin-left: 0; }
@@ -981,6 +986,7 @@
   .coach-list th { text-align: left; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1.5px solid var(--line); }
   .coach-list td { padding: 8px; border-bottom: 1px solid var(--line); }
   .coach-list td.email-cell { overflow-wrap: anywhere; }
+  .coach-list td.seen-cell, .coach-list th:nth-last-child(2) { white-space: nowrap; color: var(--muted); font-size: var(--fs-xs); }
   .coach-list th:last-child, .coach-list td:last-child { width: 1%; white-space: nowrap; }
   .coach-list .user-actions td { overflow-wrap: normal; width: auto; white-space: normal; }
   .coach-list .empty-row td { text-align: center; color: var(--muted); font-style: italic; padding: 20px; }
@@ -1433,7 +1439,7 @@
       <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
       <input type="search" id="userSearch" placeholder="Search name, email or team" autocomplete="off" style="width:100%;margin-bottom:12px">
       <table>
-        <thead id="userListHead"><tr><th>Name</th><th>Team</th><th>Email</th><th></th></tr></thead>
+        <thead id="userListHead"><tr><th>Name</th><th>Team</th><th>Email</th><th>Last seen</th><th></th></tr></thead>
         <tbody id="coachListBody"></tbody>
 
       </table>
@@ -1569,6 +1575,12 @@
 
   <div class="admin-pane" data-adminpane="reports" hidden>
 <p class="admin-section-label">Reports</p>
+  <details class="admin-card admin-card-collapsible" id="activityCard" open>
+    <summary><h3>Activity</h3></summary>
+    <p class="hint">Every booking, cancellation and waitlist change, recorded by the database itself rather than by the app.</p>
+    <div class="field-chips" id="activityFilter" style="margin-bottom:12px"></div>
+    <div id="activityList"></div>
+  </details>
   <details class="admin-card admin-card-collapsible" id="usageDashboardCard">
     <summary><h3>Usage &amp; analytics</h3></summary>
     <p class="hint" id="usageHint"></p>
@@ -1772,6 +1784,8 @@ const el = {
   inviteGenPasswordBtn: document.getElementById('inviteGenPasswordBtn'),
   userListLabel: document.getElementById('userListLabel'),
   userSearch: document.getElementById('userSearch'),
+  activityList: document.getElementById('activityList'),
+  activityFilter: document.getElementById('activityFilter'),
   userListHead: document.getElementById('userListHead'),
   coachListBody: document.getElementById('coachListBody'),
   bulkFileInput: document.getElementById('bulkFileInput'),
@@ -4716,6 +4730,7 @@ document.getElementById('adminPaneToggle').addEventListener('click', e => {
   // while that pane is hidden and its sliding pill can't be measured. Re-measure
   // it the moment the pane comes back.
   if(btn.dataset.pane === 'people') positionModeThumb(document.getElementById('peoplePaneToggle'));
+  if(btn.dataset.pane === 'reports') loadActivity();
   haptic('light');
 });
 el.finderDays.addEventListener('click', e => {
@@ -4807,7 +4822,7 @@ function renderAdmin(){
     syncInviteFormFields();
     populateTeamSelect(); // full 14, gender-labeled
     el.userListLabel.textContent = 'Directors & coaches';
-    el.userListHead.innerHTML = '<tr><th>Name</th><th>Role</th><th>Team</th><th>Email</th><th></th></tr>';
+    el.userListHead.innerHTML = '<tr><th>Name</th><th>Role</th><th>Team</th><th>Email</th><th>Last seen</th><th></th></tr>';
   } else {
     const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
     el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
@@ -4820,7 +4835,7 @@ function renderAdmin(){
       return `<option value="${id}">${g}</option>`;
     }).join('');
     el.userListLabel.textContent = 'Coaches on your teams';
-    el.userListHead.innerHTML = '<tr><th>Name</th><th>Team</th><th>Coach email</th><th></th></tr>';
+    el.userListHead.innerHTML = '<tr><th>Name</th><th>Team</th><th>Coach email</th><th>Last seen</th><th></th></tr>';
   }
   loadUserList();
   const isAdminSettings = myProfile.role === 'admin';
@@ -5207,8 +5222,68 @@ el.inviteBtn.addEventListener('click', async () => {
 // Fetched once, filtered in memory — typing shouldn't hit the network, and
 // the list is small enough that it never needs to.
 let userListRows = [];
+let lastSeenById = {};
+// ============ ACTIVITY LOG ============
+// The rows come from triggers, so this only has to read and present them.
+let activityRows = [];
+let activityFilter = 'all';   // 'all' | 'booked' | 'cancelled' | 'waitlist'
+const ACTIVITY_FILTERS = [
+  { id: 'all', name: 'Everything' },
+  { id: 'booked', name: 'Booked' },
+  { id: 'cancelled', name: 'Cancelled' },
+  { id: 'waitlist', name: 'Waitlist' },
+];
+function relativeWhen(iso){
+  const then = new Date(iso), mins = Math.round((Date.now() - then) / 60000);
+  if(mins < 1) return 'just now';
+  if(mins < 60) return mins + 'm ago';
+  const hrs = Math.round(mins / 60);
+  if(hrs < 24) return hrs + 'h ago';
+  const days = Math.round(hrs / 24);
+  if(days < 7) return days + 'd ago';
+  return MONTHS[then.getMonth()].slice(0,3) + ' ' + then.getDate();
+}
+async function loadActivity(){
+  el.activityList.innerHTML = '<p class="activity-empty">Loading…</p>';
+  const { data, error } = await sb.from('activity_log')
+    .select('at, actor_email, action, team_id, gender, detail')
+    .order('at', { ascending: false }).limit(200);
+  if(error){ el.activityList.innerHTML = `<p class="activity-empty">Could not load activity: ${escSafe(error.message)}</p>`; return; }
+  activityRows = data || [];
+  renderActivity();
+}
+function renderActivity(){
+  el.activityFilter.innerHTML = ACTIVITY_FILTERS.map(f =>
+    `<button type="button" class="fchip${activityFilter === f.id ? ' active' : ''}" data-activity="${f.id}">${escSafe(f.name)}</button>`).join('');
+  const rows = activityRows.filter(r =>
+    activityFilter === 'all' ? true
+    : activityFilter === 'waitlist' ? r.action.includes('waitlist')
+    : r.action === activityFilter);
+  if(!rows.length){
+    el.activityList.innerHTML = '<p class="activity-empty">Nothing recorded yet.</p>';
+    return;
+  }
+  el.activityList.innerHTML = rows.map(r => {
+    const t = teamsById[r.team_id];
+    const team = t ? teamLabel(t.gender, t.grade) : '';
+    // The trigger stores the raw field id, since Postgres has no idea what the
+    // fields are called. Translate it here, where FIELDS lives.
+    const detail = (r.detail || '').replace(/\bat ([a-z]+)\b/, (m, id) =>
+      FIELD_MAP[id] ? 'at ' + FIELD_MAP[id].name : m);
+    return `<div class="activity-row">
+      <span class="activity-what">${escSafe(team ? team + ' ' : '')}${escSafe(r.action)}${detail ? ' &middot; ' + escSafe(detail) : ''}</span>
+      <span class="activity-when">${escSafe(relativeWhen(r.at))}</span>
+      <span class="activity-who">${escSafe(r.actor_email || 'system')}</span>
+    </div>`;
+  }).join('');
+}
+el.activityFilter.addEventListener('click', e => {
+  const b = e.target.closest('[data-activity]'); if(!b) return;
+  activityFilter = b.dataset.activity; haptic('light'); renderActivity();
+});
+
 async function loadUserList(){
-  const colspan = myProfile.role === 'admin' ? 5 : 4;
+  const colspan = myProfile.role === 'admin' ? 6 : 5;
   el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">Loading…</td></tr>`;
 
   let query = sb.from('profiles').select('id, email, role, gender, team_id, first_name, last_name');
@@ -5229,11 +5304,27 @@ async function loadUserList(){
     return;
   }
 
+  // Last sign-in comes from auth.users, which only the service role can read.
+  // Fire-and-forget: the list renders immediately and fills in the column when
+  // the answer arrives, rather than blocking on a second round trip.
+  manageUser({ action: 'last-seen' }).then(res => {
+    if(!res || !res.ok) return;
+    lastSeenById = res.seen || {};
+    renderUserList();
+  }).catch(() => {});
+
   userListRows = data.slice().sort((a,b) => {
     if(a.role !== b.role) return a.role === 'director' ? -1 : 1;
     return (a.gender||'').localeCompare(b.gender||'');
   });
   renderUserList();
+}
+// "Never" is the useful answer here: an invited coach who has never signed in
+// is the one a director needs to chase.
+function lastSeenText(id){
+  if(!Object.keys(lastSeenById).length) return '';
+  const iso = lastSeenById[id];
+  return iso ? relativeWhen(iso) : 'Never';
 }
 function userRowTeamText(u){
   return u.role === 'director'
@@ -5241,7 +5332,7 @@ function userRowTeamText(u){
     : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
 }
 function renderUserList(){
-  const colspan = myProfile.role === 'admin' ? 5 : 4;
+  const colspan = myProfile.role === 'admin' ? 6 : 5;
   const q = (el.userSearch?.value || '').trim().toLowerCase();
   const match = u => !q || [personName(u), u.first_name, u.last_name, u.email, userRowTeamText(u),
     u.role === 'director' ? 'Director' : 'Coach'].filter(Boolean).join(' ').toLowerCase().includes(q);
@@ -5253,12 +5344,12 @@ function renderUserList(){
   if(myProfile.role === 'admin'){
     el.coachListBody.innerHTML = rows.map(u => {
       const roleLabel = u.role === 'director' ? 'Director' : 'Coach';
-      return `<tr><td>${escSafe(personName(u))}</td><td>${escSafe(roleLabel)}</td><td>${escSafe(userRowTeamText(u))}</td><td class="email-cell">${escSafe(u.email)}</td>${manageCell(u, colspan)}`;
+      return `<tr><td>${escSafe(personName(u))}</td><td>${escSafe(roleLabel)}</td><td>${escSafe(userRowTeamText(u))}</td><td class="email-cell">${escSafe(u.email)}</td><td class="seen-cell">${escSafe(lastSeenText(u.id))}</td>${manageCell(u, colspan)}`;
     }).join('');
   } else {
     el.coachListBody.innerHTML = rows.map(c => {
       const grade = teamsById[c.team_id]?.grade || '(unknown)';
-      return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td>${manageCell(c, colspan)}`;
+      return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td><td class="seen-cell">${escSafe(lastSeenText(c.id))}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
 }

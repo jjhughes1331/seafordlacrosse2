@@ -630,11 +630,13 @@
   @media (min-width: 701px) { .cal-day { min-height: 92px; } .cal-num { width: 44px; height: 44px; font-size: var(--fs-lg); } .cal-sel-ring { width: 44px; height: 44px; margin-left: -22px; } }
   .cal-agenda { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 16px; }
   .cal-agenda-date { font-family: var(--font-body); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
-  .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 12px 12px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line); margin-bottom: 6px; }
+  .cal-item { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline; padding: 12px 12px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line); margin-bottom: 6px; }
   .cal-item.mine { border-left-color: var(--mine); background: var(--mine-bg); }
   .cal-time { font-weight: 800; font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .cal-team { font-weight: 700; color: var(--turf-deep); font-size: var(--fs-sm); }
   .cal-where { color: var(--muted); font-size: var(--fs-xs); margin-top: 1px; }
+  .cal-item-cancel { min-width: 44px; min-height: 44px; align-self: center; border: none; background: none; color: var(--mine-deep); font-size: 20px; font-weight: 700; line-height: 1; cursor: pointer; border-radius: var(--radius-chip); }
+  .cal-item-cancel:hover { background: rgba(0,0,0,.07); }
   .cal-empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0 2px; }
   .cal-legend { display: flex; gap: 14px; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 700; color: var(--muted); }
   .cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
@@ -4080,7 +4082,11 @@ function renderMonthCalendar(which, host){
     const team = key ? teamLabel(...key.split('|')) : 'Unknown team';
     const field = FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id;
     const isMine = myTeamId && b.team_id === myTeamId;
-    return `<div class="cal-item${isMine ? ' mine' : ''}"><span class="cal-time">${escSafe(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span></div>`;
+    // You could only ever cancel a practice from the Book tab's week grid, via a
+    // small x inside a chip — even though this agenda is where a coach actually
+    // looks at their own schedule. Your own team's rows are cancellable here now.
+    const cancel = isMine ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">&times;</button>` : '';
+    return `<div class="cal-item${isMine ? ' mine' : ''}"><span class="cal-time">${escSafe(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
   }).join('') : `<p class="cal-empty">Nothing booked${st.field === 'all' ? '' : ' at ' + escSafe(FIELD_MAP[st.field].name)} on this day.</p>`;
 
   host.innerHTML = `<div class="cal">
@@ -4100,6 +4106,26 @@ function renderMonthCalendar(which, host){
     </div>
   </div>`;
 }
+// Cancelling from the agenda: same confirmation sheet as everywhere else.
+document.addEventListener('click', async e => {
+  const x = e.target.closest('.cal-item-cancel');
+  if(!x) return;
+  if(scheduleLocked){ flash('The schedule is currently locked. No changes can be made right now.', 'err'); return; }
+  const bk = bookingsCache.find(b => b.id === x.dataset.cancel);
+  const ok = await confirmAction({
+    title: 'Cancel this practice?',
+    body: bk ? `${bk.time} on ${fmtDateLong(bk.date)} at ${FIELD_MAP[bk.field_id] ? FIELD_MAP[bk.field_id].name : bk.field_id}. The slot goes back to everyone else.`
+             : 'This releases the slot back to everyone else.',
+    verb: 'Cancel practice',
+  });
+  if(!ok) return;
+  const { data, error } = await sb.from('bookings').delete().eq('id', x.dataset.cancel).select();
+  if(error) flash('Cancel failed: ' + error.message, 'err');
+  else if(!data || !data.length) flash('Could not cancel. You may not have permission.', 'err');
+  else flash('Booking cancelled', 'ok');
+  await refreshBookings();
+  if(currentView === 'league') renderLeague(); else renderScheduleCalendar();
+});
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-cal]');
   if(!btn) return;

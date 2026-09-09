@@ -788,6 +788,8 @@
   /* Per-user actions live in a row that opens *under* the user's row rather
      than in extra columns — a 4-column table with buttons is unusable on a
      phone, and these are rare, deliberate actions that deserve full width. */
+  #userSearch { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
+  #userSearch:focus { outline: none; border-color: var(--hover-edge); }
   .manage-btn { background: none; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 700; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
   .manage-btn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .manage-btn[aria-expanded="true"] { background: var(--turf); border-color: var(--turf); color: #fff; }
@@ -1249,6 +1251,7 @@
     </div>
     <div data-peoplepane="users"><div class="admin-card"><div class="coach-list">
       <p class="section-label" style="margin-bottom:10px" id="userListLabel">Coaches on your teams</p>
+      <input type="search" id="userSearch" placeholder="Search name, email or team" autocomplete="off" style="width:100%;margin-bottom:12px">
       <table>
         <thead id="userListHead"><tr><th>Team</th><th>Email</th><th></th></tr></thead>
         <tbody id="coachListBody"></tbody>
@@ -1577,6 +1580,7 @@ const el = {
   invitePassword: document.getElementById('invitePassword'),
   inviteGenPasswordBtn: document.getElementById('inviteGenPasswordBtn'),
   userListLabel: document.getElementById('userListLabel'),
+  userSearch: document.getElementById('userSearch'),
   userListHead: document.getElementById('userListHead'),
   coachListBody: document.getElementById('coachListBody'),
   bulkFileInput: document.getElementById('bulkFileInput'),
@@ -4866,6 +4870,9 @@ el.inviteBtn.addEventListener('click', async () => {
   el.inviteBtn.disabled = false; el.inviteBtn.textContent = usingPassword ? 'Create account' : 'Send invite';
 });
 
+// Fetched once, filtered in memory — typing shouldn't hit the network, and
+// the list is small enough that it never needs to.
+let userListRows = [];
 async function loadUserList(){
   const colspan = myProfile.role === 'admin' ? 4 : 3;
   el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">Loading…</td></tr>`;
@@ -4883,30 +4890,45 @@ async function loadUserList(){
     return;
   }
   if(!data.length){
+    userListRows = [];
     el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">No one invited yet.</td></tr>`;
     return;
   }
 
+  userListRows = data.slice().sort((a,b) => {
+    if(a.role !== b.role) return a.role === 'director' ? -1 : 1;
+    return (a.gender||'').localeCompare(b.gender||'');
+  });
+  renderUserList();
+}
+function userRowTeamText(u){
+  return u.role === 'director'
+    ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
+    : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
+}
+function renderUserList(){
+  const colspan = myProfile.role === 'admin' ? 4 : 3;
+  const q = (el.userSearch?.value || '').trim().toLowerCase();
+  const match = u => !q || [u.email, userRowTeamText(u), u.role === 'director' ? 'Director' : 'Coach']
+    .join(' ').toLowerCase().includes(q);
+  const rows = userListRows.filter(match);
+  if(!rows.length){
+    el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">${q ? 'Nobody matches “' + escSafe(q) + '”.' : 'No one invited yet.'}</td></tr>`;
+    return;
+  }
   if(myProfile.role === 'admin'){
-    // directors first, then coaches, each sorted by gender/grade for readability
-    const rows = data.slice().sort((a,b) => {
-      if(a.role !== b.role) return a.role === 'director' ? -1 : 1;
-      return (a.gender||'').localeCompare(b.gender||'');
-    });
     el.coachListBody.innerHTML = rows.map(u => {
-      const teamText = u.role === 'director'
-        ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
-        : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
       const roleLabel = u.role === 'director' ? 'Director' : 'Coach';
-      return `<tr><td>${escSafe(roleLabel)}</td><td>${escSafe(teamText)}</td><td>${escSafe(u.email)}</td>${manageCell(u, colspan)}`;
+      return `<tr><td>${escSafe(roleLabel)}</td><td>${escSafe(userRowTeamText(u))}</td><td>${escSafe(u.email)}</td>${manageCell(u, colspan)}`;
     }).join('');
   } else {
-    el.coachListBody.innerHTML = data.map(c => {
+    el.coachListBody.innerHTML = rows.map(c => {
       const grade = teamsById[c.team_id]?.grade || '(unknown)';
       return `<tr><td>${escSafe(grade)}</td><td>${escSafe(c.email)}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
 }
+el.userSearch?.addEventListener('input', () => renderUserList());
 
 // Closes each user's <tr> and appends its (hidden) actions row. You can't
 // manage yourself — that's the one move that locks you out of your own app.

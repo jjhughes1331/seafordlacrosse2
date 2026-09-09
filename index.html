@@ -266,7 +266,7 @@
   /* ===== Login / auth screens ===== */
   .auth-screen { max-width: 420px; margin: 60px auto; padding: 32px 28px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); text-align: center; }
   .auth-screen img { width: 90px; margin-bottom: 16px; }
-  .auth-screen h2 { font-family: var(--font-display); font-size: var(--fs-xl); color: var(--turf-deep); margin-bottom: 6px; font-weight: 600; }
+  .auth-screen h2 { font-family: var(--font-body); font-size: var(--fs-xl); color: var(--turf-deep); margin-bottom: 6px; font-weight: 600; }
   .auth-screen p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 20px; }
   .field { text-align: left; margin-bottom: 14px; }
   .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
@@ -335,7 +335,7 @@
   .count b { color: var(--ink); }
   .venue { margin-bottom: 26px; }
   .venue-head { display: flex; align-items: baseline; gap: 10px; padding-bottom: 8px; margin-bottom: 6px; border-bottom: 2px solid var(--turf-deep); }
-  .venue-head h3 { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 600; color: var(--turf-deep); }
+  .venue-head h3 { font-family: var(--font-body); font-size: var(--fs-lg); font-weight: 600; color: var(--turf-deep); }
   .venue-head .n { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
   .venue-note { font-size: var(--fs-xs); color: var(--muted); margin: 8px 0 12px; font-style: italic; }
   .rows { display: grid; gap: 7px; }
@@ -442,7 +442,7 @@
   .mtab.active, .gtab.active { color: #fff; }
   .mtab.active:hover, .gtab.active:hover { color: #fff; }
   .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
-  .recurring-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
+  .recurring-card h3 { font-family: var(--font-body); color: var(--turf-deep); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
   .recurring-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 14px; }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   /* Compact month overview (mobile Book view) — a real calendar grid, never an
@@ -567,7 +567,7 @@
   .cal { margin-top: 2px; padding: 0 20px; max-width: 1000px; margin-left: auto; margin-right: auto; }
   .cal-filter { margin-left: -20px; margin-right: -20px; padding-left: 20px; padding-right: 20px; }
   .cal-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-  .cal-month { flex: 1; font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
+  .cal-month { flex: 1; font-family: var(--font-body); font-size: var(--fs-lg); font-weight: 700; color: var(--ink); }
   .cal-nav { width: 38px; height: 38px; flex: none; border-radius: 50%; border: 1.5px solid var(--line); background: var(--card); color: var(--turf-deep); font-size: 17px; line-height: 1; cursor: pointer; font-family: inherit; }
   .cal-nav:hover:not(:disabled) { border-color: var(--hover-edge); }
   .cal-nav:disabled { opacity: .35; cursor: not-allowed; }
@@ -619,7 +619,7 @@
   .cal-more { font-size: 9px; font-weight: 800; color: var(--muted); line-height: 1; }
   @media (min-width: 701px) { .cal-day { min-height: 92px; } .cal-num { width: 44px; height: 44px; font-size: var(--fs-lg); } .cal-sel-ring { width: 44px; height: 44px; margin-left: -22px; } }
   .cal-agenda { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
-  .cal-agenda-date { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
+  .cal-agenda-date { font-family: var(--font-body); font-weight: 700; font-size: var(--fs-md); color: var(--turf-deep); margin-bottom: 10px; }
   .cal-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: baseline; padding: 12px 12px; border-radius: var(--radius-chip); background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--line); margin-bottom: 6px; }
   .cal-item.mine { border-left-color: var(--mine); background: var(--mine-bg); }
   .cal-time { font-weight: 800; font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -668,7 +668,7 @@
   .welcome-card { margin-left: 20px; margin-right: 20px; }
   .install-nudge { margin-left: 20px; margin-right: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
   @media (min-width: 1041px) { .welcome-card, .install-nudge { margin-left: auto; margin-right: auto; } }
-  .welcome-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 2px; font-weight: 600; }
+  .welcome-card h3 { font-family: var(--font-body); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 2px; font-weight: 600; }
   .welcome-card .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
   .welcome-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--chip-bg); border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 12px 14px; margin-bottom: 8px; font-family: inherit; font-size: var(--fs-base); font-weight: 700; color: var(--turf-deep); cursor: pointer; }
   .welcome-row:hover { border-color: var(--hover-edge); }
@@ -679,7 +679,7 @@
   .nudge-text { font-size: var(--fs-sm); color: var(--ink); line-height: 1.5; }
   .nudge-actions { display: flex; gap: 8px; }
   .kbd { display: inline-block; background: var(--chip-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; font-weight: 700; font-size: var(--fs-xs); }
-  .cal-title { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 4px; font-weight: 600; }
+  .cal-title { font-family: var(--font-body); color: var(--turf-deep); font-size: var(--fs-md); margin: 0 0 4px; font-weight: 600; }
   .share-sheet .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
   .cal-google-hint { margin: 12px 0 0 !important; }
   /* Share card sheet */
@@ -756,7 +756,7 @@
   }
   .admin-card-collapsible[open] summary::after { transform: rotate(45deg); }
   .admin-card-collapsible .hint { margin-top: 12px; }
-  .admin-card h3 { font-family: var(--font-display); color: var(--turf-deep); font-size: var(--fs-lg); margin-bottom: 4px; font-weight: 600; }
+  .admin-card h3 { font-family: var(--font-body); color: var(--turf-deep); font-size: var(--fs-lg); margin-bottom: 4px; font-weight: 600; }
   .admin-card-danger h3 { color: var(--danger); }
   .admin-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 16px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }

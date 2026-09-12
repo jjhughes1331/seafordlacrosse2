@@ -1,5 +1,11 @@
 -- Activity log: what coaches actually did, for directors and admins.
 --
+-- Every function here is SECURITY DEFINER with search_path pinned to public.
+-- A definer function that resolves names through a mutable search_path can be
+-- hijacked by anyone able to create a same-named object earlier in that path,
+-- and it runs as the owner. Every other definer function in this project pins
+-- it; these must too.
+--
 -- Written by TRIGGERS, not by the app. A coach controls their own browser, so
 -- client-side logging can be skipped, replayed or forged, and it silently
 -- misses anything done outside the app. A trigger sees every write, including
@@ -37,7 +43,7 @@ create policy activity_log_select on activity_log for select using (
 
 create or replace function log_activity(
   p_action text, p_team_id uuid, p_detail text
-) returns void language plpgsql security definer as $$
+) returns void language plpgsql security definer set search_path = public as $$
 declare
   v_actor uuid := auth.uid();
   v_email text;
@@ -50,7 +56,7 @@ begin
 end $$;
 
 create or replace function log_booking_change() returns trigger
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public as $$
 begin
   if (TG_OP = 'INSERT') then
     perform log_activity('booked', NEW.team_id,
@@ -71,7 +77,7 @@ create trigger bookings_log_activity
   for each row execute function log_booking_change();
 
 create or replace function log_waitlist_change() returns trigger
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public as $$
 begin
   if (TG_OP = 'INSERT') then
     perform log_activity('joined waitlist', NEW.team_id,
@@ -91,7 +97,7 @@ create trigger waitlist_log_activity
 
 -- A team marking itself finished releases the next grade, so it belongs here.
 create or replace function log_team_finished() returns trigger
-language plpgsql security definer as $$
+language plpgsql security definer set search_path = public as $$
 begin
   if (NEW.priority_finished_at is distinct from OLD.priority_finished_at) then
     perform log_activity(

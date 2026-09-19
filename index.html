@@ -194,7 +194,7 @@
     --danger-bg: #fbe9e4;
     /* Restrained, hairline-first depth — a thin border does most of the work, shadow is just a whisper */
     --shadow: 0 1px 2px rgba(15,30,20,.04);
-    --shadow-turf: 0 4px 14px rgba(31,92,56,.22);
+    --shadow-turf: none;
     /* Layered "material" elevation for actual content cards — a soft contact
        shadow plus a longer ambient falloff reads as depth; a single flat
        shadow reads as a border. Used on .row/.day/.gcard/.admin-card etc. */
@@ -253,7 +253,7 @@
       --chip-hover-bg: rgba(79,174,118,.26);
       --ok-bg: rgba(79,174,118,.2);
       --shadow: 0 1px 2px rgba(0,0,0,.3);
-      --shadow-turf: 0 4px 14px rgba(79,174,118,.22);
+      --shadow-turf: none;
       --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 8px 20px -4px rgba(0,0,0,.4);
       --shadow-card-hover: 0 2px 4px rgba(0,0,0,.4), 0 12px 28px -6px rgba(0,0,0,.5);
     }
@@ -283,7 +283,7 @@
     --chip-hover-bg: rgba(79,174,118,.26);
     --ok-bg: rgba(79,174,118,.2);
     --shadow: 0 1px 2px rgba(0,0,0,.3);
-    --shadow-turf: 0 4px 14px rgba(79,174,118,.22);
+    --shadow-turf: none;
     --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 8px 20px -4px rgba(0,0,0,.4);
     --shadow-card-hover: 0 2px 4px rgba(0,0,0,.4), 0 12px 28px -6px rgba(0,0,0,.5);
   }
@@ -411,7 +411,7 @@
     transition: max-height .22s var(--ease), opacity .22s var(--ease), padding .22s var(--ease);
   }
   #lockBanner.show { max-height: 60px; opacity: 1; padding: 10px 20px; }
-  .signed-in .label { font-size: var(--fs-2xs); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
+  .signed-in .label { font-size: var(--fs-2xs); color: var(--muted); font-weight: 700; }
   .signed-in .who { font-size: var(--fs-md); font-weight: 800; color: var(--turf-deep); }
   .signed-in .role-pill { font-size: var(--fs-2xs); font-weight: 800; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: #fff; padding: 4px 8px; border-radius: var(--radius-pill); }
   .signout-btn { margin-left: auto; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 6px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; }
@@ -437,7 +437,7 @@
 
   /* ===== Team picker (schedule filter) ===== */
   .picker { max-width: 1000px; margin: 22px auto 0; padding: 0 20px; }
-  .picker h2 { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 12px; font-weight: 700; }
+  .picker h2 { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 12px; font-weight: 700; }
   /* Gender picker now reuses the exact .mode-toggle sliding-pill look (see
      below) instead of its own bordered-button style — same control, same
      mental model, everywhere a girls/boys or 2-3-way choice appears. */
@@ -447,6 +447,8 @@
      sheet (wheel picker on iOS, dropdown elsewhere) — no swiping, no custom
      sheet to maintain, and it still gets the site's pill look for free. */
   .grade-grid { display: block; }
+  .league-team-pick { max-width: 1000px; margin: 14px auto 0; padding: 0 20px; }
+  .league-team-pick .grade-select { margin: 0 auto; }
   .grade-select {
     appearance: none; -webkit-appearance: none; -moz-appearance: none;
     display: block; width: 100%; max-width: 320px;
@@ -530,7 +532,7 @@
 
   /* ===== Book view ===== */
   .booking { max-width: 1000px; margin: 16px auto 0; padding: 0 20px; }
-  .section-label { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 10px; font-weight: 700; }
+  .section-label { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 10px; font-weight: 700; }
   .field-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
   .fchip-short { display: none; }
   @media (max-width: 480px) {
@@ -634,7 +636,7 @@
   .cal-daynum { font-size: var(--fs-xs); font-weight: 800; color: var(--turf-deep); margin-bottom: 4px; flex: none; }
   .cal-slots { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; max-height: 100px; }
   .cal-slot { font-size: 10.5px; padding: 2px 6px; border-radius: var(--radius-chip); background: var(--chip-bg); color: var(--turf-deep); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
-  .cal-slot.empty { background: none; border: 1px dashed var(--line); color: var(--muted); cursor: pointer; width: 100%; }
+  .cal-slot.empty { background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer; width: 100%; }
   .cal-slot.empty:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .cal-slot.mine { background: var(--mine-bg); color: var(--mine-deep); font-weight: 700; border: 1px solid var(--mine); }
   @media (max-width: 700px) and (min-width: 481px) {
@@ -682,17 +684,17 @@
   }
   .weeknav .label { flex: 1; text-align: center; font-weight: 800; font-size: var(--fs-base); color: var(--ink); }
   .day { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
-  .day h3 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); }
+  .day h3 { font-size: var(--fs-sm); font-weight: 800; color: var(--turf-deep); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
   .day h3 .past { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 6px; }
   .timerow { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 6px 8px; align-items: start; border-radius: var(--radius-chip); }
   /* Every open slot looked identical regardless of time — nothing to latch onto
      while scanning a day. Zebra-striping alternate time groups gives the eye
      a pattern to scan by by without reading every label. */
   .timerow:nth-of-type(even) { background: var(--chip-bg); }
-  .timerow + .timerow { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 4px; }
+  .timerow + .timerow { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
   .timelabel { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); padding-top: 6px; }
   .subrow { display: flex; flex-wrap: wrap; gap: 6px; }
-  .book-slot { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px dashed var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
+  .book-slot { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); border: 1.5px solid var(--line); background: var(--card); color: var(--muted); cursor: pointer; font-weight: 600; font-family: inherit; }
   .book-slot:hover { border-style: solid; border-color: var(--hover-edge); color: var(--hover-edge); background: var(--chip-hover-bg); }
   .book-slot .sub { font-weight: 700; color: var(--ink); }
   .book-slot.booked { border-style: solid; border-color: var(--line); background: var(--chip-bg); color: var(--turf-deep); cursor: default; }
@@ -870,7 +872,7 @@
     15%, 55% { box-shadow: 0 0 0 4px var(--mine); background: var(--mine-bg); border-color: var(--mine); }
   }
   .waitlist-btn {
-    border: 1px dashed var(--mine); background: none; color: var(--mine-deep); font-size: var(--fs-2xs);
+    border: 1px solid var(--mine); background: none; color: var(--mine-deep); font-size: var(--fs-2xs);
     font-weight: 700; padding: 2px 8px; border-radius: var(--radius-chip); cursor: pointer; font-family: inherit; margin-left: 2px;
   }
   .waitlist-btn:hover { background: var(--mine-bg); }
@@ -887,11 +889,11 @@
     .usage-row { grid-template-columns: 90px 1fr 90px; gap: 6px; }
   }
   .field-map-toggle {
-    display: inline-block; margin: 6px 8px 0 0; border: 1px dashed var(--line); background: none;
+    display: inline-block; margin: 6px 8px 0 0; border: 1px solid var(--line); background: none;
     color: var(--turf); font-size: var(--fs-2xs); font-weight: 700; padding: 4px 8px; font-style: normal;
     border-radius: var(--radius-chip); cursor: pointer; font-family: inherit;
   }
-  .field-map-toggle:hover, .field-map-toggle.open { border-style: solid; border-color: var(--hover-edge); background: var(--chip-hover-bg); }
+  .field-map-toggle:hover, .field-map-toggle.open { border-color: var(--hover-edge); background: var(--chip-hover-bg); }
   .field-map-directions { display: inline-block; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 700; font-style: normal; }
   .inline-icon { width: 14px; height: 14px; vertical-align: -2.5px; flex: none; }
   .field-map-box { margin-top: 10px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--line); }
@@ -1051,7 +1053,7 @@
 
   @media (max-width: 560px) {
     .row { grid-template-columns: 1fr; gap: 8px; }
-    .row .date { border-bottom: 1px dashed var(--line); padding-bottom: 6px; }
+    .row .date { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
     .toolbar { flex-direction: column; align-items: flex-start; }
     .allbtn { margin-left: 0; }
     /* Stacked mode had a bigger gap *within* a time group (label→buttons) than
@@ -1071,6 +1073,7 @@
        for guaranteed no overlap with the button. */
     .header-hero { gap: 10px; padding: 0 4px 0 52px; }
     .header-hero img { height: 52px; }
+    header h1 { white-space: nowrap; font-size: clamp(22px, 6.6vw, 30px); }
   }
 
   /* ===== Mobile app shell: floating pill tab bar instead of a scrolling top strip ===== */
@@ -1126,19 +1129,18 @@
       pointer-events: none;
     }
     .view-tab { position: relative; z-index: 1; }
-    .view-tab.active { color: var(--turf-deep); }
-    /* Six identical tabs meant nothing stood out, and booking is the whole
-       point of the app. One filled tab in a row of six is the cheapest
-       isolation there is, and it sits on every screen. */
-    .view-tab[data-view="book"] { background: var(--accent-fill); color: #fff; }
-    .view-tab[data-view="book"].active { background: var(--turf-deep); color: #fff; }
+    /* One selected style, the iOS one: the current tab's icon and label take
+       the accent colour. A permanently filled Book tab plus a sliding blob
+       read as two tabs selected at once. */
+    .view-tabs-thumb { display: none; }
+    .view-tab.active { color: var(--accent-fill); }
     .view-tab:active { transform: scale(.94); }
     /* Keep the toast above the new bottom bar instead of colliding with it */
     .actions { bottom: calc(var(--navbar-h) + var(--safe-bottom) + 14px); }
     /* Identity/sign-out moves into the hamburger menu on mobile — a bar that
        permanently occupies a content row just to say "signed in as X" is
        chrome nobody asked to see on every screen. */
-    .signed-in { display: none; }
+    .signed-in { display: none !important; }
     /* Not sticky — the header above already owns the sticky top slot and
        condenses on scroll; a second stacked sticky bar here would overlap it. */
   }
@@ -1307,21 +1309,15 @@
   <div id="pickTeamPrompt" class="locked-team-banner" style="display:none">Select your team above to start booking.</div>
   <div id="priorityLockedBanner" class="priority-locked-banner" style="display:none"></div>
   <div id="priorityFinishedRow" class="priority-finished-row" style="display:none"></div>
-  <!-- The one-tap path. It was a small grey button buried under the field
-       list; the thing that does the most should be the biggest thing. -->
-  <button class="btn-primary next-slot-hero" id="findNextSlotBtn" type="button">
-    <span class="next-slot-main"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path d="M13.9 1.9a.7.7 0 0 1 1.2.66l-1.7 5.6a.7.7 0 0 0 .67.9h4.5a1 1 0 0 1 .73 1.68l-9.2 9.86a.7.7 0 0 1-1.2-.66l1.7-5.6a.7.7 0 0 0-.67-.9H5.4a1 1 0 0 1-.73-1.68Z"/></svg> Find a time that works</span>
-    <span class="next-slot-sub" id="findNextSlotSub"></span>
-  </button>
-  <p class="section-label">Pick a field</p>
+  <p class="section-label">Field</p>
   <div class="field-chips" id="fieldChips"></div>
   <div class="field-note" id="fieldNote"></div>
 
-  <p class="section-label">Book timing</p>
+  <p class="section-label">Show</p>
   <div class="mode-toggle" id="bookModeToggle">
     <span class="mode-toggle-thumb"></span>
-    <button class="mtab" data-mode="week">Weekly</button>
-    <button class="mtab active" data-mode="month">Monthly</button>
+    <button class="mtab" data-mode="week">Week</button>
+    <button class="mtab active" data-mode="month">Month</button>
     <button class="mtab" data-mode="season">Season</button>
   </div>
 
@@ -1360,11 +1356,11 @@
 <!-- ============ OPEN THIS WEEK VIEW ============ -->
 <div id="viewOpenWeek" style="display:none">
   <div class="wrap">
-    <p class="section-label">Which days?</p>
+    <p class="section-label">Days</p>
     <div class="finder-days" id="finderDays"></div>
-    <p class="section-label" style="margin-top:14px">What time?</p>
+    <p class="section-label" style="margin-top:14px">Time</p>
     <div class="field-chips" id="finderTimes"></div>
-    <p class="section-label" style="margin-top:14px">Which field?</p>
+    <p class="section-label" style="margin-top:14px">Field</p>
     <div class="field-chips" id="openWeekFieldChips"></div>
     <p class="hint" id="finderUsualNote" style="margin:10px 0 0"></p>
     <p class="count" id="openWeekCount"></p>
@@ -1395,14 +1391,13 @@
     <button class="mtab" data-gender="girls">Girls Only</button>
     <button class="mtab" data-gender="boys">Boys Only</button>
   </div>
-  <div class="field" style="margin:12px 0 0">
-    <label for="leagueTeamSelect">Team</label>
-    <select id="leagueTeamSelect"></select>
+  <div class="grade-grid league-team-pick">
+    <select class="grade-select" id="leagueTeamSelect" aria-label="Team"></select>
   </div>
   <div class="mode-toggle" id="leagueModeToggle">
     <span class="mode-toggle-thumb"></span>
+    <button class="mtab active" data-mode="month">Month</button>
     <button class="mtab" data-mode="list">List</button>
-    <button class="mtab active" data-mode="month">Monthly</button>
   </div>
   <div class="wrap">
     <div class="weeknav" id="leagueMonthNavBar">
@@ -1597,7 +1592,6 @@
 
 <footer id="pageFooter" style="display:none">
   <img src="seaford-vikings-anniversary-logo.png" alt="Seaford Vikings 250th and 25th anniversary" class="footer-anniversary-badge">
-  <p>Access is by invite only. Directors invite coaches from the Admin tab; each coach can only book their own team's slots. Bookings sync live across every signed-in device.</p>
   <button id="themeToggleBtn" type="button">
     <svg class="inline-icon theme-icon-sun"viewBox="0 0 24 24" fill="currentColor"><path d="M12 6.6a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8Zm0-5.4a1.2 1.2 0 0 1 1.2 1.2v1.8a1.2 1.2 0 0 1-2.4 0V2.4A1.2 1.2 0 0 1 12 1.2Zm0 17.4a1.2 1.2 0 0 1 1.2 1.2v1.8a1.2 1.2 0 0 1-2.4 0v-1.8a1.2 1.2 0 0 1 1.2-1.2ZM1.2 12a1.2 1.2 0 0 1 1.2-1.2h1.8a1.2 1.2 0 0 1 0 2.4H2.4A1.2 1.2 0 0 1 1.2 12Zm17.4 0a1.2 1.2 0 0 1 1.2-1.2h1.8a1.2 1.2 0 0 1 0 2.4h-1.8a1.2 1.2 0 0 1-1.2-1.2ZM4.4 4.4a1.2 1.2 0 0 1 1.7 0l1.3 1.3a1.2 1.2 0 1 1-1.7 1.7L4.4 6.1a1.2 1.2 0 0 1 0-1.7Zm12.2 12.2a1.2 1.2 0 0 1 1.7 0l1.3 1.3a1.2 1.2 0 0 1-1.7 1.7l-1.3-1.3a1.2 1.2 0 0 1 0-1.7Zm3-12.2a1.2 1.2 0 0 1 0 1.7l-1.3 1.3a1.2 1.2 0 1 1-1.7-1.7l1.3-1.3a1.2 1.2 0 0 1 1.7 0ZM7.4 16.6a1.2 1.2 0 0 1 0 1.7l-1.3 1.3a1.2 1.2 0 0 1-1.7-1.7l1.3-1.3a1.2 1.2 0 0 1 1.7 0Z"/></svg>
     <svg class="inline-icon theme-icon-moon"viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.6a8.6 8.6 0 0 1-11-11 .9.9 0 0 0-1.2-1.1A10.2 10.2 0 1 0 21.5 15.8a.9.9 0 0 0-1.1-1.2Z"/></svg>
@@ -1713,7 +1707,6 @@ const el = {
   count: document.getElementById('count'),
   fieldChips: document.getElementById('fieldChips'),
   fieldNote: document.getElementById('fieldNote'),
-  findNextSlotBtn: document.getElementById('findNextSlotBtn'),
   weekLabel: document.getElementById('weekLabel'),
   prevWeek: document.getElementById('prevWeek'),
   nextWeek: document.getElementById('nextWeek'),
@@ -2221,7 +2214,7 @@ function renderWelcome(){
     : bookingsCache.some(b => { const t = teamsById[b.team_id]; return t && (myProfile.role === 'admin' || t.gender === myProfile.gender); });
   const pushDone = ('Notification' in window) && Notification.permission === 'granted';
   const allDone = favDone && bookDone && pushDone;
-  if(flags.dismissed || allDone){
+  if(myProfile.role !== 'coach' || flags.dismissed || allDone){
     card.style.display = 'none';
     if(allDone && !flags.dismissed){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e){} }
   } else {
@@ -3066,7 +3059,7 @@ function switchView(view){
       // admin: full pick of gender + grade, any of the 14 teams
       el.lockedTeamBanner.style.display = 'none';
       el.teamPicker.style.display = 'block';
-      el.pickerHeading.textContent = 'Book for which team?';
+      el.pickerHeading.textContent = 'Team';
       document.querySelectorAll('.gtab').forEach(g => { g.style.display = 'inline-block'; g.classList.toggle('active', g.dataset.g === bookAsGender); });
       buildGradeGrid(true);
       applyBookTeamGate();
@@ -3125,7 +3118,7 @@ function buildGradeGrid(forBooking){
   html += GRADES.map(g => {
     const key = gender+'|'+g;
     const n = cnts[key] || 0;
-    return `<option value="${g}">${g} (${n} booking${n!==1?'s':''})</option>`;
+    return `<option value="${g}">${g}</option>`;
   }).join('');
   el.gradeGrid.innerHTML = html;
   el.gradeGrid.value = showPlaceholder ? '__placeholder__' : (activeGrade || '');
@@ -3805,9 +3798,9 @@ function fieldNoteHTML(f){
   if(!f) return '';
   const q = fieldMapQuery(f);
   return `${f.note ? escSafe(f.note) : ''}
-    <button class="field-map-toggle" data-mapfor="${f.id}" type="button"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Map &amp; directions</button>
-    <a class="field-map-directions" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Directions ↗</a>
+    <button class="field-map-toggle" data-mapfor="${f.id}" type="button"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Map</button>
     <div class="field-map-box" id="mapbox-${f.id}" style="display:none">
+      <a class="field-map-directions" href="https://www.google.com/maps/search/?api=1&query=${q}" target="_blank" rel="noopener">Get directions</a>
       <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${q}&output=embed"></iframe>
     </div>`;
 }
@@ -3829,8 +3822,6 @@ function buildFieldChips(){
       <span class="fchip-full">${escSafe(f.name)}</span><span class="fchip-short">${escSafe(f.short||f.name)}</span>
     </button>`).join('');
   el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
-  const nextSub = document.getElementById('findNextSlotSub');
-  if(nextSub) nextSub.textContent = 'every field, whole season';
 }
 el.fieldChips.addEventListener('click', e => {
   const starBtn = e.target.closest('.fav-star');
@@ -3850,14 +3841,6 @@ el.fieldChips.addEventListener('click', e => {
 });
 
 
-el.findNextSlotBtn.addEventListener('click', () => {
-  // Hand the whole question to the search: every field, the whole season,
-  // opened on this team's usual days and time.
-  finderPrefilled = false;
-  finderLimit = 40;
-  openWeekField = null;
-  switchView('openweek');
-});
 el.prevWeek.addEventListener('click', () => {
   const next = addDays(currentWeekMonday, -7);
   if(next >= mondayOf(SEASON_START)){ currentWeekMonday = next; renderWeek(); }
@@ -4329,12 +4312,9 @@ function renderMonthCalendar(which, host){
     const day = (byDate[dateStr] || []);
     const mine = day.filter(b => myTeamId && b.team_id === myTeamId).length;
     const others = day.length - mine;
-    // Gold first so "my team practices today" survives the 4-dot cap.
-    let dots = '';
-    let shown = 0;
-    for(let i = 0; i < mine && shown < 4; i++, shown++) dots += '<span class="cal-dot mine"></span>';
-    for(let i = 0; i < others && shown < 4; i++, shown++) dots += '<span class="cal-dot"></span>';
-    if(day.length > shown) dots += `<span class="cal-more">+${day.length - shown}</span>`;
+    // Three encodings (dots, "+N", fill bar) in a 40px cell read as noise.
+    // One gold dot answers "do we practise today"; the bar answers "how busy".
+    const dots = mine ? '<span class="cal-dot mine"></span>' : '';
     const wet = weatherCache[dateStr] && weatherCache[dateStr].precip >= 50;
     const cap = inSeason ? calDayCapacity(which, cursor) : 0;
     const pct = cap ? Math.min(100, Math.round(day.length / cap * 100)) : 0;
@@ -4376,7 +4356,7 @@ function renderMonthCalendar(which, host){
     <div class="cal-filter">${chips}</div>
     <div class="cal-weekdays">${DOW_SHORT.map(d => `<span>${d[0]}</span>`).join('')}</div>
     <div class="cal-days">${cells}</div>
-    <div class="cal-legend"><span><i style="background:var(--mine);width:9px;height:9px"></i>Your team</span><span><i style="background:var(--muted);opacity:.5"></i>Other teams</span><span><i style="background:var(--ink);opacity:.34;width:16px;height:4px;border-radius:999px"></i>How full the day is</span></div>
+    <div class="cal-legend"><span><i style="background:var(--mine);width:9px;height:9px"></i>Your team</span><span><i style="background:var(--ink);opacity:.34;width:16px;height:4px;border-radius:999px"></i>How full the day is</span></div>
     <div class="cal-agenda">
       <div class="cal-agenda-date">${DOW_FULL[sel.getDay()]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}${weatherBadge(st.selected)}</div>
       ${agenda}
@@ -4611,7 +4591,7 @@ function buildOpenWeekFieldChips(){
 }
 function buildFinderChips(){
   el.finderDays.innerHTML = DOW_SHORT.map((d, i) =>
-    `<button class="daytoggle${finderDays.has(i) ? ' active' : ''}" data-finderday="${i}">${escSafe(d[0])}</button>`).join('');
+    `<button class="daytoggle${finderDays.has(i) ? ' active' : ''}" data-finderday="${i}" aria-label="${escSafe(d)}">${escSafe(d.slice(0,2))}</button>`).join('');
   el.finderTimes.innerHTML = FINDER_TIMES.map(t =>
     `<button class="fchip${finderTime === t.id ? ' active' : ''}" data-findertime="${t.id}">${escSafe(t.name)}</button>`).join('');
 }
@@ -4652,9 +4632,7 @@ function renderOpenWeek(){
     el.openWeekBookingAs.textContent = '';
   }
   const u = usualPattern();
-  el.finderUsualNote.textContent = (u && finderPrefilled)
-    ? 'Set to your team’s usual pattern. Change it above to look elsewhere.'
-    : '';
+  el.finderUsualNote.textContent = (u && finderPrefilled) ? 'Your team’s usual days and time' : '';
 
   const all = findOpenSlots();
   const shown = all.slice(0, finderLimit);
@@ -4702,9 +4680,8 @@ function renderOpenWeek(){
     html += `<button type="button" class="allbtn finder-more" id="finderMoreBtn">Show more (${all.length - shown.length} more)</button>`;
   }
   el.openWeekResults.innerHTML = html;
-  const fieldLabel = openWeekField ? FIELD_MAP[openWeekField].name : 'all fields';
-  const dayLabel = finderDays.size ? [...finderDays].sort().map(d => DOW_SHORT[d]).join(', ') : 'any day';
-  el.openWeekCount.innerHTML = `<b>${all.length}</b> open slot${all.length!==1?'s':''} across ${escSafe(fieldLabel)} on ${escSafe(dayLabel)}, rest of season.`;
+  const nx = all[0];
+  el.openWeekCount.innerHTML = `Next open: <b>${escSafe(dowOfISO(nx.dateStr))}, ${escSafe(fmtDateLong(nx.dateStr))}, ${escSafe(nx.time)}</b> at ${escSafe(nx.fieldName)}`;
 }
 el.openWeekFieldChips.addEventListener('click', e => {
   const chip = e.target.closest('.fchip'); if(!chip) return;

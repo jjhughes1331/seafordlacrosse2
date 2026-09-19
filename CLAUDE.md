@@ -34,7 +34,7 @@ grown past a screen, it wants its own file with one line pointing to it here.
 - `index.html` — the entire site: markup, styles and script in one file (~5,200 lines)
 - `sw.js`, `manifest.json` — PWA. The SW is **network-first** and skips Supabase, so it never serves stale data
 - `supabase/*.sql` — reference copies of applied schema/policy work
-- `supabase/functions/manage-user.ts` — reference copy; `invite-coach` and `send-push` live only in the dashboard
+- `supabase/functions/*.ts` — reference copies of `manage-user` and `invite-coach` (`send-push` and `team-ics` are read-only in the dashboard; both reviewed 2026-09-18)
 - `tools/render-audit.js` — see Verifying below
 - `MOBILE_APP_HANDOFF.md` — Capacitor shell backend contract
 
@@ -60,6 +60,10 @@ different project** — drive the dashboard in the browser instead.
   CASCADE — it would silently erase a team's season
 - RLS pins `booked_by` to `auth.uid()` on insert *and* update, so you cannot
   create or move a booking on someone else's behalf
+- Reads require a `profiles` row, not just a session (`harden_2026_09_18.sql`);
+  `anon` has no table grants and `log_activity()` is not API-callable
+- **Public sign-up must stay OFF** (Auth → Sign In / Providers). Accounts come
+  only from `invite-coach` via the admin API
 
 ## Domain rules that surprise people
 - **The priority ladder is combined across genders.** Girls 6th finishing does
@@ -69,21 +73,6 @@ different project** — drive the dashboard in the browser instead.
   auto-advances via `priority_forced_ranks`
 - Changing a field's hours in `FIELDS` also requires updating `field_slots`, or
   new bookings get rejected
-
-## Known gap: nobody has a name
-`profiles` has **no name column**. The name shown in the header is derived from
-role — admin becomes "Site Admin", a director "Girls Director", a coach "Girls
-6th Grade". It reads like a name and is not one.
-
-Worse, the bulk-invite spreadsheet template asks for a `Name` column, parses it,
-and validates rows against it — then sends only `{email, inviteRole, teamId}`
-to `invite-coach`. Names typed into that template are silently discarded.
-
-Closing this means: `first_name`/`last_name` on `profiles`, a name field on the
-single invite form, actually forwarding the bulk name, showing it in the user
-table, and falling back to the role label when it is absent (the two existing
-accounts predate the column). `invite-coach` creates the profile row and its
-source exists only in the Supabase dashboard — read it there before changing it.
 
 ## Design system (decided, don't relitigate)
 - **One typeface: Manrope.** Hierarchy from weight and size

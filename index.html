@@ -1991,7 +1991,10 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
   // zone between them means ordinary scroll noise can't retrigger it.
   const COLLAPSE_AT = 88, EXPAND_AT = 24;
   function apply(){
-    const forceCondensed = isMobileViewport() && typeof currentView !== 'undefined' && currentView !== 'schedule';
+    // On phones the header never changes size. Growing and shrinking it with
+    // scroll (on top of iOS rubber-banding and Safari's own toolbar resizing)
+    // read as the header sliding around the window. Desktop keeps the hero.
+    const forceCondensed = isMobileViewport();
     const on = headerEl.classList.contains('scrolled');
     const next = forceCondensed || (on ? window.scrollY > EXPAND_AT : window.scrollY > COLLAPSE_AT);
     if(next !== on) headerEl.classList.toggle('scrolled', next);

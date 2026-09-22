@@ -955,6 +955,13 @@
      hand-listed selectors of the first Fitts pass - turned up eleven more
      controls under 44px, nearly all bare <button id> or <a>, which is exactly
      what a curated selector list cannot see. */
+  .hamburger-delete {
+    width: 100%; min-height: 44px; margin-top: 4px; padding: 10px 12px;
+    background: none; border: none; border-top: 1px solid var(--line);
+    color: var(--muted); font-family: inherit; font-size: var(--fs-xs); font-weight: 700;
+    text-align: left; cursor: pointer; border-radius: 0 0 var(--radius-md) var(--radius-md);
+  }
+  .hamburger-delete:hover { color: var(--danger); }
   #hamburgerBtn { width: 44px; height: 44px; }
   #hamburgerBtn svg { width: 20px; height: 20px; }
   .signout-btn { min-height: 44px; display: inline-flex; align-items: center; }
@@ -964,6 +971,8 @@
   .field-map-toggle { min-height: 44px; display: inline-flex; align-items: center; }
   /* Inline text links can't grow to 44px without wrecking the paragraph, so
      they get an invisible 44px hit area instead - the trick .fav-star uses. */
+  .footer-links { font-size: var(--fs-2xs); font-weight: 700; }
+  .footer-links a { color: var(--muted); }
   .link-btn, .field-map-directions, .template-link { position: relative; display: inline-block; }
   .link-btn::before, .field-map-directions::before, .template-link::before {
     content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%);
@@ -1149,11 +1158,21 @@
        condenses on scroll; a second stacked sticky bar here would overlap it. */
   }
 </style>
-<!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard. -->
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
+     In the App Store build push runs through the native SDK (APNs) instead,
+     so the web SDK is not loaded there: two SDKs on one page fight over the
+     same subscription record. See the native bridge below. -->
+<script>
+  window.__IS_NATIVE_APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  if(!window.__IS_NATIVE_APP){
+    const t = document.createElement('script');
+    t.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    t.defer = true; document.head.appendChild(t);
+  }
+</script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(async function(OneSignal) {
+  if(!window.__IS_NATIVE_APP) OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "6566d2f0-7fee-4091-849f-d39551d3f360",
       // Merged into the site's own sw.js (see that file) instead of the
@@ -1172,6 +1191,122 @@
      Project Settings > API gives you the URL and anon (public) key.
      The Edge Function URL is the same project ref with /functions/v1/invite-coach
      ============================================================ -->
+<!-- ============ NATIVE APP BRIDGE ============
+     One page runs in three places: a browser tab, an installed PWA, and the
+     App Store build. Everything here is a no-op outside the native shell, so
+     the web build is untouched. Plugin calls are wrapped: a missing plugin
+     must degrade to the web behaviour, never throw into the app. -->
+<script>
+(function(){
+  const ONESIGNAL_APP_ID = "6566d2f0-7fee-4091-849f-d39551d3f360";
+  const native = !!window.__IS_NATIVE_APP;
+  const P = () => (window.Capacitor && window.Capacitor.Plugins) || {};
+  const os = () => (window.plugins && window.plugins.OneSignal) || null;
+  let pendingExternalId = null;
+
+  function call(plugin, method, args){
+    try { const pl = P()[plugin]; if(pl && pl[method]) return pl[method](args); } catch(e){}
+    return null;
+  }
+
+  window.Native = {
+    active: native,
+    // Returns true when it handled the feedback, so the caller skips its own.
+    haptic(kind){
+      if(!native) return false;
+      if(kind === 'success' || kind === 'error'){
+        call('Haptics', 'notification', { type: kind === 'success' ? 'SUCCESS' : 'ERROR' });
+      } else {
+        call('Haptics', 'impact', { style: 'LIGHT' });
+      }
+      return true;
+    },
+    // The web share sheet cannot take a File in a WKWebView, so the image is
+    // written to the app's cache directory and shared by file URI instead.
+    async shareImage(blob, filename, title){
+      if(!native) return false;
+      const fs = P().Filesystem, share = P().Share;
+      if(!fs || !share) return false;
+      try {
+        const data = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(String(r.result).split(',')[1]);
+          r.onerror = rej; r.readAsDataURL(blob);
+        });
+        const w = await fs.writeFile({ path: filename, data, directory: 'CACHE' });
+        await share.share({ title, files: [w.uri] });
+        return true;
+      } catch(e){ return false; }
+    },
+    async openExternal(url){
+      if(!native) return false;
+      try { await P().Browser.open({ url }); return true; } catch(e){ return false; }
+    },
+    async pushRequestPermission(){
+      if(!native){
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.Notifications.requestPermission(); } catch(e){} });
+        return;
+      }
+      try { await os()?.Notifications.requestPermission(true); } catch(e){}
+    },
+    pushLogin(id){
+      if(!native){
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.login(id); } catch(e){} });
+        return;
+      }
+      // deviceready may not have fired yet on a cold start
+      if(os()){ try { os().login(id); } catch(e){} } else { pendingExternalId = id; }
+    },
+    pushLogout(){
+      if(!native){
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.logout(); } catch(e){} });
+        return;
+      }
+      pendingExternalId = null;
+      try { os()?.logout(); } catch(e){}
+    },
+    // Push permission is asked for on the first booking, not at launch:
+    // Apple rejects apps that demand notifications before showing value.
+    pushEnabled(){
+      if(!native) return ('Notification' in window) && Notification.permission === 'granted';
+      return !!window.__nativePushGranted;
+    },
+  };
+
+  if(!native) return;
+
+  document.documentElement.classList.add('native-app');
+
+  document.addEventListener('deviceready', () => {
+    try {
+      const O = os();
+      if(!O) return;
+      O.initialize(ONESIGNAL_APP_ID);
+      O.Notifications.addEventListener('permissionChange', granted => { window.__nativePushGranted = !!granted; });
+      O.Notifications.getPermissionAsync().then(g => { window.__nativePushGranted = !!g; }).catch(() => {});
+      if(pendingExternalId){ O.login(pendingExternalId); pendingExternalId = null; }
+    } catch(e){}
+  }, { once: true });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    call('StatusBar', 'setStyle', { style: matchMedia('(prefers-color-scheme: dark)').matches ? 'DARK' : 'LIGHT' });
+    call('Keyboard', 'setResizeMode', { mode: 'native' });
+    setTimeout(() => call('SplashScreen', 'hide'), 200);
+  });
+
+  // Links that open a new tab have nowhere to go inside an app. Hand them to
+  // the system browser sheet, which keeps the user one swipe from coming back.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[target="_blank"]');
+    if(!a || !a.href) return;
+    e.preventDefault();
+    window.Native.openExternal(a.href);
+  }, true);
+})();
+</script>
 <script>
   const SUPABASE_URL = "https://gjpqwmcdejpvffdimddk.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_wmEJ2j6OTyiSLE04BP0JSw_zAeEBFMh";
@@ -1596,6 +1731,7 @@
 
 <footer id="pageFooter" style="display:none">
   <img src="seaford-vikings-anniversary-logo.png" alt="Seaford Vikings 250th and 25th anniversary" class="footer-anniversary-badge">
+  <p class="footer-links"><a href="privacy.html">Privacy</a> &middot; <a href="support.html">Support</a></p>
   <button id="themeToggleBtn" type="button">
     <svg class="inline-icon theme-icon-sun"viewBox="0 0 24 24" fill="currentColor"><path d="M12 6.6a5.4 5.4 0 1 1 0 10.8 5.4 5.4 0 0 1 0-10.8Zm0-5.4a1.2 1.2 0 0 1 1.2 1.2v1.8a1.2 1.2 0 0 1-2.4 0V2.4A1.2 1.2 0 0 1 12 1.2Zm0 17.4a1.2 1.2 0 0 1 1.2 1.2v1.8a1.2 1.2 0 0 1-2.4 0v-1.8a1.2 1.2 0 0 1 1.2-1.2ZM1.2 12a1.2 1.2 0 0 1 1.2-1.2h1.8a1.2 1.2 0 0 1 0 2.4H2.4A1.2 1.2 0 0 1 1.2 12Zm17.4 0a1.2 1.2 0 0 1 1.2-1.2h1.8a1.2 1.2 0 0 1 0 2.4h-1.8a1.2 1.2 0 0 1-1.2-1.2ZM4.4 4.4a1.2 1.2 0 0 1 1.7 0l1.3 1.3a1.2 1.2 0 1 1-1.7 1.7L4.4 6.1a1.2 1.2 0 0 1 0-1.7Zm12.2 12.2a1.2 1.2 0 0 1 1.7 0l1.3 1.3a1.2 1.2 0 0 1-1.7 1.7l-1.3-1.3a1.2 1.2 0 0 1 0-1.7Zm3-12.2a1.2 1.2 0 0 1 0 1.7l-1.3 1.3a1.2 1.2 0 1 1-1.7-1.7l1.3-1.3a1.2 1.2 0 0 1 1.7 0ZM7.4 16.6a1.2 1.2 0 0 1 0 1.7l-1.3 1.3a1.2 1.2 0 0 1-1.7-1.7l1.3-1.3a1.2 1.2 0 0 1 1.7 0Z"/></svg>
     <svg class="inline-icon theme-icon-moon"viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.6a8.6 8.6 0 0 1-11-11 .9.9 0 0 0-1.2-1.1A10.2 10.2 0 1 0 21.5 15.8a.9.9 0 0 0-1.1-1.2Z"/></svg>
@@ -1839,7 +1975,22 @@ function rebuildHamburgerMenu(){
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8a1.3 1.3 0 0 1 .92.38l4 4a1.3 1.3 0 1 1-1.84 1.84L13.3 6.24V14.4a1.3 1.3 0 0 1-2.6 0V6.24L8.92 8.02a1.3 1.3 0 1 1-1.84-1.84l4-4A1.3 1.3 0 0 1 12 1.8ZM4.4 13.1a1.3 1.3 0 0 1 1.3 1.3v4.2c0 .5.4.9.9.9h10.8c.5 0 .9-.4.9-.9v-4.2a1.3 1.3 0 1 1 2.6 0v4.2a3.5 3.5 0 0 1-3.5 3.5H6.6a3.5 3.5 0 0 1-3.5-3.5v-4.2a1.3 1.3 0 0 1 1.3-1.3Z"/></svg>
     Sign out
   </button>` : '';
-  menu.innerHTML = identity + nameForm + signOut;
+  // The App Store requires an account to be deletable from inside the app
+  // (5.1.1(v)). Last in the menu, quiet, and behind the same confirm sheet as
+  // every other destructive action.
+  const deleteAcct = myProfile ? `<button type="button" class="hamburger-delete" id="deleteMyAccountBtn">Delete my account</button>` : '';
+  menu.innerHTML = identity + nameForm + signOut + deleteAcct;
+  document.getElementById('deleteMyAccountBtn')?.addEventListener('click', async () => {
+    const ok = await confirmAction({
+      title: 'Delete your account?',
+      body: 'Your account is removed for good and you are signed out. Practices your team has already booked stay on the schedule.',
+      verb: 'Delete my account',
+    });
+    if(!ok) return;
+    const res = await manageUser({ action: 'delete-me' }).catch(err => ({ ok: false, error: err.message }));
+    if(!res.ok){ flash(res.error || 'Could not delete your account', 'err'); return; }
+    await sb.auth.signOut();
+  });
   document.getElementById('editMyNameBtn')?.addEventListener('click', e => {
     document.getElementById('hamburgerName').hidden = false;
     e.target.remove();
@@ -2219,7 +2370,7 @@ function renderWelcome(){
   const favDone = !!getFavoriteField();
   const bookDone = myProfile.role === 'coach' ? bookingsCache.some(b => b.team_id === myTeam)
     : bookingsCache.some(b => { const t = teamsById[b.team_id]; return t && (myProfile.role === 'admin' || t.gender === myProfile.gender); });
-  const pushDone = ('Notification' in window) && Notification.permission === 'granted';
+  const pushDone = window.Native.pushEnabled();
   const allDone = favDone && bookDone && pushDone;
   if(myProfile.role !== 'coach' || flags.dismissed || allDone){
     card.style.display = 'none';
@@ -2253,8 +2404,7 @@ document.addEventListener('click', async e => {
     const a = w.dataset.welcome;
     if(a === 'dismiss'){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e2){} renderWelcome(); }
     else if(a === 'push'){
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.Notifications.requestPermission(); } catch(e2){} renderWelcome(); });
+      await window.Native.pushRequestPermission(); renderWelcome();
     }
     else if(a === 'book'){ switchView('book'); }
     return;
@@ -2370,6 +2520,7 @@ window.addEventListener('resize', () => {
 // Vibration API — supported on Android Chrome, silently a no-op everywhere
 // else (iOS Safari, desktop). Never throws, never blocks.
 function haptic(kind){
+  if(window.Native && window.Native.haptic(kind)) return; // Taptic Engine in the app
   if(!navigator.vibrate) return;
   try {
     if(kind === 'success') navigator.vibrate([10, 30, 10]);
@@ -2484,6 +2635,7 @@ function showLoginScreen(msg){
       <button class="link-btn" id="forgotBtn">Forgot your password?</button>
       ${msg ? `<div class="auth-msg err">${escSafe(msg)}</div>` : ''}
       <p class="invite-note">Access is by invite only. If you don't have an account, ask your team's director to invite you.</p>
+      <p class="invite-note"><a href="privacy.html">Privacy</a> &middot; <a href="support.html">Support</a></p>
     </div>`;
   document.getElementById('loginBtn').addEventListener('click', doLogin);
   document.getElementById('forgotBtn').addEventListener('click', doForgotPassword);
@@ -2579,10 +2731,7 @@ async function loadProfileAndStartInner(){
   // server-side triggers (waitlist slot opens, priority tier unlocks) can
   // target specific people via OneSignal's external_id instead of only
   // being able to broadcast to everyone.
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async (OneSignal) => {
-    try { await OneSignal.login(myProfile.id); } catch (e) { /* push not supported/blocked — non-fatal */ }
-  });
+  window.Native.pushLogin(myProfile.id);
 
   await loadTeams();
   await refreshBookings();
@@ -2626,10 +2775,7 @@ function teardown(){
   // Detach this browser's push subscription from the signed-out user's id —
   // otherwise a shared/reused device would keep getting that person's
   // targeted notifications after someone else signs in on it.
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async (OneSignal) => {
-    try { await OneSignal.logout(); } catch (e) { /* non-fatal */ }
-  });
+  window.Native.pushLogout();
   myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
@@ -3656,6 +3802,9 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && el.shareModal.style.display !== 'none') closeShareCard(); });
 el.shareSendBtn.addEventListener('click', async () => {
   if(!currentShare) return;
+  if(await window.Native.shareImage(currentShare.blob, currentShare.filename, currentShare.title)){
+    haptic('success'); closeShareCard(); return;
+  }
   const file = new File([currentShare.blob], currentShare.filename, { type: 'image/png' });
   if(navigator.canShare && navigator.canShare({ files: [file] })){
     try { await navigator.share({ files: [file], title: currentShare.title, text: currentShare.title }); haptic('success'); closeShareCard(); }
@@ -5547,7 +5696,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
 window.switchView = switchView;
 
 // ============ PWA: register service worker (independent of login state) ============
-if('serviceWorker' in navigator){
+if('serviceWorker' in navigator && !window.__IS_NATIVE_APP){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });

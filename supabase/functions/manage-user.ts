@@ -16,6 +16,11 @@
 //   { "action": "remove",         "userId": "<uuid>" }
 //   { "action": "set-name",       "userId": "<uuid>", "firstName": "...", "lastName": "..." }
 //   { "action": "last-seen" }   -> { ok, seen: { "<uuid>": "<iso>" | null } }
+//   { "action": "delete-me" }   -> deletes the CALLER's own account
+//
+// delete-me exists because the App Store requires an app that has accounts to
+// let a person delete their own from inside the app (guideline 5.1.1(v)).
+// It is the one action that is allowed to target the caller.
 // RESPONSE: { "ok": true, ... } or { "ok": false, "error": "..." }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -63,6 +68,24 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON body" }, 400); }
 
   const action = body.action;
+
+  if (action === "delete-me") {
+    // Their bookings belong to the team, not to them (same rule as "remove"),
+    // so they move to an admin rather than vanishing with the account.
+    const { data: admins } = await admin
+      .from("profiles").select("id").eq("role", "admin").neq("id", callerId).limit(1);
+    const heir = admins?.[0]?.id;
+    if (!heir) {
+      return json({ ok: false, error: "You are the only admin. Make someone else an admin first." }, 400);
+    }
+    const { error: moveErr } = await admin
+      .from("bookings").update({ booked_by: heir }).eq("booked_by", callerId);
+    if (moveErr) return json({ ok: false, error: "Could not reassign your bookings: " + moveErr.message }, 500);
+    await admin.from("app_settings").update({ locked_by: null }).eq("locked_by", callerId);
+    const { error: delErr } = await admin.auth.admin.deleteUser(callerId);
+    if (delErr) return json({ ok: false, error: delErr.message }, 400);
+    return json({ ok: true });
+  }
 
   if (action === "last-seen") {
     // auth.users.last_sign_in_at is maintained by Supabase itself, so there is

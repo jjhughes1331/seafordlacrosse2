@@ -156,7 +156,11 @@
   window.__fixtureRealCreateClient = realCreate;
 
   // Unmistakable on screen: nobody should ever confuse this for real data.
+  // &shots=1 drops the banner for App Store screenshot capture, where the
+  // frame has to be exactly 1320x2868 and a dev banner would ship to Apple.
+  const SHOTS = /[?&]shots=1/.test(location.search);
   addEventListener('DOMContentLoaded', () => {
+    if(SHOTS) return;
     const bar = document.createElement('div');
     bar.textContent = 'FIXTURE MODE — sample data, nothing is saved';
     bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#b0402a;color:#fff;'

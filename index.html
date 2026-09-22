@@ -2365,7 +2365,9 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) saveSe
 function noteVisit(){ try { localStorage.setItem('seaford-visits', String((parseInt(localStorage.getItem('seaford-visits') || '0', 10) || 0) + 1)); } catch(e){} }
 let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstallPrompt = e; });
-function isInstalled(){ return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+// The App Store build IS installed, by definition — a "put this on your home
+// screen" card inside it is nonsense, and it showed up in store screenshots.
+function isInstalled(){ return window.__IS_NATIVE_APP || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
 function renderWelcome(){
   const card = document.getElementById('welcomeCard'), nudge = document.getElementById('installNudge');
   if(!card || !myProfile) return;

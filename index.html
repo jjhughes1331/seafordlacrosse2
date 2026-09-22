@@ -300,6 +300,10 @@
   ::-webkit-scrollbar-thumb { background: var(--silver-deep); border-radius: var(--radius-chip); border: 2px solid var(--chalk); background-clip: padding-box; }
   ::-webkit-scrollbar-thumb:hover { background: var(--turf); background-clip: padding-box; }
   html, body { overscroll-behavior-y: contain; } /* no rubber-band-into-browser-chrome on mobile */
+  /* iOS bounces past the top of the page. Whatever sits behind it shows for
+     that moment, and the app's own window colour is dark green, which flashed
+     as a band above the header. Paint the page's own surface instead. */
+  html { background: var(--card); }
   .cal-slots { overscroll-behavior: contain; } /* nested scroll areas don't chain into the page scroll */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

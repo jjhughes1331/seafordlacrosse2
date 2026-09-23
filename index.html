@@ -2227,7 +2227,11 @@
         const w = await fs.writeFile({ path: filename, data, directory: 'CACHE' });
         await share.share({ title, files: [w.uri] });
         return true;
-      } catch(e){ return false; }
+      } catch(e){
+        // Dismissing the share sheet rejects too; that's the coach's choice,
+        // not a failure to fall back from.
+        return /cancel/i.test(String(e && (e.message || e)));
+      }
     },
     async openExternal(url){
       if(!native) return false;
@@ -5549,6 +5553,11 @@ async function openShareCard(teamKey, teamLabelText){
   if(currentShare?.url) URL.revokeObjectURL(currentShare.url);
   const filename = `${teamLabelText.replace(/\s+/g,'-').toLowerCase()}-this-week.png`;
   currentShare = { blob, url: URL.createObjectURL(blob), filename, title: `${teamLabelText}: this week's practices` };
+  // In the app, straight to iOS's share sheet (it shows its own preview);
+  // a web dialog in front of it was one screen too many.
+  if(window.__IS_NATIVE_APP && await window.Native.shareImage(blob, filename, currentShare.title)){
+    haptic('success'); URL.revokeObjectURL(currentShare.url); currentShare = null; return;
+  }
   el.shareImg.src = currentShare.url;
   el.shareModal.style.display = 'flex';
   const sheet = el.shareModal.querySelector('.share-sheet'), backdrop = el.shareModal.querySelector('.share-backdrop');

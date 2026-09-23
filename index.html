@@ -318,10 +318,6 @@
     --shadow-card-hover: none;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
-      transition-duration: .001ms !important; scroll-behavior: auto !important; }
-  }
   /* Proportional digits made calendar columns shimmer as the month changed. */
   .cal-num, .cal-day, .book-month-cell, .timelabel, .time, .weeknav .label, .cal-dow, .count { font-variant-numeric: tabular-nums; }
   html { color-scheme: light dark; -webkit-overflow-scrolling: touch; font: -apple-system-body; -webkit-text-size-adjust: 100%; }
@@ -343,6 +339,12 @@
       transition-duration: .001ms !important; scroll-behavior: auto !important;
     }
   }
+  /* Increase Contrast: secondary text stops being grey, separators get real. */
+  @media (prefers-contrast: more) {
+    :root, :root[data-theme="dark"], :root[data-theme="light"] { --muted: var(--ink); }
+    .fchip, .daytoggle, .book-slot, .row, .day, .next-card { border-color: var(--ink); }
+  }
+
   body { font: -apple-system-body; font-family: var(--font-body); font-size: var(--fs-base); color: var(--ink); background: var(--chalk); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 80px; }
   a { color: var(--turf); }
@@ -570,7 +572,7 @@
   .slots .slot .time { color: var(--muted); font-weight: 600; }
   .slots .slot.mine .time { color: var(--mine-deep); }
   .slots .slot .sub { font-weight: 600; }
-  .empty-schedule { text-align: center; padding: 44px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
+  .empty-schedule { text-align: center; padding: 44px 20px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
   .empty-schedule::before {
     content: ''; display: block; width: 32px; height: 32px; margin: 0 auto 10px; opacity: .5;
     background-color: var(--muted);
@@ -580,9 +582,10 @@
   }
   .empty-schedule b { color: var(--ink); display: block; font-size: var(--fs-md); margin-bottom: 4px; }
   .empty-schedule .cta {
-    display: inline-block; margin-top: 16px; color: #fff; text-decoration: none; font-weight: 600;
-    padding: 12px 24px; border-radius: var(--radius-md); cursor: pointer; background: var(--accent-fill);
-    font-family: inherit; font-size: var(--fs-base); border: none; box-shadow: var(--shadow-turf);
+    display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+    margin-top: 16px; color: var(--on-accent); text-decoration: none; font-weight: 600;
+    padding: 12px 24px; border-radius: var(--radius-pill); cursor: pointer; background: var(--accent-fill);
+    font-family: inherit; font-size: var(--fs-base); border: none;
   }
   .empty-schedule .cta:hover { background: var(--turf); transform: translateY(-1px); }
   .empty-week::before {
@@ -903,6 +906,34 @@
   /* Welcome checklist + install nudge */
   /* A coach opens this app to answer one question. It should not be below a
      grid of dots. */
+  .ctx-head { font-size: var(--fs-xs); color: var(--muted); padding: 4px 4px 10px; }
+  .ctx-item {
+    display: block; width: 100%; min-height: 52px; padding: 14px 16px; margin-bottom: 6px;
+    background: var(--chip-bg); border: none; border-radius: var(--radius-md);
+    font-family: inherit; font-size: var(--fs-md); font-weight: 400; color: var(--ink);
+    text-align: left; cursor: pointer;
+  }
+  .ctx-item.danger { color: var(--danger); font-weight: 600; }
+  .large-title { max-width: 1000px; margin: 10px auto 0; padding: 0 20px; }
+  .large-title h2 { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700; letter-spacing: -.5px; color: var(--ink); line-height: 1.1; }
+  .large-title .synced-label { padding: 0; margin: 4px 0 0; }
+  /* Until the large title scrolls away, the bar carries only the team name. */
+  header.title-hidden #headerTitle { opacity: 0; transform: translateY(4px); }
+  #headerTitle { transition: opacity .2s var(--ease), transform .2s var(--ease); }
+  @media (min-width: 701px) { .large-title { display: none; } header.title-hidden #headerTitle { opacity: 1; transform: none; } }
+  .ptr {
+    position: fixed; top: calc(var(--safe-top) + 58px); left: 0; right: 0; z-index: 400;
+    display: flex; justify-content: center; pointer-events: none; opacity: 0;
+    transition: opacity .15s var(--ease);
+  }
+  .ptr.on { opacity: 1; }
+  .ptr-spinner {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--line); border-top-color: var(--muted);
+    animation: ptrspin .7s linear infinite;
+  }
+  @keyframes ptrspin { to { transform: rotate(360deg); } }
+  .synced-label { max-width: 1000px; margin: 8px auto 0; padding: 0 20px; font-size: var(--fs-2xs); color: var(--muted); }
   .next-card {
     max-width: 1000px; margin: 16px auto 0; padding: 16px 18px;
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
@@ -938,9 +969,24 @@
   /* Share card sheet */
   #confirmModal .btn-primary { background: var(--danger); }
   #confirmModal .btn-primary:hover { background: var(--danger); filter: brightness(.9); }
-  .share-modal { position: fixed; inset: 0; z-index: 800; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .share-modal { position: fixed; inset: 0; z-index: 800; display: flex; align-items: flex-end; justify-content: center; padding: 0; }
+  @media (min-width: 701px) { .share-modal { align-items: center; padding: 20px; } }
   .share-backdrop { position: absolute; inset: 0; background: rgba(8,16,11,.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-  .share-sheet { position: relative; z-index: 1; width: min(420px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card-hover); padding: 14px; }
+  .share-sheet {
+    position: relative; z-index: 1; width: min(520px, 100%); max-height: 88vh; overflow: auto;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 22px 22px 0 0; box-shadow: var(--shadow-card-hover);
+    padding: 8px 16px calc(20px + var(--safe-bottom));
+    animation: sheetUp .28s var(--ease);
+  }
+  @media (min-width: 701px) { .share-sheet { border-radius: var(--radius-card); padding: 14px; } }
+  @keyframes sheetUp { from { transform: translateY(18px); opacity: .6; } to { transform: none; opacity: 1; } }
+  /* The grabber is what tells you the sheet can be dragged away. */
+  .share-sheet::before {
+    content: ''; display: block; width: 36px; height: 5px; border-radius: 999px;
+    background: var(--silver); margin: 6px auto 12px; opacity: .6;
+  }
+  @media (min-width: 701px) { .share-sheet::before { display: none; } }
   .share-sheet img { display: block; width: 100%; aspect-ratio: 4 / 5; border-radius: 12px; background: var(--text-strong); }
   .share-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .share-actions .btn-primary { width: auto; flex: 1 1 140px; margin-top: 0; padding: 12px 16px; }
@@ -984,7 +1030,7 @@
   }
   .book-slot.mine .cancel.armed { background: var(--danger) !important; color: #fff !important; }
   .plus { color: var(--muted); font-weight: 600; }
-  .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius-card); }
+  .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
 
   /* ===== Admin view ===== */
   .admin-card { max-width: 1000px; margin: 20px auto 0; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
@@ -1507,8 +1553,12 @@
 </div>
 <div class="locked-team-banner" id="lockedTeamBanner" style="display:none"></div>
 
+<div id="ptr" class="ptr" aria-hidden="true"><span class="ptr-spinner"></span></div>
+<div id="ctxMenu" class="share-modal" style="display:none"></div>
+
 <!-- ============ SCHEDULE VIEW ============ -->
 <div id="viewSchedule" style="display:none">
+  <div class="large-title" id="scheduleLargeTitle"><h2>Schedule</h2><p class="synced-label"></p></div>
   <div class="next-card" id="nextPracticeCard" style="display:none"></div>
   <div class="welcome-card" id="welcomeCard" style="display:none"></div>
   <div class="install-nudge" id="installNudge" style="display:none"></div>
@@ -2602,6 +2652,98 @@ function positionModeThumb(container){
     thumb.style.transform = `translateX(${activeBtn.offsetLeft - 3}px)`;
   }
 }
+// Pull to refresh. Every iPhone user tries it on a schedule; doing nothing
+// made live sync feel like luck. Only fires from a genuine top-of-page pull.
+(function(){
+  let startY = null, pulling = false, fired = false;
+  const el2 = () => document.getElementById('ptr');
+  addEventListener('touchstart', e => {
+    if(window.scrollY > 0 || e.touches.length !== 1) { startY = null; return; }
+    startY = e.touches[0].clientY; pulling = false; fired = false;
+  }, { passive: true });
+  addEventListener('touchmove', e => {
+    if(startY === null || fired) return;
+    const dy = e.touches[0].clientY - startY;
+    if(dy > 12 && window.scrollY <= 0){ pulling = true; el2()?.classList.toggle('on', dy > 60); }
+  }, { passive: true });
+  addEventListener('touchend', async () => {
+    const node = el2();
+    if(!pulling || !node || !node.classList.contains('on')){ startY = null; return; }
+    fired = true; startY = null; pulling = false;
+    haptic('light');
+    try {
+      await refreshBookings();
+      await refreshWaitlist();
+      await refreshLockState();
+      renderScheduleMode();
+    } catch(e){ /* refreshBookings already surfaces its own failure */ }
+    node.classList.remove('on');
+  }, { passive: true });
+})();
+
+// Hand-off between the large title and the compact one.
+(function(){
+  const big = () => document.getElementById('scheduleLargeTitle');
+  const header = document.querySelector('header');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => header.classList.toggle('title-hidden', e.isIntersecting));
+  }, { rootMargin: '-64px 0px 0px 0px', threshold: 0 });
+  addEventListener('DOMContentLoaded', () => { const b = big(); if(b) io.observe(b); });
+})();
+
+// Long-press on a practice row. Swipe-to-cancel stays; this adds the menu an
+// iPhone user expects, and puts directions one press away instead of three.
+(function(){
+  let timer = null, startXY = null, target = null;
+  function rowFor(node){ return node.closest && node.closest('.cal-item[data-swipe], .cal-item'); }
+  function openMenu(row){
+    const id = row.querySelector('[data-cancel]')?.dataset.cancel;
+    const b = bookingsCache.find(x => String(x.id) === String(id));
+    const time = row.querySelector('.cal-time')?.textContent || '';
+    const where = row.querySelector('.cal-where')?.textContent || '';
+    const f = b && FIELD_MAP[b.field_id];
+    const items = [];
+    if(f) items.push(`<button type="button" class="ctx-item" data-ctx-act="directions" data-url="${escSafe(fieldDirectionsUrl(f))}">Directions</button>`);
+    if(b) items.push(`<button type="button" class="ctx-item" data-ctx-act="ics" data-bid="${escSafe(b.id)}">Add to Calendar</button>`);
+    if(id) items.push(`<button type="button" class="ctx-item danger" data-ctx-act="cancel" data-bid="${escSafe(id)}">Cancel practice</button>`);
+    if(!items.length) return;
+    haptic('light');
+    const host = document.getElementById('ctxMenu');
+    host.innerHTML = `<div class="share-backdrop" data-ctx-close></div>
+      <div class="share-sheet">
+        <p class="ctx-head">${escSafe(time)}${where ? ' \u00b7 ' + escSafe(where) : ''}</p>
+        ${items.join('')}
+        <button type="button" class="ctx-item" data-ctx-close>Close</button>
+      </div>`;
+    host.style.display = 'flex';
+  }
+  addEventListener('touchstart', e => {
+    const row = rowFor(e.target);
+    if(!row || e.touches.length !== 1) return;
+    target = row; startXY = [e.touches[0].clientX, e.touches[0].clientY];
+    timer = setTimeout(() => { timer = null; openMenu(row); }, 480);
+  }, { passive: true });
+  addEventListener('touchmove', e => {
+    if(!timer || !startXY) return;
+    const dx = Math.abs(e.touches[0].clientX - startXY[0]), dy = Math.abs(e.touches[0].clientY - startXY[1]);
+    if(dx > 8 || dy > 8){ clearTimeout(timer); timer = null; }
+  }, { passive: true });
+  addEventListener('touchend', () => { if(timer){ clearTimeout(timer); timer = null; } }, { passive: true });
+  addEventListener('contextmenu', e => { const row = rowFor(e.target); if(row){ e.preventDefault(); openMenu(row); } });
+
+  document.addEventListener('click', async e => {
+    const host = document.getElementById('ctxMenu');
+    if(e.target.closest('[data-ctx-close]')){ host.style.display = 'none'; return; }
+    const act = e.target.closest('[data-ctx-act]');
+    if(!act) return;
+    host.style.display = 'none';
+    const kind = act.dataset.ctxAct;
+    if(kind === 'directions'){ if(!await window.Native.openExternal(act.dataset.url)) window.open(act.dataset.url, '_blank', 'noopener'); }
+    else if(kind === 'ics'){ exportOneBookingICS(act.dataset.bid); }
+    else if(kind === 'cancel'){ document.querySelector(`[data-cancel="${act.dataset.bid}"]`)?.click(); }
+  });
+})();
+
 function positionAllModeThumbs(){
   // Measuring a control inside a hidden view gives 0, so this has to run again
   // whenever a view becomes visible - and on resize, and once fonts land,
@@ -2847,6 +2989,14 @@ async function loadProfileAndStartInner(){
   // being able to broadcast to everyone.
   window.Native.pushLogin(myProfile.id);
 
+  // Paint what we had last time first: a coach opening the app on a field
+  // with one bar should see last night's schedule instantly, not a skeleton.
+  const cached = readCache();
+  if(cached && Array.isArray(cached.bookings) && cached.bookings.length){
+    bookingsCache = cached.bookings;
+    if(Array.isArray(cached.teams) && cached.teams.length) indexTeams(cached.teams);
+    lastSyncedAt = cached.at;
+  }
   await loadTeams();
   await refreshBookings();
   await refreshWaitlist();
@@ -2907,21 +3057,48 @@ function teardown(){
 el.signOutBtn.addEventListener('click', () => sb.auth.signOut());
 
 // ============ DATA LOADING ============
-async function loadTeams(){
-  const { data, error } = await sb.from('teams').select('*');
-  if(error){ flash('Could not load teams: '+error.message, 'err'); return; }
-  teams = data;
+function indexTeams(rows){
+  teams = rows;
   teamsById = {}; teamsByKey = {};
   teams.forEach(t => {
     teamsById[t.id] = { gender: t.gender, grade: t.grade };
     teamsByKey[t.gender+'|'+t.grade] = t.id;
   });
 }
+async function loadTeams(){
+  const { data, error } = await sb.from('teams').select('*');
+  if(error){ flash('Could not load teams: '+error.message, 'err'); return; }
+  indexTeams(data);
+}
+
+const CACHE_KEY = 'seaford-cache-v1';
+let lastSyncedAt = null;
+function readCache(){ try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e){ return null; } }
+function writeCache(){
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams })); }
+  catch(e){ /* quota or private mode: the app is fine without it */ }
+}
+// "Updated 2 min ago" is the honest version of a spinner: it says how stale
+// what you're reading is, instead of hiding it until it's fresh.
+function syncedLabel(){
+  if(!lastSyncedAt) return '';
+  const secs = Math.round((Date.now() - lastSyncedAt) / 1000);
+  if(secs < 45) return 'Updated just now';
+  if(secs < 3600) return `Updated ${Math.round(secs/60)} min ago`;
+  return `Updated ${Math.round(secs/3600)} h ago`;
+}
+function paintSyncedLabel(){
+  document.querySelectorAll('.synced-label').forEach(n => { n.textContent = syncedLabel(); });
+}
+setInterval(paintSyncedLabel, 30000);
 
 async function refreshBookings(){
   const { data, error } = await sb.from('bookings').select('*');
   if(error){ flash('Could not load bookings: '+error.message, 'err'); return; }
   bookingsCache = data;
+  lastSyncedAt = Date.now();
+  writeCache();
+  paintSyncedLabel();
   checkWaitlistOpenings();
 }
 
@@ -3570,6 +3747,29 @@ function parseTimeRangeTo24h(range){
   }
   return { startHour24, startMin: parseInt(sm,10), endHour24, endMin: parseInt(em,10) };
 }
+// One practice, for the context menu. iOS opens .ics straight into Calendar.
+function exportOneBookingICS(bookingId){
+  const b = bookingsCache.find(x => String(x.id) === String(bookingId));
+  if(!b) return;
+  const t = parseTimeRangeTo24h(b.time);
+  if(!t) return;
+  const team = teamsById[b.team_id];
+  const label = team ? teamLabel(team.gender, team.grade) : 'Practice';
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const dt = (h, m) => b.date.replace(/-/g,'') + 'T' + String(h).padStart(2,'0') + String(m).padStart(2,'0') + '00';
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Seaford Lacrosse//Schedule//EN','BEGIN:VEVENT',
+    'UID:' + b.id + '@seafordlax.com','DTSTAMP:' + stamp,
+    'DTSTART:' + dt(t.startHour24, t.startMin),'DTEND:' + dt(t.endHour24, t.endMin),
+    'SUMMARY:Practice - ' + label,
+    'LOCATION:' + fieldLabel(b.field_id, b.subfield),
+    'END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = 'practice.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  haptic('success');
+}
 function exportTeamScheduleICS(teamKey, teamLabelText){
   if(!teamKey) return;
   const filtered = getTeamBookingsSorted(teamKey);
@@ -3671,7 +3871,7 @@ function renderGroupedByFieldDate(filtered, highlightTeamKey, filterKey = highli
         const key = teamKeyFor(s.team_id);
         const mine = highlightTeamKey && key === highlightTeamKey;
         const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
-        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(s.time)}</span> <span class="sub">${escSafe(s.subfield)}</span>${!filterKey?' &middot; '+escSafe(teamText):''}</span>`;
+        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(formatSlotTime(s.time))}</span> <span class="sub">${escSafe(s.subfield)}</span>${!filterKey?' &middot; '+escSafe(teamText):''}</span>`;
       });
       html += '</div></div>';
     });
@@ -3702,7 +3902,7 @@ function renderNextPractice(){
     : n.date === fmtDateISO(addDays(new Date(), 1)) ? 'Tomorrow'
     : `${dowOfISO(n.date)}, ${fmtDateLong(n.date)}`;
   card.innerHTML = `<p class="eyebrow">Next practice${teamId ? '' : ' (any team)'}</p>
-    <p class="when">${escSafe(dayWord)} &middot; ${escSafe(n.time)}</p>
+    <p class="when">${escSafe(dayWord)} &middot; ${escSafe(formatSlotTime(n.time))}</p>
     <p class="where">${escSafe(f ? f.name : n.field_id)}${n.subfield ? ' &middot; ' + escSafe(n.subfield) : ''}${t && !teamId ? ' &middot; ' + escSafe(teamLabel(t.gender, t.grade)) : ''}</p>
     <div class="row2">
       <a href="${mapsUrl}" target="_blank" rel="noopener">Directions</a>
@@ -4681,7 +4881,7 @@ function renderMonthCalendar(which, host){
     // small x inside a chip — even though this agenda is where a coach actually
     // looks at their own schedule. Your own team's rows are cancellable here now.
     const cancel = isMine ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">&times;</button>` : '';
-    const row = `<div class="cal-item${isMine ? ' mine' : ''}"${isMine ? ' data-swipe' : ''}><span class="cal-time">${escSafe(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
+    const row = `<div class="cal-item${isMine ? ' mine' : ''}"${isMine ? ' data-swipe' : ''}><span class="cal-time">${escSafe(formatSlotTime(b.time))}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
     // Swipe-left-to-delete is what a phone user reaches for on a list row, but
     // it is invisible and unavailable to a mouse or a screen reader, so the x
     // stays as the discoverable, accessible path. Same action, two routes.
@@ -4881,6 +5081,21 @@ const FINDER_TIMES = [
   { id: 'evening', name: '5 - 7' },
   { id: 'late',    name: 'After 7' },
 ];
+// The database stores "7:30-8:30 PM" as text, which can't follow the reader's
+// 12/24-hour setting. Everything shown goes through here instead.
+const TIME_FMT = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+function formatSlotTime(range){
+  const t = parseTimeRangeTo24h(range);
+  if(!t) return range;
+  const at = (h, m) => TIME_FMT.format(new Date(2000, 0, 1, h, m));
+  const a = at(t.startHour24, t.startMin), b = at(t.endHour24, t.endMin);
+  // "5:00 – 6:00 PM", not "5:00 PM – 6:00 PM": the meridiem is said once when
+  // both ends share it, which is how a clock is written.
+  const per = /\s?([AP]\.?M\.?)$/i;
+  const ma = a.match(per), mb = b.match(per);
+  const start = (ma && mb && ma[1].toUpperCase() === mb[1].toUpperCase()) ? a.replace(per, '') : a;
+  return `${start}\u2013${b}`;
+}
 function slotStartHour(time){
   const p = parseTimeRangeTo24h(time);
   return p ? p.startHour24 + p.startMin / 60 : null;
@@ -4990,7 +5205,7 @@ function renderOpenWeek(){
       const list = byField[fieldName];
       const slotBtn = sl => {
         const payload = JSON.stringify({fieldId:sl.fieldId, date:dateStr, subfield:sl.sub, time:sl.time});
-        return `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(sl.time)}</span> <span class="sub">${escSafe(sl.sub)}</span> <span class="plus">+ Book</span></button>`;
+        return `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(formatSlotTime(sl.time))}</span> <span class="sub">${escSafe(sl.sub)}</span> <span class="plus">+ Book</span></button>`;
       };
       html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slot-bands">`;
       if(list.length > 7){
@@ -5022,7 +5237,7 @@ function renderOpenWeek(){
   }
   el.openWeekResults.innerHTML = html;
   const nx = all[0];
-  el.openWeekCount.innerHTML = `Next open: <b>${escSafe(dowOfISO(nx.dateStr))}, ${escSafe(fmtDateLong(nx.dateStr))}, ${escSafe(nx.time)}</b> at ${escSafe(nx.fieldName)}`;
+  el.openWeekCount.innerHTML = `Next open: <b>${escSafe(dowOfISO(nx.dateStr))}, ${escSafe(fmtDateLong(nx.dateStr))}, ${escSafe(formatSlotTime(nx.time))}</b> at ${escSafe(nx.fieldName)}`;
 }
 el.openWeekFieldChips.addEventListener('click', e => {
   const chip = e.target.closest('.fchip'); if(!chip) return;

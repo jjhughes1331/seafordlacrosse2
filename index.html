@@ -85,6 +85,23 @@
         }));
       });
     }
+    // &now=soon | &now=live: a practice today for the fixture coach (Girls 6th),
+    // starting in 40 minutes or already 20 minutes in, plus two later ones, so
+    // the app's countdown, Live Activity and "practice now" states are testable.
+    const nowMode = new URLSearchParams(location.search).get('now');
+    if(nowMode === 'soon' || nowMode === 'live'){
+      const iso = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      const clock = d => (d.getHours() % 12 || 12) + ':' + String(d.getMinutes()).padStart(2,'0');
+      const slot = (a, b) => clock(a) + '-' + clock(b) + (b.getHours() >= 12 ? ' PM' : ' AM');
+      const coach = teamId('girls','6th Grade');
+      const s0 = new Date(); s0.setSeconds(0, 0);
+      s0.setMinutes(s0.getMinutes() - s0.getMinutes() % 5 + (nowMode === 'live' ? -20 : 40));
+      const later = (days, h, m, mins) => { const a = new Date(); a.setDate(a.getDate() + days); a.setHours(h, m, 0, 0); return [a, new Date(a.getTime() + mins * 60000)]; };
+      [[s0, new Date(s0.getTime() + 90 * 60000), 'harbor', 'Field 1'],
+       [...later(1, 17, 30, 90), 'seamans', 'Field A'],
+       [...later(3, 18, 0, 60), 'cedarcreek', '1/2 Field']].forEach(([a, b, f, sub]) =>
+        bookings.push({ id: uuid(++id), field_id: f, date: iso(a), subfield: sub, time: slot(a, b), team_id: coach, booked_by: ADMIN_ID }));
+    }
   }
 
   const store = {
@@ -1577,6 +1594,25 @@
   #fieldNote .field-map-toggle { margin: 0; }
   #fieldNote .field-map-box { align-self: stretch; }
 
+  /* ---- Menu: On this iPhone (app 1.1+) -------------------------------- */
+  .hamburger-heading { margin: 8px 12px 2px; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .3px;
+    text-transform: uppercase; color: var(--muted); }
+  .switch-row { gap: 12px; cursor: pointer; }
+  .switch-row .switch-text { display: flex; flex-direction: column; gap: 1px; color: var(--ink); font-size: var(--fs-base); }
+  .switch-row .switch-text small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; }
+  .hamburger-note { margin: 2px 12px 8px; font-size: var(--fs-xs); line-height: 1.4; color: var(--muted); }
+  .ios-switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 51px; height: 31px;
+    margin: 0; border-radius: 999px; background: var(--seg-track); cursor: pointer;
+    transition: background-color .25s ease; }
+  .ios-switch::before { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.16);
+    transition: transform .3s cubic-bezier(.3,1.4,.5,1); }
+  .ios-switch:checked { background: #34c759; }
+  .ios-switch:checked::before { transform: translateX(20px); }
+  .ios-switch:disabled { opacity: .5; }
+  .ios-switch:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .ios-switch, .ios-switch::before { transition: none; } }
+
   /* ---- Next Practice hero (ui/aurora.js) ---------------------------- */
   .next-card.hero {
     position: relative; overflow: hidden; isolation: isolate; border: none; color: #fff;
@@ -1717,7 +1753,26 @@
       if(!native) return ('Notification' in window) && Notification.permission === 'granted';
       return !!window.__nativePushGranted;
     },
+
+    // ---- Widgets, Watch, Live Activity, Calendar, Siri (app 1.1+) ----
+    // The app is told WHAT to show (team, practices), never handed a login.
+    // Each call is a no-op on the web and on a 1.0 app without the plugin.
+    features(){ return !!bridge(); },
+    setContext(ctx){ const b = bridge(); if(b) b.setContext(ctx).catch(() => {}); },
+    clearContext(){ const b = bridge(); if(b) b.clearContext().catch(() => {}); },
+    async settings(){ const b = bridge(); try { return b ? await b.getSettings() : null; } catch(e){ return null; } },
+    async setSetting(key, value){ const b = bridge(); try { return b ? await b.setSetting({ key, value }) : null; } catch(e){ return null; } },
+    // Widget taps and Siri land here: { view: 'schedule' | 'book' | 'find' | 'practice', field?, id? }
+    onRoute(fn){ const b = bridge(); if(b && b.addListener) b.addListener('route', fn); },
   };
+
+  function bridge(){
+    if(!native || !window.Capacitor) return null;
+    const C = window.Capacitor;
+    if(C.Plugins && C.Plugins.SeafordBridge) return C.Plugins.SeafordBridge;
+    if(!C.isPluginAvailable || !C.isPluginAvailable('SeafordBridge') || !C.registerPlugin) return null;
+    return (window.__seafordBridge = window.__seafordBridge || C.registerPlugin('SeafordBridge'));
+  }
 
   if(!native) return;
 
@@ -2461,8 +2516,21 @@ function rebuildHamburgerMenu(){
       <a class="hamburger-row" href="privacy.html" target="_blank" rel="noopener">Privacy</a>
       <a class="hamburger-row" href="support.html" target="_blank" rel="noopener">Support</a>
     </div>`;
+  const device = (myProfile && window.Native.features()) ? `<div class="hamburger-extras" id="deviceSettings">
+      <p class="hamburger-heading">On this iPhone</p>
+      <label class="hamburger-row switch-row">
+        <span class="switch-text">Practice on Lock Screen<small>A countdown on practice day</small></span>
+        <input type="checkbox" class="ios-switch" data-device-setting="liveActivity" disabled>
+      </label>
+      <label class="hamburger-row switch-row">
+        <span class="switch-text">Add practices to Calendar<small>A Seaford Lacrosse calendar that stays up to date</small></span>
+        <input type="checkbox" class="ios-switch" data-device-setting="calendar" disabled>
+      </label>
+      <p class="hamburger-note" id="deviceSettingsNote" hidden></p>
+    </div>` : '';
   // Settings first, account actions last: the iOS order, destructive at the bottom.
-  menu.innerHTML = identity + nameForm + extras + signOut + deleteAcct;
+  menu.innerHTML = identity + nameForm + device + extras + signOut + deleteAcct;
+  if(device) wireDeviceSettings(menu);
   menu.querySelector('[data-menu-theme]')?.addEventListener('click', e => {
     document.getElementById('themeToggleBtn')?.click();
     const lbl = document.getElementById('themeToggleLabel')?.textContent || '';
@@ -2500,6 +2568,34 @@ function rebuildHamburgerMenu(){
     rebuildHamburgerMenu();
   });
   document.getElementById('hamburgerSignOutBtn')?.addEventListener('click', () => sb.auth.signOut());
+}
+// The two native switches. The app owns the truth (permissions can change in
+// Settings at any time), so the switches read it every time the menu opens.
+async function wireDeviceSettings(menu){
+  const note = menu.querySelector('#deviceSettingsNote');
+  const paint = st => {
+    if(!st) return;
+    menu.querySelectorAll('[data-device-setting]').forEach(inp => {
+      inp.checked = !!st[inp.dataset.deviceSetting];
+      inp.disabled = false;
+    });
+    const msgs = [];
+    if(st.liveActivity && st.liveActivityAllowed === false) msgs.push('Live Activities are off for Seaford Lacrosse in Settings.');
+    if(st.calendarAccess === 'denied') msgs.push('Calendar access is off. Turn it on in Settings > Apps > Seaford Lacrosse.');
+    note.textContent = msgs.join(' ');
+    note.hidden = !msgs.length;
+  };
+  paint(await window.Native.settings());
+  menu.querySelectorAll('[data-device-setting]').forEach(inp => inp.addEventListener('change', async () => {
+    const want = inp.checked;
+    inp.disabled = true;
+    haptic('light');
+    const st = await window.Native.setSetting(inp.dataset.deviceSetting, want);
+    paint(st);
+    if(st && want && inp.dataset.deviceSetting === 'calendar'){
+      if(st.calendar) flash('Your practices are in Calendar, in a Seaford Lacrosse calendar.', 'ok');
+    }
+  }));
 }
 function closeHamburgerMenu(){
   document.getElementById('hamburgerMenu')?.classList.remove('open');
@@ -3392,6 +3488,8 @@ function teardown(){
   // otherwise a shared/reused device would keep getting that person's
   // targeted notifications after someone else signs in on it.
   window.Native.pushLogout();
+  window.Native.clearContext();
+  lastNativeContext = '';
   myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
@@ -4279,7 +4377,52 @@ function practiceCountdown(dateISO, time){
   return months === 1 ? 'In a month' : `In ${months} months`;
 }
 let heroAurora = null, heroFieldId = null;
+// The app's widgets, Watch, Live Activity and calendar show the coach's team:
+// its upcoming practices, as the raw rows (the app parses times itself, the
+// same way the team-ics feed is parsed). Sent only when something changed.
+let lastNativeContext = '';
+let pendingNativeRoute = null;
+function syncNativeContext(){
+  if(!window.Native.features() || !myProfile || !teams.length) return;
+  const teamId = chosenTeamId();
+  const t = teamId ? teamsById[teamId] : null;
+  const todayISO = fmtDateISO(new Date());
+  const ctx = t ? {
+    teamId, teamLabel: teamLabel(t.gender, t.grade),
+    practices: bookingsCache
+      .filter(b => b.team_id === teamId && b.date >= todayISO)
+      .sort((a, b) => a.date.localeCompare(b.date) || slotStartMinutes(a.time) - slotStartMinutes(b.time))
+      .slice(0, 120)
+      .map(b => ({ id: b.id, field: b.field_id, date: b.date, subfield: b.subfield || '', time: b.time })),
+  } : {};
+  const key = JSON.stringify(ctx);
+  if(key !== lastNativeContext){ lastNativeContext = key; window.Native.setContext(ctx); }
+  if(pendingNativeRoute){ const r = pendingNativeRoute; pendingNativeRoute = null; setTimeout(() => openNativeRoute(r), 0); }
+}
+function openNativeRoute(r){
+  if(!r) return;
+  if(!myProfile || !teams.length){ pendingNativeRoute = r; return; }
+  if(r.view === 'book'){
+    switchView('book');
+    if(r.field && FIELD_MAP[r.field]) selectBookField(r.field);
+  } else if(r.view === 'find'){
+    switchView('openweek');
+  } else if(r.view === 'practice'){
+    const b = bookingsCache.find(x => x.id === r.id);
+    switchView('schedule');
+    if(b){
+      calState.schedule.selected = b.date;
+      calState.schedule.monthFirst = firstDayOfMonth(parseISO(b.date));
+      renderSchedule();
+    }
+  } else {
+    switchView('schedule');
+  }
+}
+window.Native.onRoute(openNativeRoute);
+
 function renderNextPractice(){
+  syncNativeContext();
   const card = document.getElementById('nextPracticeCard');
   if(!card || !myProfile) return;
   const teamId = chosenTeamId();

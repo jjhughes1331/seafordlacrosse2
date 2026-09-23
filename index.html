@@ -468,7 +468,7 @@
   .auth-screen h2 { font-family: var(--font-body); font-size: var(--fs-xl); color: var(--text-strong); margin-bottom: 6px; font-weight: 600; }
   .auth-screen p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 20px; }
   .field { text-align: left; margin-bottom: 14px; }
-  .field label { display: block; font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .field label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); margin-bottom: 6px; }
   .field input { width: 100%; min-height: 44px; padding: 12px 14px; border: 1px solid transparent; background: var(--card-2); color: var(--ink); border-radius: var(--radius-chip); font-size: 16px; font-family: inherit; }
   .field input::placeholder, input::placeholder { color: var(--muted); opacity: 1; }
   .field input:focus { outline: none; border-color: var(--accent-fill); background: var(--card); }
@@ -2685,7 +2685,7 @@ async function init(){
 function showLoginScreen(msg){
   el.authArea.innerHTML = `
     <div class="auth-screen">
-      <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
+      <img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse">
       <h2>Sign in</h2>
       <p class="hint">Use the email and password your director set up for you.</p>
       <div class="field"><label>Email</label><input type="email" id="loginEmail"></div>
@@ -2725,7 +2725,7 @@ async function doForgotPassword(){
 function showSetPasswordScreen(){
   el.authArea.innerHTML = `
     <div class="auth-screen">
-      <img src="seaford-lacrosse-logo.jpg" alt="Seaford Lacrosse">
+      <img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse">
       <h2>Set your password</h2>
       <p class="hint">Welcome! Choose a password for your account.</p>
       <div class="field"><label>New password</label><input type="password" id="newPassword"></div>

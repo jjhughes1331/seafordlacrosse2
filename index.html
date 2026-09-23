@@ -1978,6 +1978,38 @@
     border-radius: var(--group-radius); color: var(--tint); font: inherit; font-size: var(--ios-body); cursor: pointer; }
   #openWeekResults .get-pill.armed { background: var(--tint) !important; color: var(--on-accent); padding-right: 30px !important; }
   #openWeekResults .get-pill.armed .plus { color: var(--on-accent); }
+
+  /* ---- My Team: Contacts' action tiles -------------------------------- */
+  @media (max-width: 700px) {
+    #viewMyTeam #myTeamHeading { display: none; }
+    #viewMyTeam .toolbar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 16px 0; padding: 0; border: none; }
+    #viewMyTeam .toolbar .allbtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+      min-height: 64px; margin: 0; padding: 10px 4px 8px; border: none; border-radius: 16px; background: var(--cell-bg);
+      color: var(--tint); font-size: 0; box-shadow: none; }
+    #viewMyTeam .toolbar .allbtn > svg { display: none; }
+    #viewMyTeam .toolbar .allbtn::before { content: ''; width: 22px; height: 22px; background: currentColor;
+      -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+    #viewMyTeam .toolbar .allbtn::after { content: attr(data-short); font-size: var(--ios-cap); font-weight: 500; color: var(--tint); }
+    #viewMyTeam .toolbar .allbtn:active { opacity: .6; }
+    #myTeamExportIcsBtn { --ic: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTcuMiAxLjZhMS4zIDEuMyAwIDAgMSAxLjMgMS4zdi45aDd2LS45YTEuMyAxLjMgMCAwIDEgMi42IDB2LjloLjdhMy40IDMuNCAwIDAgMSAzLjQgMy40djExLjZhMy40IDMuNCAwIDAgMS0zLjQgMy40SDUuMmEzLjQgMy40IDAgMCAxLTMuNC0zLjRWNy4yYTMuNCAzLjQgMCAwIDEgMy40LTMuNGguN3YtLjlhMS4zIDEuMyAwIDAgMSAxLjMtMS4zWk00LjQgMTAuNHY4LjRjMCAuNDQuMzYuOC44LjhoMTMuNmMuNDQgMCAuOC0uMzYuOC0uOHYtOC40SDQuNFoiLz48cGF0aCBkPSJNMTIgMTEuNmExIDEgMCAwIDEgMSAxdjEuOWgxLjlhMSAxIDAgMCAxIDAgMkgxM3YxLjlhMSAxIDAgMCAxLTIgMHYtMS45SDkuMWExIDEgMCAwIDEgMC0ySDExdi0xLjlhMSAxIDAgMCAxIDEtMVoiLz48L3N2Zz4=); }
+    #myTeamShareBtn { --ic: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGQ9Ik0xMiAxLjhhMS4zIDEuMyAwIDAgMSAuOTIuMzhsNCA0YTEuMyAxLjMgMCAxIDEtMS44NCAxLjg0TDEzLjMgNi4yNFYxNC40YTEuMyAxLjMgMCAwIDEtMi42IDBWNi4yNEw4LjkyIDguMDJhMS4zIDEuMyAwIDEgMS0xLjg0LTEuODRsNC00QTEuMyAxLjMgMCAwIDEgMTIgMS44Wk00LjQgMTMuMWExLjMgMS4zIDAgMCAxIDEuMyAxLjN2NC4yYzAgLjUuNC45LjkuOWgxMC44Yy41IDAgLjktLjQuOS0uOXYtNC4yYTEuMyAxLjMgMCAxIDEgMi42IDB2NC4yYTMuNSAzLjUgMCAwIDEtMy41IDMuNUg2LjZhMy41IDMuNSAwIDAgMS0zLjUtMy41di00LjJhMS4zIDEuMyAwIDAgMSAxLjMtMS4zWiIvPjwvc3ZnPg==); }
+    #myTeamExportCsvBtn { --ic: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iYmxhY2siPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTUuNCAyLjZoMTMuMmEyLjggMi44IDAgMCAxIDIuOCAyLjh2MTMuMmEyLjggMi44IDAgMCAxLTIuOCAyLjhINS40YTIuOCAyLjggMCAwIDEtMi44LTIuOFY1LjRhMi44IDIuOCAwIDAgMSAyLjgtMi44Wm0tLjIgNi4zdjMuOGg1LjVWOC45SDUuMlptOC4xIDB2My44aDUuNVY4LjloLTUuNVptLTguMSA2LjR2My4xYzAgLjEuMS4yLjIuMmg1LjN2LTMuM0g1LjJabTguMSAwdjMuM2g1LjNjLjEgMCAuMi0uMS4yLS4ydi0zLjFoLTUuNVoiLz48L3N2Zz4=); }
+    #myTeamCount { font-size: var(--ios-foot); color: var(--muted); margin: 18px 4px 0; }
+  }
+
+  /* ---- Scroll-edge effect (phone) -------------------------------------- */
+  .edge-top, .edge-bottom { display: none; }
+  @media (max-width: 700px) {
+    header.scrolled:not(.title-hidden) { box-shadow: none; }
+    .edge-top { display: block; position: fixed; left: 0; right: 0; top: var(--header-h, 128px); height: 18px; z-index: 549;
+      background: linear-gradient(var(--chalk), color-mix(in srgb, var(--chalk) 0%, transparent)); pointer-events: none;
+      opacity: 0; transition: opacity .2s; }
+    header:not(.title-hidden) ~ .edge-top { opacity: 1; }
+    .edge-bottom { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 540; /* under <header> (550), which carries the tab bar */ pointer-events: none;
+      height: calc(var(--navbar-h) + var(--safe-bottom) + 34px);
+      background: linear-gradient(color-mix(in srgb, var(--chalk) 0%, transparent), color-mix(in srgb, var(--chalk) 88%, transparent) 62%); }
+    body:not(:has(#viewTabs[style*="flex"])) .edge-bottom { display: none; }
+  }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2257,6 +2289,11 @@
   </nav>
 </header>
 
+<!-- iOS 26 scroll-edge effect: content softens as it slides under a bar
+     instead of being cut by a hairline. One under the title bar, one behind
+     the floating tab bar. -->
+<div class="edge-top" aria-hidden="true"></div>
+<div class="edge-bottom" aria-hidden="true"></div>
 <div class="signed-in" id="signedInBar" style="display:none">
   <span class="label">Signed in as</span>
   <span class="who" id="whoName"></span>
@@ -2402,9 +2439,9 @@
 <div id="viewMyTeam" style="display:none">
   <div class="toolbar">
     <div class="now-showing" id="myTeamHeading"></div>
-    <button class="allbtn" id="myTeamExportCsvBtn">Export to CSV (TeamSnap)</button>
-    <button class="allbtn" id="myTeamExportIcsBtn">Add to Calendar</button>
-    <button class="allbtn" id="myTeamShareBtn"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8a1.3 1.3 0 0 1 .92.38l4 4a1.3 1.3 0 1 1-1.84 1.84L13.3 6.24V14.4a1.3 1.3 0 0 1-2.6 0V6.24L8.92 8.02a1.3 1.3 0 1 1-1.84-1.84l4-4A1.3 1.3 0 0 1 12 1.8ZM4.4 13.1a1.3 1.3 0 0 1 1.3 1.3v4.2c0 .5.4.9.9.9h10.8c.5 0 .9-.4.9-.9v-4.2a1.3 1.3 0 1 1 2.6 0v4.2a3.5 3.5 0 0 1-3.5 3.5H6.6a3.5 3.5 0 0 1-3.5-3.5v-4.2a1.3 1.3 0 0 1 1.3-1.3Z"/></svg> Share this week</button>
+    <button class="allbtn" id="myTeamExportIcsBtn" data-short="Calendar">Add to Calendar</button>
+    <button class="allbtn" id="myTeamShareBtn" data-short="Share Week"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8a1.3 1.3 0 0 1 .92.38l4 4a1.3 1.3 0 1 1-1.84 1.84L13.3 6.24V14.4a1.3 1.3 0 0 1-2.6 0V6.24L8.92 8.02a1.3 1.3 0 1 1-1.84-1.84l4-4A1.3 1.3 0 0 1 12 1.8ZM4.4 13.1a1.3 1.3 0 0 1 1.3 1.3v4.2c0 .5.4.9.9.9h10.8c.5 0 .9-.4.9-.9v-4.2a1.3 1.3 0 1 1 2.6 0v4.2a3.5 3.5 0 0 1-3.5 3.5H6.6a3.5 3.5 0 0 1-3.5-3.5v-4.2a1.3 1.3 0 0 1 1.3-1.3Z"/></svg> Share this week</button>
+    <button class="allbtn" id="myTeamExportCsvBtn" data-short="TeamSnap">Export to CSV (TeamSnap)</button>
   </div>
   <div class="wrap">
     <p class="count" id="myTeamCount"></p>
@@ -3171,6 +3208,8 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAccountS
     const on = headerEl.classList.contains('scrolled');
     const next = forceCondensed || (on ? window.scrollY > EXPAND_AT : window.scrollY > COLLAPSE_AT);
     if(next !== on) headerEl.classList.toggle('scrolled', next);
+    // The scroll-edge fade sits exactly under the bar, whatever its height.
+    document.documentElement.style.setProperty('--header-h', headerEl.offsetHeight + 'px');
     ticking = false;
   }
   window.applyHeaderCondense = apply;
@@ -5061,7 +5100,7 @@ function renderMyTeam(){
   renderAssistants();
   if(!filtered.length){
     el.myTeamResults.innerHTML = canBook()
-      ? `<div class="empty-schedule"><b>No practices booked yet</b>Head to Book A Practice Time to get started.<br><button class="cta" onclick="switchView('book')">Book a practice &rarr;</button></div>`
+      ? `<div class="empty-schedule"><b>Nothing Booked Yet</b>Your team's practices show up here once they're booked.<br><button class="cta" onclick="switchView('book')">Book a Practice</button></div>`
       : `<div class="empty-schedule"><b>No practices booked yet</b>They'll show here as soon as your head coach books them.</div>`;
     el.myTeamCount.innerHTML = '';
     return;
@@ -5069,7 +5108,8 @@ function renderMyTeam(){
 
   const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, key);
   el.myTeamResults.innerHTML = html;
-  el.myTeamCount.innerHTML = `<b>${totalSlots}</b> practice${totalSlots!==1?'s':''} booked for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}.`;
+  // The bar already names the team; saying it a third time was noise.
+  el.myTeamCount.innerHTML = `${totalSlots} practice${totalSlots!==1?'s':''} across ${venuesShown} field${venuesShown!==1?'s':''}`;
 }
 // ---- Assistant coaches (a head coach's own team; JJ, 2026-09-22) ----
 // Up to 3, invited by email so they set their own password. The list is read

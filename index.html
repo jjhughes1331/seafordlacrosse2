@@ -165,14 +165,20 @@
   const who = AS === 'coach' ? store.profiles[2] : AS === 'assistant' ? store.profiles[4]
     : AS === 'director' ? store.profiles[1] : store.profiles[0];
   const session = { access_token: 'fixture-token', user: { id: who.id, email: who.email } };
+  let authListener = null;
   const client = {
     __fixture: true,
     auth: {
       getSession: async () => ({ data: { session }, error: null }),
       getUser:    async () => ({ data: { user: session.user }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }),
+      onAuthStateChange: (cb) => { authListener = cb; return { data: { subscription: { unsubscribe(){} } } }; },
       signInWithPassword: async () => ({ data: { session }, error: null }),
-      signOut: async () => { location.href = location.pathname; return { error: null }; },
+      // Sign out the way the real client does (a SIGNED_OUT event), so the app's
+      // own teardown runs: it clears the native widgets, Watch and calendar too.
+      signOut: async () => {
+        if(authListener) authListener('SIGNED_OUT', null); else location.href = location.pathname;
+        return { error: null };
+      },
       resetPasswordForEmail: async () => ({ data: {}, error: null }),
       updateUser: async () => ({ data: { user: session.user }, error: null }),
     },
@@ -2394,6 +2400,10 @@ let waitlistCache = [];          // in-memory copy of all waitlist entries, refr
 let waitlistNotified = new Set(); // waitlist entry ids we've already flashed "it opened up!" for, this session
 let weatherCache = {};           // dateStr -> { precip: number 0-100, code: number } — populated once on load, best-effort
 let realtimeChannel = null;
+// What the native app was last told (see syncNativeContext); declared up here
+// because showLoginScreen resets it and can run before that section loads.
+let lastNativeContext = '';
+let pendingNativeRoute = null;
 
 let currentView = 'schedule';
 let scheduleGender = 'girls';
@@ -3411,6 +3421,10 @@ async function init(){
 }
 
 function showLoginScreen(msg){
+  // However we got here (signed out, session expired, account removed), the
+  // phone's widgets, Watch and Live Activity must stop showing the team.
+  window.Native.clearContext();
+  lastNativeContext = '';
   el.authArea.innerHTML = `
     <div class="auth-screen">
       <img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse">
@@ -4471,8 +4485,6 @@ let heroAurora = null, heroFieldId = null;
 // The app's widgets, Watch, Live Activity and calendar show the coach's team:
 // its upcoming practices, as the raw rows (the app parses times itself, the
 // same way the team-ics feed is parsed). Sent only when something changed.
-let lastNativeContext = '';
-let pendingNativeRoute = null;
 function syncNativeContext(){
   if(!window.Native.features() || !myProfile || !teams.length) return;
   const teamId = chosenTeamId();

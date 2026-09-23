@@ -9,8 +9,11 @@
 // registrations at "/" would fight over control instead of coexisting.
 importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDKWorker.js');
 
-const CACHE_NAME = 'seaford-lax-shell-v2';
-const SHELL_FILES = ['./', './index.html', './manifest.json', './offline.html'];
+const CACHE_NAME = 'seaford-lax-shell-v3';
+// The page draws nothing without its scripts, so they're part of the shell.
+const SHELL_FILES = ['./', './index.html', './manifest.json', './offline.html',
+  './vendor/supabase-2.117.1.js', './vendor/gsap-3.12.5.min.js', './vendor/Flip-3.12.5.min.js',
+  './ui/spring.js', './ui/field-menu.js', './ui/aurora.js', './ui/ripple.js', './ui/sheet.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

@@ -27,7 +27,10 @@
 <!-- Manrope draws only the wordmark and the share card, so it must never hold
      up first paint: print-media stylesheets don't block rendering. -->
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- Vendored and pinned, not fetched from a CDN: the app bundles this page,
+     and a script it must download before drawing anything meant an offline
+     launch never got past the skeleton. Also pins @2, which floated. -->
+<script src="vendor/supabase-2.117.1.js"></script>
 <!-- ============ FIXTURE MODE (?fixture=1) ============
      Every signed-in surface in this app was previously unverifiable without a
      human typing a password, which meant UI bugs only surfaced against live
@@ -252,8 +255,8 @@
 <!-- Motion. Everything that uses it is guarded (window.gsap) and degrades to
      the plain CSS behavior if a CDN is blocked or offline. (three.js used to
      load here too: ~600 KB parsed on every launch, used by nothing.) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+<script src="vendor/gsap-3.12.5.min.js"></script>
+<script src="vendor/Flip-3.12.5.min.js"></script>
 <style>
   :root {
     /* Core greens — from the lacrosse crest, used for functional UI (buttons, badges, highlights) */
@@ -3989,10 +3992,19 @@ async function loadProfileAndStart(){
 }
 
 async function loadProfileAndStartInner(){
-  const { data: { user } } = await sb.auth.getUser();
+  // The session is on the device; asking the auth server who we are cost a
+  // round trip before anything could draw, and failed outright offline. Every
+  // query below still carries the token, so RLS judges it as before.
+  const { data: { session: s0 } } = await sb.auth.getSession();
+  const user = s0 && s0.user;
   if(!user){ showLoginScreen(); return; }
 
-  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  const cached = readCache();
+  let { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  // Offline with a schedule on the phone: open on it (Flighty's rule: assume
+  // you'll lose signal). Anything that writes still needs the network.
+  const offline = error && (!navigator.onLine || /fetch|network|load failed/i.test(String(error.message || error)));
+  if(offline && cached && cached.profile && cached.profile.id === user.id){ profile = cached.profile; error = null; }
   if(error || !profile){
     el.authArea.innerHTML = `
       <div class="auth-screen">
@@ -4014,16 +4026,16 @@ async function loadProfileAndStartInner(){
 
   // Paint what we had last time first: a coach opening the app on a field
   // with one bar should see last night's schedule instantly, not a skeleton.
-  const cached = readCache();
+  let warm = false;
   if(cached && Array.isArray(cached.bookings) && cached.bookings.length){
     bookingsCache = cached.bookings;
-    if(Array.isArray(cached.teams) && cached.teams.length) indexTeams(cached.teams);
+    if(Array.isArray(cached.teams) && cached.teams.length){ indexTeams(cached.teams); warm = true; }
     lastSyncedAt = cached.at;
   }
-  await loadTeams();
-  await refreshBookings();
-  await refreshWaitlist();
-  await refreshLockState();
+  // The four reads are independent: one round of requests, not four in a row.
+  const fresh = Promise.all([loadTeams(), refreshBookings(), refreshWaitlist(), refreshLockState()]);
+  if(warm) fresh.then(() => { if(myProfile) rerenderCurrentView(); });
+  else await fresh;
   autoAdvanceOverdueTier(); // fire-and-forget; no-op unless an admin and a tier is past its deadline
   setupRealtime();
   loadWeather(); // fire-and-forget — never block sign-in on a third-party API
@@ -4121,7 +4133,7 @@ const CACHE_KEY = 'seaford-cache-v1';
 let lastSyncedAt = null;
 function readCache(){ try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e){ return null; } }
 function writeCache(){
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams })); }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams, profile: myProfile })); }
   catch(e){ /* quota or private mode: the app is fine without it */ }
 }
 // "Updated 2 min ago" is the honest version of a spinner: it says how stale
@@ -4146,6 +4158,9 @@ async function refreshBookings(){
   writeCache();
   paintSyncedLabel();
   checkWaitlistOpenings();
+  // The Lock Screen, widgets and Watch follow every refresh, not only a visit
+  // to Schedule (a booking made on Book used to wait for one).
+  syncNativeContext();
 }
 
 // ============ WEATHER (rainout risk) ============

@@ -1711,6 +1711,7 @@
     font-size: clamp(2.1rem, 11vw, 3rem); font-weight: 700; letter-spacing: -1.4px; line-height: 1.02;
     margin-top: 10px; font-variant-numeric: tabular-nums;
   }
+  .next-card.hero .countdown.is-date { font-size: clamp(1.75rem, 8.4vw, 2.25rem); letter-spacing: -.8px; }
   .next-card.hero .when { color: #fff; font-size: var(--fs-md); font-weight: 600; margin-top: 6px; letter-spacing: -.2px; }
   .next-card.hero .where { color: rgba(255,255,255,.78); }
   .next-card.hero .row2 a, .next-card.hero .row2 button {
@@ -1901,6 +1902,56 @@
   #weekGrid .get-pill.armed { background: var(--tint) !important; color: var(--on-accent); padding-right: 30px !important; }
   #weekGrid .get-pill.armed .plus { color: var(--on-accent); }
   @media (prefers-reduced-motion: reduce) { .bd-row.just-booked { animation: none; } }
+
+  /* ---- Bar buttons: glass circles beside the monogram ---------------- */
+  .bar-btn { position: fixed; z-index: 610; top: calc(10px + var(--safe-top)); right: calc(64px + var(--safe-right));
+    width: 44px; height: 44px; padding: 0; border: none; background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--ink); -webkit-touch-callout: none; }
+  .bar-btn::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--glass);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8);
+    box-shadow: inset 0 0 0 .5px var(--glass-edge), var(--glass-shadow); }
+  .bar-btn svg { position: relative; width: 19px; height: 19px; }
+  .bar-btn .ic-cal { display: none; }
+  .bar-btn.to-calendar .ic-cal { display: block; }
+  .bar-btn.to-calendar .ic-list { display: none; }
+  .bar-btn:active::before { transform: scale(.92); }
+  .bar-btn:focus { outline: none; }
+  .bar-btn:focus-visible::before { box-shadow: 0 0 0 2px var(--chalk), 0 0 0 4px var(--tint); }
+  @media (min-width: 701px) { .bar-btn { display: none !important; } }
+  @media (max-width: 700px) {
+    #scheduleModeToggle { display: none !important; }
+    .large-title { padding-right: 112px; }
+    /* Girls | Boys and the team on one line, not two stacked rows */
+    #viewSchedule .picker, .picker { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+    .picker > h2 { display: none; }
+    .picker .gender-tabs { flex: 0 0 auto; width: auto !important; margin: 0 !important; }
+    .picker .gender-tabs .gtab { flex: 0 0 auto; padding: 4px 14px; }
+    .picker .grade-grid { flex: 1; min-width: 0; }
+    .picker .grade-select { min-height: 36px; }
+  }
+
+  /* ---- Welcome as a tip ------------------------------------------------ */
+  .welcome-card { padding: 16px 0 0; background: var(--cell-bg); border: none; box-shadow: none; border-radius: var(--group-radius); overflow: hidden; }
+  .tip-head { display: flex; align-items: flex-start; gap: 12px; padding: 0 12px 10px 20px; }
+  .tip-head > div { flex: 1; }
+  .welcome-card .tip-head h3 { font-size: var(--ios-body); font-weight: 600; margin: 0; }
+  .welcome-card .tip-head .hint { font-size: var(--ios-sub); margin: 2px 0 0; }
+  .tip-x { flex: none; width: 44px; height: 44px; margin: -12px -8px 0 0; border: none; background: none; color: var(--silver-deep);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .tip-x svg { width: 22px; height: 22px; }
+  .tip-rows { margin: 0; border-radius: 0; background: none; }
+  .tip-rows .ios-row { padding-left: 20px; }
+  .tip-rows .ios-row + .ios-row::before { left: 64px; }
+  .tip-row .tip-label { flex: 1; }
+  .tip-tile { flex: none; width: 30px; height: 30px; border-radius: 8px; background: var(--t); color: #fff;
+    display: flex; align-items: center; justify-content: center; }
+  .tip-tile svg { width: 18px; height: 18px; }
+  .tip-row.done { cursor: default; }
+  .tip-row.done .tip-label { color: var(--muted); }
+  .tip-row.done:active { background: none; }
+  .tip-done { color: var(--accent-fill); display: flex; }
+  .tip-done svg { width: 17px; height: 17px; }
+  .sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2095,6 +2146,12 @@
      actions. (It replaced a hamburger drop-down, which is web grammar.) -->
 <button id="accountBtn" type="button" aria-label="Account" aria-haspopup="dialog" style="display:none">
   <span class="monogram" id="accountMonogram" aria-hidden="true"></span>
+</button>
+<!-- Month / List lives in the bar, as the list button does in Calendar. It
+     was a segmented control stacked with two filters above the content. -->
+<button id="scheduleViewBtn" class="bar-btn" type="button" style="display:none" aria-label="Show as list">
+  <svg class="ic-list" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4.5 5.2a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm0 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm0 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM8.6 5.6h11.2a1 1 0 0 1 0 2H8.6a1 1 0 0 1 0-2Zm0 5.4h11.2a1 1 0 0 1 0 2H8.6a1 1 0 0 1 0-2Zm0 5.4h11.2a1 1 0 0 1 0 2H8.6a1 1 0 0 1 0-2Z"/></svg>
+  <svg class="ic-cal" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M7.2 1.6a1.3 1.3 0 0 1 1.3 1.3v.9h7v-.9a1.3 1.3 0 0 1 2.6 0v.9h.7a3.4 3.4 0 0 1 3.4 3.4v11.6a3.4 3.4 0 0 1-3.4 3.4H5.2a3.4 3.4 0 0 1-3.4-3.4V7.2a3.4 3.4 0 0 1 3.4-3.4h.7v-.9a1.3 1.3 0 0 1 1.3-1.3ZM4.4 10.4v8.4c0 .44.36.8.8.8h13.6c.44 0 .8-.36.8-.8v-8.4H4.4Z"/></svg>
 </button>
 <div class="share-modal" id="accountSheet" style="display:none">
   <div class="share-backdrop" data-account-close></div>
@@ -2773,6 +2830,8 @@ const el = {
 // settings, then the destructive actions last and in red.
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2a.8.8 0 0 1 .72.45l2.5 5.06 5.59.81a.8.8 0 0 1 .44 1.37l-4.04 3.94.95 5.57a.8.8 0 0 1-1.16.84L12 17.6l-5 2.63a.8.8 0 0 1-1.16-.84l.95-5.57-4.04-3.94a.8.8 0 0 1 .44-1.37l5.59-.81 2.5-5.06A.8.8 0 0 1 12 2.2Z"/></svg>';
 const CHEVRON_SVG = '<svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg>';
+const XMARK_CIRCLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm3.54 12.13a1 1 0 0 1-1.41 1.41L12 13.41l-2.13 2.13a1 1 0 0 1-1.41-1.41L10.59 12 8.46 9.87a1 1 0 0 1 1.41-1.41L12 10.59l2.13-2.13a1 1 0 0 1 1.41 1.41L13.41 12l2.13 2.13Z"/></svg>';
+const CHECK_SMALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m5.5 12.5 4.2 4.2L18.5 7.8"/></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.2a4.4 4.4 0 1 0 0-8.8 4.4 4.4 0 0 0 0 8.8Zm0 2.2c-4.6 0-8.2 2.4-8.2 5.2 0 .6.5 1 1 1h14.4c.5 0 1-.4 1-1 0-2.8-3.6-5.2-8.2-5.2Z"/></svg>';
 function initialsOf(p){
   if(!p) return '';
@@ -3318,12 +3377,29 @@ function renderWelcome(){
     card.style.display = 'none';
     if(allDone && !flags.dismissed){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e){} }
   } else {
-    const row = (done, text, action) => `<button type="button" class="welcome-row${done ? ' done' : ''}" data-welcome="${action}"><span class="welcome-check">${done ? '&#10003;' : ''}</span><span>${text}</span></button>`;
-    card.innerHTML = `<h3>${myProfile.first_name ? 'Welcome, ' + escSafe(myProfile.first_name) : 'Welcome'}</h3><p class="hint">Three quick things and you're set up.</p>
-      ${row(favDone, 'Star your favorite field', 'book')}
-      ${row(bookDone, myProfile.role === 'coach' ? 'Book your first practice' : 'Book a first practice', 'book')}
-      ${row(pushDone, 'Turn on notifications', 'push')}
-      <button type="button" class="link-btn" data-welcome="dismiss">Skip for now</button>`;
+    // A tip, the way Apple's own apps teach: Settings-style rows with a
+    // coloured icon tile, a check when done (never a strikethrough), and an
+    // xmark to put it away. The underlined "Skip for now" link was web.
+    const ICONS = {
+      star: '<path fill="currentColor" d="M12 3.2c.3 0 .6.2.7.5l2.1 4.3 4.7.7c.7.1 1 .9.5 1.4l-3.4 3.3.8 4.7c.1.7-.6 1.2-1.2.9L12 16.8 7.8 19c-.6.3-1.3-.2-1.2-.9l.8-4.7L4 10.1c-.5-.5-.2-1.3.5-1.4l4.7-.7 2.1-4.3c.1-.3.4-.5.7-.5Z"/>',
+      book: '<path fill="currentColor" d="M12 4a1.4 1.4 0 0 1 1.4 1.4v5.2h5.2a1.4 1.4 0 0 1 0 2.8h-5.2v5.2a1.4 1.4 0 0 1-2.8 0v-5.2H5.4a1.4 1.4 0 0 1 0-2.8h5.2V5.4A1.4 1.4 0 0 1 12 4Z"/>',
+      bell: '<path fill="currentColor" d="M12 3a5.6 5.6 0 0 0-5.6 5.6v3.1L4.9 14.6a1 1 0 0 0 .9 1.5h12.4a1 1 0 0 0 .9-1.5l-1.5-2.9V8.6A5.6 5.6 0 0 0 12 3Zm-2.4 14.3a2.4 2.4 0 0 0 4.8 0Z"/>',
+    };
+    const row = (done, text, action, icon, tint) => `<button type="button" class="ios-row tip-row${done ? ' done' : ''}" data-welcome="${action}"${done ? ' aria-disabled="true"' : ''}>
+        <span class="tip-tile" style="--t:${tint}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[icon]}</svg></span>
+        <span class="tip-label">${text}${done ? '<span class="sr-only">, done</span>' : ''}</span>
+        ${done ? `<span class="tip-done" aria-hidden="true">${CHECK_SMALL}</span>` : CHEVRON_SVG}
+      </button>`;
+    card.innerHTML = `<div class="tip-head">
+        <div><h3>${myProfile.first_name ? 'Welcome, ' + escSafe(myProfile.first_name) : 'Get Set Up'}</h3>
+        <p class="hint">Three things, and the app takes it from there.</p></div>
+        <button type="button" class="tip-x" data-welcome="dismiss" aria-label="Dismiss">${XMARK_CIRCLE}</button>
+      </div>
+      <div class="ios-group tip-rows">
+        ${row(favDone, 'Star a Favorite Field', 'book', 'star', '#ff9f0a')}
+        ${row(bookDone, 'Book Your First Practice', 'book', 'book', 'var(--accent-fill)')}
+        ${row(pushDone, 'Turn On Notifications', 'push', 'bell', '#ff3b30')}
+      </div>`;
     card.style.display = 'block';
   }
   // Install nudge: 2nd visit or later, not already installed, not dismissed.
@@ -3874,6 +3950,7 @@ function teardown(){
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
   document.getElementById('accountBtn').style.display = 'none';
+  document.getElementById('scheduleViewBtn').style.display = 'none';
   closeAccountSheet();
   // Role tabs belong to the person who signed in; the next person on this
   // device must not inherit an Admin or League tab.
@@ -4341,6 +4418,7 @@ function switchView(view){
   const prevView = currentView;
   const viewDir = VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(prevView) ? 1 : -1;
   currentView = view;
+  syncBarButtons();
   document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
   positionViewTabsThumb(view);
   window.applyHeaderCondense?.();
@@ -4380,7 +4458,7 @@ function switchView(view){
     } else if(myProfile.role === 'admin'){
       // admin: full pick of gender + grade, any of the 14 teams
       el.lockedTeamBanner.style.display = 'none';
-      el.teamPicker.style.display = 'block';
+      el.teamPicker.style.display = '';
       el.pickerHeading.textContent = 'Team';
       document.querySelectorAll('.gtab').forEach(g => { g.style.display = 'inline-block'; g.classList.toggle('active', g.dataset.g === bookAsGender); });
       buildGradeGrid(true);
@@ -4388,7 +4466,7 @@ function switchView(view){
     } else {
       // director: pick which of their gender's teams to book for
       el.lockedTeamBanner.style.display = 'none';
-      el.teamPicker.style.display = 'block';
+      el.teamPicker.style.display = '';
       el.pickerHeading.textContent = `Book for which ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} team?`;
       document.querySelectorAll('.gtab').forEach(g => g.style.display = 'none'); // gender fixed for director
       buildGradeGrid(true);
@@ -4676,7 +4754,22 @@ function syncScheduleToggle(){
   document.querySelectorAll('#scheduleModeToggle .mtab').forEach(t =>
     t.classList.toggle('active', t.dataset.mode === scheduleMode));
   positionModeThumb(el.scheduleModeToggle);
+  syncBarButtons();
 }
+// The bar's view button shows what you'd switch TO (Calendar's convention).
+function syncBarButtons(){
+  const b = document.getElementById('scheduleViewBtn');
+  if(!b) return;
+  b.style.display = (myProfile && currentView === 'schedule') ? 'flex' : 'none';
+  b.classList.toggle('to-calendar', scheduleMode === 'list');
+  b.setAttribute('aria-label', scheduleMode === 'list' ? 'Show as calendar' : 'Show as list');
+}
+document.getElementById('scheduleViewBtn').addEventListener('click', () => {
+  scheduleMode = scheduleMode === 'list' ? 'calendar' : 'list';
+  haptic('selection');
+  syncScheduleToggle();
+  renderScheduleMode();
+});
 function renderScheduleMode(){
   renderWelcome();
   el.scheduleByTeam.style.display = scheduleMode === 'list' ? 'block' : 'none';
@@ -4684,7 +4777,7 @@ function renderScheduleMode(){
 
   if(scheduleMode === 'list'){
     el.lockedTeamBanner.style.display = 'none';
-    el.teamPicker.style.display = 'block';
+    el.teamPicker.style.display = '';
     el.pickerHeading.textContent = 'Filter by team';
     document.querySelectorAll('.gtab').forEach(t => {
       t.style.display = 'inline-block';
@@ -4822,6 +4915,15 @@ function renderNextPractice(){
     : n.date === fmtDateISO(addDays(new Date(), 1)) ? 'Tomorrow'
     : `${dowOfISO(n.date)}, ${fmtDateLong(n.date)}`;
   const after = upcoming.length - 1;
+  // A countdown earns the big type only when it's close. Five months out,
+  // "In 5 months" in 48pt answers the wrong question; the date is the fact
+  // (Clock and Flighty both switch from date to countdown as the event nears).
+  const daysAway = Math.round((parseISO(n.date) - parseISO(todayISO)) / 86400000);
+  const near = daysAway <= 6;
+  const countdown = practiceCountdown(n.date, n.time);
+  const bigLine = near ? countdown : `${dowOfISO(n.date)}, ${fmtDateLong(n.date)}`;
+  const whenLine = near ? `${dayWord} \u00b7 ${formatSlotTime(n.time)}`
+    : `${formatSlotTime(n.time)} \u00b7 ${countdown.replace(/^In /, 'in ')}`;
 
   // Rebuilding the card would restart the shader and reset its drift, so the
   // canvas is created once and only the text is replaced.
@@ -4831,8 +4933,8 @@ function renderNextPractice(){
   }
   card.querySelector('.hero-body').innerHTML = `
     <p class="eyebrow"><span class="fm-dot"></span>Next practice${teamId ? '' : ' · any team'}</p>
-    <p class="countdown">${escSafe(practiceCountdown(n.date, n.time))}</p>
-    <p class="when">${escSafe(dayWord)} · ${escSafe(formatSlotTime(n.time))}</p>
+    <p class="countdown${near ? '' : ' is-date'}">${escSafe(bigLine)}</p>
+    <p class="when">${escSafe(whenLine)}</p>
     <p class="where">${escSafe(fieldLabel(n.field_id, n.subfield))}${t && !teamId ? ' · ' + escSafe(teamLabel(t.gender, t.grade)) : ''}${after > 0 ? ` · ${after} more after this` : ''}</p>
     <div class="row2">
       <a href="${mapsUrl}" target="_blank" rel="noopener">Directions</a>
@@ -5656,8 +5758,6 @@ function renderWeek(){
 // stacked seven days of chips three containers deep; nothing lined up and
 // "Book" appeared forty times on one screen.
 let bookSelectedDate = null;   // ISO date the strip has selected
-const XMARK_CIRCLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm3.54 12.13a1 1 0 0 1-1.41 1.41L12 13.41l-2.13 2.13a1 1 0 0 1-1.41-1.41L10.59 12 8.46 9.87a1 1 0 0 1 1.41-1.41L12 10.59l2.13-2.13a1 1 0 0 1 1.41 1.41L13.41 12l2.13 2.13Z"/></svg>';
-const CHECK_SMALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m5.5 12.5 4.2 4.2L18.5 7.8"/></svg>';
 function bookDayCounts(field, dateStr, myTeamId){
   const avail = field.availability.find(a => a.days.includes(parseISO(dateStr).getDay()));
   if(!avail) return null;

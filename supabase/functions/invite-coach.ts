@@ -4,10 +4,16 @@
 // 2026-09-18 so the source no longer lives only there.
 //
 // Despite the name (kept so the deployed URL doesn't change), this now
-// handles three account-creation flows:
-//   - An ADMIN can invite a DIRECTOR (any gender) or a COACH (any team).
-//   - A DIRECTOR can invite a COACH, but only onto a team in their own gender
-//     (unchanged from the original behavior).
+// handles every account-creation flow (public sign-up is OFF; this is the
+// only way in):
+//   - An ADMIN can invite a DIRECTOR (any gender), or a COACH or ASSISTANT
+//     (any team).
+//   - A DIRECTOR can invite a COACH or ASSISTANT, but only onto a team in
+//     their own gender.
+//   - A HEAD COACH can invite ASSISTANT coaches onto their own team only, by
+//     email only (no passwords), at most MAX_ASSISTANTS per team. Assistants
+//     are view-only; the database refuses their writes (see
+//     supabase/assistant_role_2026_09_22.sql).
 //   - Either can, instead of sending an email invite, set a PASSWORD directly
 //     and create the account outright — for when email isn't reliable or the
 //     person isn't reachable by email at all. The caller is shown the
@@ -22,12 +28,18 @@
 // REQUEST BODY:
 //   Inviting a coach:    { "email": "...", "inviteRole": "coach", "teamId": "<uuid>" }
 //   Inviting a director: { "email": "...", "inviteRole": "director", "gender": "boys"|"girls" }
+//   Adding an assistant: { "email": "...", "inviteRole": "assistant", "teamId": "<uuid>" }
+//                        (a head coach's own team is used whatever teamId says)
+//   Optional on any:     "firstName", "lastName"
 //   Add "password": "<8+ chars>" to any of the above to create the account
 //   directly with that password instead of emailing an invite link.
 //   (inviteRole defaults to "coach" if omitted, for backward compatibility)
 // RESPONSE: { "ok": true } or { "ok": false, "error": "..." }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// JJ, 2026-09-22: a head coach may add up to 3. Directors and admins aren't capped.
+const MAX_ASSISTANTS = 3;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -78,22 +90,27 @@ Deno.serve(async (req) => {
 
   const { data: callerProfile, error: profileErr } = await admin
     .from("profiles")
-    .select("role, gender")
+    .select("role, gender, team_id")
     .eq("id", callerId)
     .single();
 
-  if (profileErr || !callerProfile || (callerProfile.role !== "director" && callerProfile.role !== "admin")) {
-    return json({ ok: false, error: "Only directors and admins can send invites" }, 403);
+  if (profileErr || !callerProfile || !["director", "admin", "coach"].includes(callerProfile.role)) {
+    return json({ ok: false, error: "Only directors, admins and head coaches can send invites" }, 403);
   }
+  const isHeadCoach = callerProfile.role === "coach";
 
-  let body: { email?: string; inviteRole?: string; teamId?: string; gender?: string; password?: string };
+  let body: {
+    email?: string; inviteRole?: string; teamId?: string; gender?: string; password?: string;
+    firstName?: string; lastName?: string;
+  };
   try {
     body = await req.json();
   } catch {
     return json({ ok: false, error: "Invalid JSON body" }, 400);
   }
   const email = (body.email || "").trim().toLowerCase();
-  const inviteRole = body.inviteRole === "director" ? "director" : "coach";
+  const inviteRole = body.inviteRole === "director" ? "director"
+    : body.inviteRole === "assistant" ? "assistant" : "coach";
   if (!email) {
     return json({ ok: false, error: "email is required" }, 400);
   }
@@ -101,6 +118,17 @@ Deno.serve(async (req) => {
   if (password !== null && password.length < 8) {
     return json({ ok: false, error: "password must be at least 8 characters" }, 400);
   }
+  if (isHeadCoach && inviteRole !== "assistant") {
+    return json({ ok: false, error: "Head coaches can only add assistant coaches" }, 403);
+  }
+  if (isHeadCoach && password !== null) {
+    // A head coach never chooses someone else's password: the invite email lets
+    // the assistant set their own.
+    return json({ ok: false, error: "Assistant coaches are invited by email" }, 403);
+  }
+  const clean = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 40) : "");
+  const firstName = clean(body.firstName);
+  const lastName = clean(body.lastName);
 
   let newProfile: { role: string; gender: string; team_id: string | null };
 
@@ -114,7 +142,8 @@ Deno.serve(async (req) => {
     }
     newProfile = { role: "director", gender, team_id: null };
   } else {
-    const teamId = body.teamId;
+    // A head coach adds to their own team, whatever the request says.
+    const teamId = isHeadCoach ? callerProfile.team_id : body.teamId;
     if (!teamId) {
       return json({ ok: false, error: "teamId is required to invite a coach" }, 400);
     }
@@ -129,7 +158,15 @@ Deno.serve(async (req) => {
     if (callerProfile.role === "director" && team.gender !== callerProfile.gender) {
       return json({ ok: false, error: "You can only invite coaches for " + callerProfile.gender + " teams" }, 403);
     }
-    newProfile = { role: "coach", gender: team.gender, team_id: team.id };
+    if (isHeadCoach) {
+      const { count } = await admin.from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "assistant").eq("team_id", team.id);
+      if ((count ?? 0) >= MAX_ASSISTANTS) {
+        return json({ ok: false, error: `Your team already has ${MAX_ASSISTANTS} assistant coaches. Remove one to add another.` }, 409);
+      }
+    }
+    newProfile = { role: inviteRole, gender: team.gender, team_id: team.id };
   }
 
   let newUserId: string;
@@ -157,10 +194,15 @@ Deno.serve(async (req) => {
     id: newUserId,
     email,
     ...newProfile,
+    invited_by: callerId,
+    ...(firstName ? { first_name: firstName } : {}),
+    ...(lastName ? { last_name: lastName } : {}),
   });
 
   if (upsertErr) {
-    return json({ ok: false, error: (password ? "Account created, but failed to assign role: " : "Invited, but failed to assign role: ") + upsertErr.message }, 500);
+    // A login with no profile can't see anything, but it shouldn't exist either.
+    await admin.auth.admin.deleteUser(newUserId);
+    return json({ ok: false, error: "Could not set up the account: " + upsertErr.message }, 500);
   }
 
   return json({ ok: true });

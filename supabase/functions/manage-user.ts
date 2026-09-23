@@ -7,9 +7,14 @@
 // role key, which can bypass every RLS policy and must never reach a
 // browser. This function holds it server-side and only acts after checking
 // the caller's own role — the same scoping the invite flow uses:
-//   - ADMIN may act on any director or coach.
-//   - DIRECTOR may act only on coaches whose team is in their own gender.
-//   - Nobody may act on themselves (that's how you lock yourself out).
+//   - ADMIN may act on any director, coach or assistant.
+//   - DIRECTOR may act only on coaches and assistants in their own gender.
+//   - HEAD COACH may only REMOVE assistants on their own team.
+//   - Removing a head coach also removes the assistants they added.
+//   - Nobody may act on themselves (that's how you lock yourself out),
+//     except delete-me and naming yourself, which ANY signed-in user may do.
+//     (Until 2026-09-22 the director/admin gate ran first, so a coach could
+//     neither delete their own account nor save their name.)
 //
 // REQUEST BODY:
 //   { "action": "reset-password", "userId": "<uuid>", "password": "<8+ chars>" }
@@ -59,10 +64,13 @@ Deno.serve(async (req) => {
   const callerId = userData.user.id;
 
   const { data: caller, error: callerErr } = await admin
-    .from("profiles").select("role, gender").eq("id", callerId).single();
-  if (callerErr || !caller || (caller.role !== "director" && caller.role !== "admin")) {
-    return json({ ok: false, error: "Only directors and admins can manage users" }, 403);
-  }
+    .from("profiles").select("role, gender, team_id, email").eq("id", callerId).single();
+  if (callerErr || !caller) return json({ ok: false, error: "Could not find your account" }, 403);
+  // Deleting your own account (App Store 5.1.1(v)) and naming yourself are
+  // for everyone. Anything that touches another person needs a manager.
+  const isManager = caller.role === "director" || caller.role === "admin";
+  const isHeadCoach = caller.role === "coach";
+  const notManager = () => json({ ok: false, error: "Only directors and admins can manage users" }, 403);
 
   let body: { action?: string; userId?: string; password?: string; firstName?: string; lastName?: string };
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON body" }, 400); }
@@ -88,6 +96,7 @@ Deno.serve(async (req) => {
   }
 
   if (action === "last-seen") {
+    if (!isManager) return notManager();
     // auth.users.last_sign_in_at is maintained by Supabase itself, so there is
     // no column to add and nothing for a client to fake. It lives in the auth
     // schema, which only the service role can read - hence this detour.
@@ -105,6 +114,8 @@ Deno.serve(async (req) => {
   if (userId === callerId && action !== "set-name") {
     return json({ ok: false, error: "You can't do that to your own account" }, 403);
   }
+  // A head coach's one power over other people: removing their own assistants.
+  if (!isManager && userId !== callerId && !(isHeadCoach && action === "remove")) return notManager();
 
   const { data: target, error: targetErr } = await admin
     .from("profiles").select("id, email, role, gender, team_id").eq("id", userId).single();
@@ -112,18 +123,30 @@ Deno.serve(async (req) => {
 
   // Authorize against the target, mirroring who may invite whom.
   if (userId === callerId) {
-    // naming yourself: already established you're a director or admin
+    // naming yourself: always allowed (the only self-action that gets here)
+  } else if (isHeadCoach) {
+    if (target.role !== "assistant" || target.team_id !== caller.team_id) {
+      return json({ ok: false, error: "You can only remove your own team's assistant coaches" }, 403);
+    }
   } else if (caller.role === "director") {
-    if (target.role !== "coach") {
+    if (target.role !== "coach" && target.role !== "assistant") {
       return json({ ok: false, error: "Directors can only manage coaches" }, 403);
     }
     if (target.gender !== caller.gender) {
       return json({ ok: false, error: `You can only manage ${caller.gender} coaches` }, 403);
     }
-  } else if (target.role !== "coach" && target.role !== "director") {
-    // Admins manage directors and coaches; other admins are off limits.
+  } else if (!["coach", "director", "assistant"].includes(target.role)) {
+    // Admins manage directors, coaches and assistants; other admins are off limits.
     return json({ ok: false, error: "Admins can't be managed here" }, 403);
   }
+
+  // Written here rather than by a trigger: an account deleted through the
+  // admin API has no signed-in user for a trigger to name.
+  const logRemoval = (a: { email: string; team_id: string | null; gender: string | null }, note = "") =>
+    admin.from("activity_log").insert({
+      actor_id: callerId, actor_email: caller.email, action: "removed assistant",
+      team_id: a.team_id, gender: a.gender, detail: a.email + note,
+    });
 
   if (action === "reset-password") {
     const password = body.password;
@@ -162,11 +185,24 @@ Deno.serve(async (req) => {
     // app_settings.locked_by is also NO ACTION; clear it if it points at them.
     await admin.from("app_settings").update({ locked_by: null }).eq("locked_by", userId);
 
+    // A head coach's assistants go with them: they were added on that coach's
+    // say-so, and nobody else has vouched for them.
+    let assistantsRemoved = 0;
+    if (target.role === "coach") {
+      const { data: theirs } = await admin.from("profiles")
+        .select("id, email, team_id, gender").eq("role", "assistant").eq("invited_by", userId);
+      for (const a of theirs || []) {
+        const { error } = await admin.auth.admin.deleteUser(a.id);
+        if (!error) { assistantsRemoved++; await logRemoval(a, " (with their head coach)"); }
+      }
+    }
+
     // profiles and waitlist rows cascade from auth.users.
     const { error: delErr } = await admin.auth.admin.deleteUser(userId);
     if (delErr) return json({ ok: false, error: delErr.message }, 400);
+    if (target.role === "assistant") await logRemoval(target);
 
-    return json({ ok: true, email: target.email, bookingsReassigned: (moved || []).length });
+    return json({ ok: true, email: target.email, bookingsReassigned: (moved || []).length, assistantsRemoved });
   }
 
   return json({ ok: false, error: "Unknown action" }, 400);

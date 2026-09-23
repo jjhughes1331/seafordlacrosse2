@@ -70,6 +70,16 @@ different project** — drive the dashboard in the browser instead.
   `anon` has no table grants and `log_activity()` is not API-callable
 - **Public sign-up must stay OFF** (Auth → Sign In / Providers). Accounts come
   only from `invite-coach` via the admin API
+- **Roles:** admin, director, coach (a *head* coach, who books), assistant
+  (JJ, 2026-09-22: view-only, one team). Every write policy names the roles
+  that may write, so assistants are refused by RLS, not by hidden buttons.
+  A head coach invites up to 3 assistants to their own team, by email only,
+  and may remove them; removing a head coach removes the assistants they
+  invited (`profiles.invited_by`). Proof that runs against live and keeps
+  nothing: `supabase/tests/assistant_rls_proof.sql`
+- `manage-user`'s delete-me and set-name-on-yourself are open to **every**
+  role. Its director/admin gate once ran first, so coaches couldn't delete
+  their account (an App Store requirement) or save their name
 
 ## Domain rules that surprise people
 - **The priority ladder is combined across genders.** Girls 6th finishing does
@@ -148,7 +158,9 @@ rendered output is what a coach sees.**
 
 - `?fixture=1` boots the whole signed-in app against in-memory data with a mock
   Supabase client and **zero network calls**. `&as=coach` / `&as=director`
-  switch role (default admin); `&shots=1` hides the banner for store screenshots
+  switch role (default admin; `&as=assistant` too); `&shots=1` hides the banner
+  for store screenshots. `invite-coach`/`manage-user` are called with fetch,
+  so fixture mode stands them in with the same rules
 - `tools/pixel-audit.js` — fetch and `eval` it on a phone-width fixture page.
   Walks every tab, reports sub-44pt targets and text under WCAG contrast measured
   against the real painted background. Run it in **both** themes
@@ -169,6 +181,8 @@ rendered output is what a coach sees.**
 - `const` declared later in the file is in the TDZ — even `typeof` throws, and
   in one script that killed the whole app
 - The Browser pane catches GSAP mid-transition; a "blank" screenshot is usually
-  a fade, not a bug. Prefer DOM/computed-style reads over screenshots
+  a fade, not a bug. Prefer DOM/computed-style reads over screenshots. A
+  *hidden* pane never advances CSS transitions at all, so a computed colour can
+  be the pre-fade one: `pixel-audit.js` turns transitions off for that reason
 - Edge Functions: never nest template literals in the source you inject. Build
   it as an array of single-quoted strings, or fetch the raw file from GitHub

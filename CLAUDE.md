@@ -98,7 +98,9 @@ sync ios` and a new build. The web keeps deploying instantly as always.
   (`LaunchShader.swift`) over the web view. Its clock starts in
   `viewDidAppear`, or the opening strokes play during iOS's icon zoom unseen
 - `App.entitlements` carries `aps-environment`; without it OneSignal can never
-  get an APNs token and push fails silently
+  get an APNs token and push fails silently. The other half is OneSignal's
+  **Apple iOS (APNs)** platform, which needs a `.p8` key from Apple: JJ set it
+  up 2026-09-22 and holds the file. Until then only Web was active there
 - `privacy.html` / `support.html` must stay publicly reachable — App Review
   cannot sign in
 

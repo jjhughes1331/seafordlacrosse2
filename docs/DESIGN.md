@@ -54,3 +54,10 @@ redesign: principles, the system, each signature component, and a running log.
   contrast as text in light mode; grey track eating segment label contrast;
   push entitlement missing entirely
 - pixel-audit: 0 sub-44pt targets, 0 contrast failures, all tabs, both themes
+- 2026-09-22 — JJ: Book must not preselect a field (coaches missed that there
+  are five); it opens on "Choose a field". JJ: the home-screen icon is the full
+  crest with its wordmark on white, not the helmet crop. Both in CLAUDE.md
+- Later polish from the simulator: iOS sticky hover on touch, tab switches
+  carrying scroll, the title handoff waiting until fully hidden, and a
+  segmented thumb measured while hidden. Builds 8-10 uploaded; push
+  entitlement now provisioned (aps-environment: production in the export)

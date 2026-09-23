@@ -4432,13 +4432,29 @@ function mix(a, b, k){
   const A = p(a), B = p(b);
   return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2,'0')).join('');
 }
+// "See the day": the Schedule, on that day.
+// A day is a calendar idea. Phones open on the list, which is grouped by
+// field, so this switches to the month with the day selected; before, it set
+// the day on a hidden calendar and scrolled to nothing.
+function jumpToScheduleDay(dateISO){
+  calState.schedule.selected = dateISO;
+  calState.schedule.monthFirst = firstDayOfMonth(parseISO(dateISO));
+  if(scheduleMode !== 'calendar'){ scheduleMode = 'calendar'; syncScheduleToggle(); }
+  renderScheduleMode();
+  // Land on the day's practices (below the grid), just under the sticky
+  // header rather than beneath it.
+  requestAnimationFrame(() => {
+    const cal = document.getElementById('scheduleCalendar');
+    const target = cal?.querySelector('.cal-agenda') || cal;
+    if(!target) return;
+    const bar = document.querySelector('header')?.getBoundingClientRect().height || 0;
+    window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - bar - 12, behavior: motionOK() ? 'smooth' : 'auto' });
+  });
+}
 document.addEventListener('click', e => {
   const j = e.target.closest('[data-nextjump]');
   if(!j) return;
-  calState.schedule.selected = j.dataset.nextjump;
-  calState.schedule.monthFirst = firstDayOfMonth(parseISO(j.dataset.nextjump));
-  renderSchedule();
-  document.getElementById('scheduleCalendar')?.scrollIntoView({ behavior: motionOK() ? 'smooth' : 'auto', block: 'start' });
+  jumpToScheduleDay(j.dataset.nextjump);
 });
 function renderSchedule(){
   renderNextPractice();

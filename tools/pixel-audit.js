@@ -10,6 +10,11 @@
 (async function pixelAudit() {
   const VIEWS = ['schedule', 'book', 'openweek', 'myteam', 'league', 'admin'];
   const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // A hidden Browser pane never advances CSS transitions, so a colour caught
+  // mid-fade reads as a contrast failure that isn't there. Measure end states.
+  const still = document.createElement('style');
+  still.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
+  document.head.appendChild(still);
 
   const parse = c => {
     const m = c.match(/rgba?\(([^)]+)\)/);
@@ -79,5 +84,6 @@
     });
     out[v] = { taps, contrast };
   }
+  still.remove();
   return out;
 })();

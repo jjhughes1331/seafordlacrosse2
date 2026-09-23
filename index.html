@@ -55,6 +55,8 @@
     { id: uuid(2),  email: 'dana@fixture.test',   role: 'director', gender: 'girls', team_id: null },
     { id: uuid(3),  email: 'sam.coach@fixture.test', role: 'coach', gender: 'girls', team_id: teamId('girls','6th Grade') },
     { id: uuid(4),  email: 'jordan.reallylongaddress@fixture.test', role: 'coach', gender: 'boys', team_id: teamId('boys','5th Grade') },
+    { id: uuid(5),  email: 'riley.chen@fixture.test', role: 'assistant', gender: 'girls', team_id: teamId('girls','6th Grade'),
+      first_name: 'Riley', last_name: 'Chen', invited_by: uuid(3) },
   ];
 
   // Seeded off the real FIELDS table further down the page, so every fixture
@@ -139,10 +141,12 @@
     return api;
   }
 
-  // &as=coach signs in as the Girls 6th Grade coach, &as=director as the girls
-  // director; default is the admin. Lets every role's screens be checked.
+  // &as=coach signs in as the Girls 6th Grade coach, &as=assistant as that
+  // team's assistant, &as=director as the girls director; default is the
+  // admin. Lets every role's screens be checked.
   const AS = new URLSearchParams(location.search).get('as');
-  const who = AS === 'coach' ? store.profiles[2] : AS === 'director' ? store.profiles[1] : store.profiles[0];
+  const who = AS === 'coach' ? store.profiles[2] : AS === 'assistant' ? store.profiles[4]
+    : AS === 'director' ? store.profiles[1] : store.profiles[0];
   const session = { access_token: 'fixture-token', user: { id: who.id, email: who.email } };
   const client = {
     __fixture: true,
@@ -158,6 +162,47 @@
     from,
     channel: () => ({ on(){ return this; }, subscribe(){ return this; } }),
     removeChannel: () => {},
+  };
+
+  // invite-coach and manage-user are called with fetch, not the client, so
+  // they get a stand-in too: same rules as the deployed functions (a head
+  // coach adds up to 3 assistants to their own team and may remove them),
+  // applied to the in-memory store. Nothing leaves the page.
+  const realFetch = window.fetch.bind(window);
+  window.fetch = async (url, opts = {}) => {
+    const fn = String(url).match(/\/functions\/v1\/(invite-coach|manage-user)$/);
+    if(!fn) return realFetch(url, opts);
+    await new Promise(r => setTimeout(r, 350));
+    const body = JSON.parse(opts.body || '{}');
+    const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
+    const P = store.profiles;
+    if(fn[1] === 'invite-coach'){
+      if(!['admin', 'director', 'coach'].includes(who.role)) return reply({ ok: false, error: 'Only directors, admins and head coaches can send invites' }, 403);
+      const role = body.inviteRole === 'director' ? 'director' : body.inviteRole === 'assistant' ? 'assistant' : 'coach';
+      if(who.role === 'coach' && role !== 'assistant') return reply({ ok: false, error: 'Head coaches can only add assistant coaches' }, 403);
+      const team = teams.find(t => t.id === (who.role === 'coach' ? who.team_id : body.teamId));
+      if(role !== 'director' && !team) return reply({ ok: false, error: 'Team not found' }, 404);
+      if(who.role === 'coach' && P.filter(x => x.role === 'assistant' && x.team_id === team.id).length >= 3)
+        return reply({ ok: false, error: 'Your team already has 3 assistant coaches. Remove one to add another.' }, 409);
+      const email = String(body.email || '').trim().toLowerCase();
+      if(P.some(x => x.email === email)) return reply({ ok: false, error: 'A user with this email address has already been registered' }, 400);
+      P.push({ id: crypto.randomUUID(), email, role, gender: role === 'director' ? body.gender : team.gender,
+        team_id: role === 'director' ? null : team.id, first_name: body.firstName || null, last_name: body.lastName || null, invited_by: who.id });
+      return reply({ ok: true });
+    }
+    if(body.action === 'last-seen') return reply({ ok: true, seen: {} });
+    if(body.action === 'delete-me') return reply({ ok: true });
+    const target = P.find(x => x.id === body.userId);
+    if(!target) return reply({ ok: false, error: 'User not found' }, 404);
+    if(who.role === 'coach' && !(body.action === 'remove' && target.role === 'assistant' && target.team_id === who.team_id))
+      return reply({ ok: false, error: "You can only remove your own team's assistant coaches" }, 403);
+    if(body.action === 'remove'){
+      const gone = new Set([target.id, ...(target.role === 'coach' ? P.filter(x => x.invited_by === target.id && x.role === 'assistant').map(x => x.id) : [])]);
+      for(let i = P.length - 1; i >= 0; i--) if(gone.has(P[i].id)) P.splice(i, 1);
+      return reply({ ok: true, email: target.email, assistantsRemoved: gone.size - 1 });
+    }
+    if(body.action === 'set-name'){ target.first_name = body.firstName || null; target.last_name = body.lastName || null; return reply({ ok: true }); }
+    return reply({ ok: true });
   };
 
   const realCreate = window.supabase && window.supabase.createClient;
@@ -1577,6 +1622,38 @@
   #fieldNote .field-map-toggle { margin: 0; }
   #fieldNote .field-map-box { align-self: stretch; }
 
+  /* ---- My Team: assistant coaches (head coaches only) ------------------ */
+  .staff-card { margin-top: 24px; padding: 16px; background: var(--card); border-radius: var(--radius-card, 14px);
+    box-shadow: 0 0 0 .5px var(--line); }
+  .staff-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .staff-head h3 { margin: 0; font-size: var(--fs-md, 1.0625rem); font-weight: 600; color: var(--text-strong); }
+  .staff-count { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .staff-hint { margin: 4px 0 0; font-size: var(--fs-xs); line-height: 1.4; color: var(--muted); }
+  .staff-hint:empty { display: none; }
+  .staff-list { list-style: none; margin: 12px 0 0; padding: 0; border-top: .5px solid var(--line); }
+  .staff-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px;
+    border-bottom: .5px solid var(--line); }
+  .staff-who { display: flex; flex-direction: column; min-width: 0; }
+  .staff-name { color: var(--ink); font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .staff-email { color: var(--muted); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .staff-remove { flex: none; min-height: 44px; padding: 0 4px 0 12px; border: none; background: none; font: inherit;
+    font-size: var(--fs-sm); color: var(--danger); cursor: pointer; }
+  .staff-add { margin-top: 12px; }
+  .staff-add summary { list-style: none; display: flex; align-items: center; min-height: 44px; cursor: pointer;
+    color: var(--accent-fill); font-weight: 600; font-size: var(--fs-base); }
+  .staff-add summary::-webkit-details-marker { display: none; }
+  .staff-add summary::before { content: '+'; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px;
+    border-radius: 50%; background: color-mix(in srgb, var(--accent-fill) 16%, transparent); font-weight: 600; }
+  .staff-add[open] summary { color: var(--text-strong); }
+  .staff-form { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+  .staff-names { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .staff-form input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: var(--fs-base);
+    color: var(--ink); background: var(--card-2, var(--chalk)); border: none; border-radius: 10px; }
+  .staff-form input:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 1px; }
+  .staff-send { min-height: 44px; border: none; border-radius: 12px; font: inherit; font-weight: 600; font-size: var(--fs-base);
+    background: var(--accent-fill); color: var(--on-accent); cursor: pointer; }
+  .staff-send:disabled { opacity: .6; }
+
   /* ---- Next Practice hero (ui/aurora.js) ---------------------------- */
   .next-card.hero {
     position: relative; overflow: hidden; isolation: isolate; border: none; color: #fff;
@@ -1985,6 +2062,7 @@
   <div class="wrap">
     <p class="count" id="myTeamCount"></p>
     <div id="myTeamResults"></div>
+    <section class="staff-card" id="myTeamStaff" hidden aria-labelledby="staffHeading"></section>
   </div>
 </div>
 
@@ -2057,7 +2135,8 @@
       <div class="field" id="inviteRoleField" style="display:none">
         <label>Invite as</label>
         <select id="inviteRoleSelect">
-          <option value="coach">Coach</option>
+          <option value="coach">Head coach</option>
+          <option value="assistant">Assistant coach (view only)</option>
           <option value="director">Director</option>
         </select>
       </div>
@@ -2846,7 +2925,7 @@ function noteLiveChanges(before, after){
   saveSeen();
 }
 document.getElementById('changesClose').addEventListener('click', () => { liveChangeParts = []; document.getElementById('changesStrip').style.display = 'none'; });
-document.getElementById('changesBody').addEventListener('click', () => { switchView(myProfile && myProfile.role !== 'coach' ? 'league' : 'schedule'); });
+document.getElementById('changesBody').addEventListener('click', () => { switchView(myProfile && (myProfile.role === 'director' || myProfile.role === 'admin') ? 'league' : 'schedule'); });
 window.addEventListener('pagehide', saveSeen);
 document.addEventListener('visibilitychange', () => { if(document.hidden) saveSeen(); });
 
@@ -2924,6 +3003,12 @@ function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; 
 function mondayOf(d){ const x=new Date(d); const dw=x.getDay(); const diff=(dw===0?-6:1-dw); x.setDate(x.getDate()+diff); return x; }
 function fmtDateLong(s){ const d=parseISO(s); return `${MONTHS[d.getMonth()]} ${d.getDate()}`; }
 function dowOfISO(s){ return DOW_FULL[parseISO(s).getDay()]; }
+// Assistant coaches (JJ, 2026-09-22) see their team's schedule and change
+// nothing. The database refuses their writes (supabase/assistant_role_2026_09_22.sql);
+// these keep the screens from offering buttons that would only fail.
+function canBook(){ return !!myProfile && myProfile.role !== 'assistant'; }
+function onATeam(){ return !!myProfile && (myProfile.role === 'coach' || myProfile.role === 'assistant'); }
+const ROLE_LABEL = { admin: 'admin', director: 'director', coach: 'head coach', assistant: 'assistant coach' };
 // A profile's name if it has one, otherwise the role label the site used to
 // pass off as a name. Everything that shows a person goes through here so the
 // fallback can't drift between screens.
@@ -2933,7 +3018,7 @@ function personName(p){
   if(full) return full;
   return p.role === 'admin' ? 'Site Admin'
     : p.role === 'director' ? `${p.gender === 'girls' ? 'Girls' : 'Boys'} Director`
-    : teamLabel(p.gender, teamsById[p.team_id]?.grade || '');
+    : teamLabel(p.gender, teamsById[p.team_id]?.grade || '') + (p.role === 'assistant' ? ' Assistant' : '');
 }
 // Split a single spreadsheet "Name" cell. Last token is the surname; everything
 // before it stays with the first name, so "Ana Maria de Souza" keeps its shape.
@@ -3362,12 +3447,16 @@ async function loadProfileAndStartInner(){
   document.getElementById('hamburgerBtn').style.display = 'flex';
   el.pageFooter.style.display = 'block';
   el.whoName.textContent = personName(myProfile);
-  el.rolePill.textContent = myProfile.role;
+  el.rolePill.textContent = ROLE_LABEL[myProfile.role] || myProfile.role;
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = 'inline-block';
-  if(myProfile.role === 'coach') el.myTeamTab.style.display = 'inline-block';
+  if(onATeam()) el.myTeamTab.style.display = 'inline-block';
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
+  // Assistants don't book, so Book and Find a Time aren't theirs to see.
+  document.querySelectorAll('.view-tab[data-view="book"], .view-tab[data-view="openweek"]')
+    .forEach(t => { t.style.display = canBook() ? '' : 'none'; });
+  document.documentElement.classList.toggle('role-assistant', !canBook());
 
-  if(myProfile.role === 'coach'){
+  if(onATeam()){
     // The Calendar tab opens on the whole program's calendar. A coach's own
     // practices live in My Team's Practices, so narrowing this view to their
     // team just duplicated that tab and made this one's name untrue.
@@ -3392,6 +3481,8 @@ function teardown(){
   // otherwise a shared/reused device would keep getting that person's
   // targeted notifications after someone else signs in on it.
   window.Native.pushLogout();
+  document.querySelectorAll('.view-tab[data-view="book"], .view-tab[data-view="openweek"]').forEach(t => { t.style.display = ''; });
+  document.documentElement.classList.remove('role-assistant');
   myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
@@ -3848,6 +3939,7 @@ function placeTeamPicker(view){
   }
 }
 function switchView(view){
+  if(!canBook() && (view === 'book' || view === 'openweek')) view = 'schedule';
   if(view !== currentView){
     haptic('light');
     // A tab opens at its top. Carrying the last tab's scroll over left the new
@@ -4352,7 +4444,7 @@ function renderSchedule(){
   renderNextPractice();
   setHeaderTitle(currentView);
   const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
-  const myTeamKey = myProfile.role === 'coach' ? teamKeyFor(myProfile.team_id) : null;
+  const myTeamKey = onATeam() ? teamKeyFor(myProfile.team_id) : null;
   const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
   el.nowShowing.innerHTML = scheduleGrade ? `Showing <span class="tag">${label}</span>` : 'All teams';
   el.exportCsvBtn.style.display = teamKey ? 'inline-block' : 'none';
@@ -4390,8 +4482,11 @@ function renderMyTeam(){
   el.myTeamHeading.textContent = label;
   const filtered = getTeamBookingsSorted(key);
 
+  renderAssistants();
   if(!filtered.length){
-    el.myTeamResults.innerHTML = `<div class="empty-schedule"><b>No practices booked yet</b>Head to Book A Practice Time to get started.<br><button class="cta" onclick="switchView('book')">Book a practice &rarr;</button></div>`;
+    el.myTeamResults.innerHTML = canBook()
+      ? `<div class="empty-schedule"><b>No practices booked yet</b>Head to Book A Practice Time to get started.<br><button class="cta" onclick="switchView('book')">Book a practice &rarr;</button></div>`
+      : `<div class="empty-schedule"><b>No practices booked yet</b>They'll show here as soon as your head coach books them.</div>`;
     el.myTeamCount.innerHTML = '';
     return;
   }
@@ -4400,6 +4495,97 @@ function renderMyTeam(){
   el.myTeamResults.innerHTML = html;
   el.myTeamCount.innerHTML = `<b>${totalSlots}</b> practice${totalSlots!==1?'s':''} booked for ${label}, across <b>${venuesShown}</b> field${venuesShown!==1?'s':''}.`;
 }
+// ---- Assistant coaches (a head coach's own team; JJ, 2026-09-22) ----
+// Up to 3, invited by email so they set their own password. The list is read
+// straight from profiles: RLS lets a head coach see their own team's
+// assistants and nobody else's. invite-coach and manage-user enforce the
+// same rules server-side.
+const MAX_ASSISTANTS = 3;
+let assistantRows = [];
+async function renderAssistants(){
+  const box = document.getElementById('myTeamStaff');
+  if(!box) return;
+  if(!myProfile || myProfile.role !== 'coach'){ box.hidden = true; return; }
+  box.hidden = false;
+  const { data, error } = await sb.from('profiles')
+    .select('id, email, first_name, last_name').eq('role', 'assistant').eq('team_id', myProfile.team_id);
+  assistantRows = error ? [] : (data || []).sort((a, b) => personName(a).localeCompare(personName(b)));
+  const full = assistantRows.length >= MAX_ASSISTANTS;
+  const rows = assistantRows.map(a => {
+    const named = !!(a.first_name || a.last_name);
+    return `<li class="staff-row">
+      <span class="staff-who"><span class="staff-name">${escSafe(named ? personName(a) : a.email)}</span>${named ? `<span class="staff-email">${escSafe(a.email)}</span>` : ''}</span>
+      <button type="button" class="staff-remove" data-remove-assistant="${escSafe(a.id)}" aria-label="Remove ${escSafe(named ? personName(a) : a.email)}">Remove</button>
+    </li>`;
+  }).join('');
+  box.innerHTML = `
+    <div class="staff-head"><h3 id="staffHeading">Assistant coaches</h3><span class="staff-count">${assistantRows.length} of ${MAX_ASSISTANTS}</span></div>
+    <p class="staff-hint">Assistants see your team's schedule. They can't book or cancel.</p>
+    ${error ? `<p class="staff-hint">Couldn't load your assistants: ${escSafe(error.message)}</p>` : ''}
+    ${rows ? `<ul class="staff-list">${rows}</ul>` : ''}
+    ${full ? `<p class="staff-hint">That's the limit. Remove one to add another.</p>` : `
+    <details class="staff-add"${assistantRows.length ? '' : ' open'}>
+      <summary>Add an assistant coach</summary>
+      <form class="staff-form" id="assistantForm" novalidate>
+        <div class="staff-names">
+          <input type="text" name="first" placeholder="First name" autocomplete="off" aria-label="First name">
+          <input type="text" name="last" placeholder="Last name" autocomplete="off" aria-label="Last name">
+        </div>
+        <input type="email" name="email" placeholder="Email" autocomplete="off" aria-label="Email" required>
+        <button type="submit" class="staff-send">Send invite</button>
+        <p class="staff-hint" data-assistant-status role="status"></p>
+      </form>
+    </details>`}`;
+}
+document.addEventListener('submit', async e => {
+  const form = e.target.closest('#assistantForm');
+  if(!form) return;
+  e.preventDefault();
+  const status = form.querySelector('[data-assistant-status]');
+  const btn = form.querySelector('.staff-send');
+  const email = form.email.value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ status.textContent = 'Enter their email address.'; form.email.focus(); return; }
+  btn.disabled = true; btn.textContent = 'Sending…'; status.textContent = '';
+  try {
+    const { data: { session: s } } = await sb.auth.getSession();
+    const res = await fetch(INVITE_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token },
+      body: JSON.stringify({ email, inviteRole: 'assistant', teamId: myProfile.team_id,
+        firstName: form.first.value.trim(), lastName: form.last.value.trim() }),
+    });
+    const result = await res.json();
+    if(result.ok){
+      haptic('success');
+      flash(`Invite sent to ${email}. They'll get an email to set their password.`, 'ok');
+      renderAssistants();
+      return;
+    }
+    status.textContent = result.error || 'That invite did not go through.';
+  } catch(err){
+    status.textContent = 'Could not reach the invite service. Check your connection and try again.';
+  }
+  btn.disabled = false; btn.textContent = 'Send invite';
+});
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-remove-assistant]');
+  if(!btn) return;
+  const a = assistantRows.find(r => r.id === btn.dataset.removeAssistant);
+  if(!a) return;
+  const who = (a.first_name || a.last_name) ? personName(a) : a.email;
+  const ok = await confirmAction({
+    title: `Remove ${who}?`,
+    body: 'They lose access to Seaford Lacrosse right away. You can invite them again later.',
+    verb: 'Remove',
+  });
+  if(!ok) return;
+  btn.disabled = true;
+  const res = await manageUser({ action: 'remove', userId: a.id }).catch(err => ({ ok: false, error: err.message }));
+  if(!res.ok){ btn.disabled = false; flash(res.error || 'Could not remove them', 'err'); return; }
+  flash(`${who} no longer has access.`, 'ok');
+  renderAssistants();
+});
+
 el.myTeamExportCsvBtn.addEventListener('click', () => {
   const key = teamKeyFor(myProfile.team_id);
   if(!key) return;
@@ -4920,11 +5106,11 @@ el.dateJumpInput.addEventListener('change', () => {
 
 function chosenTeamId(){
   if(!myProfile) return null;
-  if(myProfile.role === 'coach') return myProfile.team_id;
+  if(onATeam()) return myProfile.team_id;
   return bookAsGrade ? myBookingTeamId() : null;
 }
 function myBookingTeamId(){
-  if(myProfile.role === 'coach') return myProfile.team_id;
+  if(onATeam()) return myProfile.team_id;
   // director/admin: whichever gender+grade they've selected to book as
   const grade = bookAsGrade || GRADES[0];
   const gender = myProfile.role === 'admin' ? bookAsGender : myProfile.gender;
@@ -5390,15 +5576,16 @@ function renderMonthCalendar(which, host){
     const team = key ? teamLabel(...key.split('|')) : 'Unknown team';
     const field = FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id;
     const isMine = myTeamId && b.team_id === myTeamId;
+    const canCancel = isMine && canBook();
     // You could only ever cancel a practice from the Book tab's week grid, via a
     // small x inside a chip — even though this agenda is where a coach actually
     // looks at their own schedule. Your own team's rows are cancellable here now.
-    const cancel = isMine ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">&times;</button>` : '';
-    const row = `<div class="cal-item${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})"${isMine ? ' data-swipe' : ''}><span class="cal-time">${escSafe(formatSlotTime(b.time))}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
+    const cancel = canCancel ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">&times;</button>` : '';
+    const row = `<div class="cal-item${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})"${canCancel ? ' data-swipe' : ''}><span class="cal-time">${escSafe(formatSlotTime(b.time))}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
     // Swipe-left-to-delete is what a phone user reaches for on a list row, but
     // it is invisible and unavailable to a mouse or a screen reader, so the x
     // stays as the discoverable, accessible path. Same action, two routes.
-    return isMine ? `<div class="cal-swipe"><button type="button" class="cal-swipe-del" data-cancel="${escSafe(b.id)}" tabindex="-1">Cancel</button>${row}</div>` : row;
+    return canCancel ? `<div class="cal-swipe"><button type="button" class="cal-swipe-del" data-cancel="${escSafe(b.id)}" tabindex="-1">Cancel</button>${row}</div>` : row;
   }).join('') : `<p class="cal-empty">Nothing booked${st.field === 'all' ? '' : ' at ' + escSafe(FIELD_MAP[st.field].name)} on this day.</p>`;
 
   host.innerHTML = `<div class="cal">
@@ -5873,7 +6060,7 @@ function renderAdmin(){
   });
   if(myProfile.role === 'admin'){
     el.adminHeading.textContent = 'Invite a director or coach';
-    el.adminHint.textContent = 'As admin you can invite directors (either gender) or coaches (any team). Each team can have more than one coach.';
+    el.adminHint.textContent = 'As admin you can invite directors (either gender), or head coaches and view-only assistant coaches (any team).';
     el.inviteRoleField.style.display = 'block';
     el.inviteRoleSelect.value = 'coach';
     syncInviteFormFields();
@@ -5883,8 +6070,10 @@ function renderAdmin(){
   } else {
     const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
     el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
-    el.adminHint.textContent = `You can only invite coaches for ${genderLabel} teams. Each team can have more than one coach.`;
-    el.inviteRoleField.style.display = 'none';
+    el.adminHint.textContent = `You can only invite coaches for ${genderLabel} teams. Each team can have more than one coach. Assistant coaches can see the schedule but can't book.`;
+    el.inviteRoleField.style.display = 'block';
+    if(el.inviteRoleSelect.value === 'director') el.inviteRoleSelect.value = 'coach';
+    syncInviteFormFields();
     el.inviteGenderField.style.display = 'none';
     el.inviteTeamField.style.display = 'block';
     el.inviteGrade.innerHTML = GRADES.map(g => {
@@ -6174,7 +6363,10 @@ function populateTeamSelect(){
 }
 
 function syncInviteFormFields(){
-  if(myProfile.role !== 'admin') return;
+  // Directors pick head coach or assistant; only an admin can make a director.
+  const dirOpt = el.inviteRoleSelect.querySelector('option[value="director"]');
+  if(dirOpt) dirOpt.hidden = dirOpt.disabled = myProfile.role !== 'admin';
+  if(myProfile.role !== 'admin' && el.inviteRoleSelect.value === 'director') el.inviteRoleSelect.value = 'coach';
   const isDirector = el.inviteRoleSelect.value === 'director';
   el.inviteGenderField.style.display = isDirector ? 'block' : 'none';
   el.inviteTeamField.style.display = isDirector ? 'none' : 'block';
@@ -6215,9 +6407,9 @@ el.inviteBtn.addEventListener('click', async () => {
   const email = el.inviteEmail.value.trim();
   if(!email){ el.inviteStatus.innerHTML = `<span class="status err">Enter an email address.</span>`; return; }
 
-  const isAdmin = myProfile.role === 'admin';
-  const inviteRole = isAdmin ? el.inviteRoleSelect.value : 'coach';
-  const payload = { email, inviteRole };
+  const inviteRole = el.inviteRoleSelect.value || 'coach';
+  const payload = { email, inviteRole,
+    firstName: el.inviteFirstName.value.trim(), lastName: el.inviteLastName.value.trim() };
   if(inviteRole === 'director'){
     payload.gender = el.inviteGenderSelect.value;
   } else {
@@ -6261,10 +6453,7 @@ el.inviteBtn.addEventListener('click', async () => {
       } else {
         el.inviteStatus.innerHTML = `<span class="status ok">Invite sent to ${escSafe(email)}.</span>`;
       }
-      const nameRes = await setUserName(email, el.inviteFirstName.value.trim(), el.inviteLastName.value.trim());
-      if(!nameRes.ok){
-        el.inviteStatus.innerHTML += `<div class="status err">${escSafe(nameRes.error || 'Could not save their name')}</div>`;
-      }
+      // invite-coach writes the name with the account now.
       el.inviteEmail.value = ''; el.inviteFirstName.value = ''; el.inviteLastName.value = '';
       loadUserList();
     } else {
@@ -6345,9 +6534,9 @@ async function loadUserList(){
 
   let query = sb.from('profiles').select('id, email, role, gender, team_id, first_name, last_name');
   if(myProfile.role === 'admin'){
-    query = query.in('role', ['director','coach']);
+    query = query.in('role', ['director','coach','assistant']);
   } else {
-    query = query.eq('role', 'coach').eq('gender', myProfile.gender);
+    query = query.in('role', ['coach','assistant']).eq('gender', myProfile.gender);
   }
   const { data, error } = await query;
 
@@ -6371,7 +6560,8 @@ async function loadUserList(){
   }).catch(() => {});
 
   userListRows = data.slice().sort((a,b) => {
-    if(a.role !== b.role) return a.role === 'director' ? -1 : 1;
+    const rank = { director: 0, coach: 1, assistant: 2 };
+    if(a.role !== b.role) return (rank[a.role] ?? 3) - (rank[b.role] ?? 3);
     return (a.gender||'').localeCompare(b.gender||'');
   });
   renderUserList();
@@ -6383,6 +6573,9 @@ function lastSeenText(id){
   const iso = lastSeenById[id];
   return iso ? relativeWhen(iso) : 'Never';
 }
+function userRoleLabel(u){
+  return u.role === 'director' ? 'Director' : u.role === 'assistant' ? 'Assistant' : 'Head coach';
+}
 function userRowTeamText(u){
   return u.role === 'director'
     ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
@@ -6392,7 +6585,7 @@ function renderUserList(){
   const colspan = myProfile.role === 'admin' ? 6 : 5;
   const q = (el.userSearch?.value || '').trim().toLowerCase();
   const match = u => !q || [personName(u), u.first_name, u.last_name, u.email, userRowTeamText(u),
-    u.role === 'director' ? 'Director' : 'Coach'].filter(Boolean).join(' ').toLowerCase().includes(q);
+    userRoleLabel(u)].filter(Boolean).join(' ').toLowerCase().includes(q);
   const rows = userListRows.filter(match);
   if(!rows.length){
     el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">${q ? 'Nobody matches “' + escSafe(q) + '”.' : 'No one invited yet.'}</td></tr>`;
@@ -6400,12 +6593,12 @@ function renderUserList(){
   }
   if(myProfile.role === 'admin'){
     el.coachListBody.innerHTML = rows.map(u => {
-      const roleLabel = u.role === 'director' ? 'Director' : 'Coach';
+      const roleLabel = userRoleLabel(u);
       return `<tr><td>${escSafe(personName(u))}</td><td>${escSafe(roleLabel)}</td><td>${escSafe(userRowTeamText(u))}</td><td class="email-cell">${escSafe(u.email)}</td><td class="seen-cell">${escSafe(lastSeenText(u.id))}</td>${manageCell(u, colspan)}`;
     }).join('');
   } else {
     el.coachListBody.innerHTML = rows.map(c => {
-      const grade = teamsById[c.team_id]?.grade || '(unknown)';
+      const grade = (teamsById[c.team_id]?.grade || '(unknown)') + (c.role === 'assistant' ? ' · Assistant' : '');
       return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td><td class="seen-cell">${escSafe(lastSeenText(c.id))}</td>${manageCell(c, colspan)}`;
     }).join('');
   }

@@ -94,3 +94,24 @@
   document.addEventListener('touchend', end, { passive: true });
   document.addEventListener('touchcancel', end, { passive: true });
 })();
+
+/* The presenting page is inert while a sheet is up: a finger on the backdrop
+   or the page doesn't scroll it, and the sheet's own scroll doesn't chain
+   into it (overscroll-behavior: contain in the page CSS). Watches every sheet
+   host's style, so no caller has to remember to do it. */
+(function () {
+  'use strict';
+  const root = document.documentElement;
+  function sync() {
+    const open = [...document.querySelectorAll('.share-modal')].some(m => m.style.display && m.style.display !== 'none');
+    root.classList.toggle('sheet-open', open);
+  }
+  document.addEventListener('touchmove', e => {
+    if (root.classList.contains('sheet-open') && !(e.target.closest && e.target.closest('.share-sheet'))) e.preventDefault();
+  }, { passive: false });
+  function watch() {
+    const mo = new MutationObserver(sync);
+    document.querySelectorAll('.share-modal').forEach(m => mo.observe(m, { attributes: true, attributeFilter: ['style'] }));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
+})();

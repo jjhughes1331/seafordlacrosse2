@@ -981,16 +981,17 @@
   .toast-action:hover { background: rgba(255,255,255,.26); }
   /* Priority ladder */
   .ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
-  .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-chip); background: rgba(255,255,255,.55); color: var(--ink); font-size: var(--fs-sm); }
+  .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-chip); background: var(--cell-bg); color: var(--ink); font-size: var(--fs-sm); } /* was translucent white: white-on-white in dark mode */
   .ladder-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: var(--line); color: var(--muted); }
   .ladder-note { font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
   .ladder-row.done { opacity: .75; }
   .ladder-row.done .ladder-dot { background: var(--chip-bg); color: var(--text-strong); }
-  .ladder-row.blocking { background: rgba(255,255,255,.85); font-weight: 600; }
-  .ladder-row.blocking .ladder-dot { background: var(--danger-bg); color: var(--danger); }
-  .ladder-row.blocking .ladder-note { color: var(--danger); }
+  .ladder-row.blocking { background: var(--card-2); font-weight: 600; }
+  /* Choosing now is not an error: red is for destructive actions only. */
+  .ladder-row.blocking .ladder-dot { background: var(--ink); color: var(--chalk); }
+  .ladder-row.blocking .ladder-note { color: var(--ink); }
   .ladder-row.you { background: var(--mine-bg); border: 1.5px solid var(--mine); font-weight: 600; }
-  .ladder-row.you .ladder-dot { background: var(--mine); color: #fff; }
+  .ladder-row.you .ladder-dot { background: var(--mine); color: #1c1c1e; }
   .ladder-row.you .ladder-note { color: var(--mine-deep); }
   .ladder-row.after, .ladder-row.waiting { opacity: .55; }
   /* League field utilization bars */
@@ -1020,7 +1021,7 @@
   .ctx-item.danger { color: var(--danger); font-weight: 600; }
   .large-title { max-width: 1000px; margin: 6px auto 0; padding: 0 20px; display: flex; align-items: center; gap: 12px; }
   .large-title .lt-text { flex: 1; min-width: 0; }
-  .large-title h2 { font-family: var(--font-display); font-size: 2.125rem; font-weight: 700; letter-spacing: -.8px; color: var(--ink); line-height: 1.08; }
+  .large-title h2 { font-family: var(--font-display); font-size: var(--ios-large, 2rem); font-weight: 700; letter-spacing: normal; color: var(--ink); line-height: 1.2; } /* Large Title 34pt; SF's own tracking */
   .large-title .lt-sub { font-size: var(--fs-xs); color: var(--muted); margin-top: 3px; display: flex; gap: 6px; flex-wrap: wrap; }
   .large-title .lt-sub .synced-label { margin: 0; padding: 0; max-width: none; }
   .large-title .lt-sub span:first-child:not(:empty) + .synced-label:not(:empty)::before { content: '\00b7'; margin-right: 6px; }
@@ -1110,7 +1111,7 @@
   .share-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .share-actions .btn-primary { width: auto; flex: 1 1 140px; margin-top: 0; padding: 12px 16px; }
   .share-actions .allbtn { flex: 1 1 110px; }
-  .weather-badge svg { animation: drip 2.6s ease-in-out infinite; transform-origin: 50% 30%; }
+  /* (It used to drip forever: motion that meant nothing.) */
   @keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
   @keyframes foundPulse {
     0%, 100% { box-shadow: none; }
@@ -1144,8 +1145,9 @@
   .field-map-box { margin-top: 10px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--line); }
   .field-map-box iframe { width: 100%; height: 220px; border: 0; display: block; }
   .weather-badge {
-    display: inline-block; font-size: var(--fs-2xs); font-weight: 600; color: var(--danger);
-    background: var(--danger-bg); padding: 2px 8px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
+    /* Rain is Weather's blue, not the destructive red. */
+    display: inline-block; font-size: var(--fs-2xs); font-weight: 600; color: color-mix(in srgb, #0a84ff 80%, var(--ink));
+    background: color-mix(in srgb, #0a84ff 14%, transparent); padding: 2px 8px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
   }
   .book-slot.mine .cancel.armed { background: var(--danger) !important; color: #fff !important; }
   .plus { color: var(--muted); font-weight: 600; }
@@ -1190,7 +1192,7 @@
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
   .invite-form .bulk-file-field { flex-basis: 260px; }
   .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: var(--fs-base); background: var(--card); }
-  .invite-form button { background: var(--accent-fill); color: #fff; border: none; padding: 12px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .invite-form button { background: var(--accent-fill); color: var(--on-accent); border: none; padding: 12px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 600; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
   /* Per-user actions live in a row that opens *under* the user's row rather
@@ -1226,12 +1228,12 @@
   #userSearch:focus { outline: none; border-color: var(--hover-edge); }
   .manage-btn { background: none; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: var(--radius-pill); padding: 4px 12px; font-size: var(--fs-xs); font-weight: 600; font-family: var(--font-body); color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
   .manage-btn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
-  .manage-btn[aria-expanded="true"] { background: var(--turf); border-color: var(--turf); color: #fff; }
+  .manage-btn[aria-expanded="true"] { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
   .user-actions > td { background: var(--chip-bg); padding: 14px !important; }
   .user-actions-inner { display: flex; flex-wrap: wrap; gap: 8px; }
   .user-actions .allbtn { flex: 1 1 auto; }
-  .user-actions .danger { border-color: #d9534f; color: #d9534f; }
-  .user-actions .danger:hover, .user-actions .danger.armed { background: #d9534f; border-color: #d9534f; color: #fff; }
+  .user-actions .danger { border-color: var(--danger); color: var(--danger); }
+  .user-actions .danger:hover, .user-actions .danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
   .user-actions-status { flex-basis: 100%; }
   .credential-box { background: var(--chip-bg); border: 1.5px solid var(--line); border-radius: var(--radius-chip); padding: 12px 14px; margin-top: 8px; }
   .credential-box > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -1558,7 +1560,7 @@
   .book-month-cell.selected .book-month-daynum { font-weight: 700; }
   .book-month-badge { font-size: 10px; font-weight: 600; padding: 0; background: none !important; letter-spacing: -.1px; font-variant-numeric: tabular-nums; }
   .book-month-badge.open { color: var(--accent-fill); }
-  .book-month-badge.full { color: var(--danger); }
+  .book-month-badge.full { color: var(--muted); } /* full is a fact, not an error */
   .book-month-badge.mine { color: var(--mine); }
   .book-month-badge.past { color: var(--silver-deep); }
   .book-month-dow { font-size: 11px; letter-spacing: .2px; }
@@ -1728,11 +1730,12 @@
      only things that are ours.
      =================================================================== */
   :root {
-    /* iOS text styles (Large Title 34, Title 2 22, Headline 17 semibold,
-       Body 17, Subheadline 15, Footnote 13, Caption 12), in rem so the
-       reader's text size setting scales them. */
-    --ios-large: 2.125rem; --ios-title2: 1.375rem; --ios-title3: 1.25rem; --ios-body: 1.0625rem;
-    --ios-callout: 1rem; --ios-sub: .9375rem; --ios-foot: .8125rem; --ios-cap: .75rem;
+    /* iOS text styles (Large Title 34, Title 2 22, Title 3 20, Body 17,
+       Callout 16, Subheadline 15, Footnote 13, Caption 12) as ratios of the
+       ROOT, which is -apple-system-body: 1rem IS Body (17pt at the default
+       size) and every step follows the reader's text size setting. */
+    --ios-large: 2rem; --ios-title2: 1.294rem; --ios-title3: 1.176rem; --ios-body: 1rem;
+    --ios-callout: .941rem; --ios-sub: .882rem; --ios-foot: .765rem; --ios-cap: .706rem;
     --group-bg: var(--chalk);           /* systemGroupedBackground */
     --cell-bg: var(--card);             /* secondarySystemGroupedBackground */
     --group-radius: 26px;               /* iOS 26 inset grouped corner */
@@ -2025,9 +2028,31 @@
   .as-btn { display: block; width: 100%; min-height: 57px; border: none; background: none; font: inherit;
     font-size: 1.25rem; color: var(--tint); cursor: pointer; }
   .as-btn:active { background: var(--chip-bg); }
+  .as-btn + .as-btn { border-top: .5px solid var(--sep); }
   .as-destructive { color: var(--danger); }
   .as-cancel { font-weight: 600; color: var(--tint); }
   @media (min-width: 701px) { .as-sheet { padding: 0 !important; width: 340px; } .as-group { border-radius: 16px; } .as-btn { min-height: 48px; font-size: var(--ios-body); } }
+
+  /* ---- Touch hygiene ----------------------------------------------------
+     Chrome never zooms on a double tap (Book -> Confirm is a double tap);
+     controls aren't selectable and don't offer Save Image on a long press;
+     content stays selectable. Hover only exists for a real pointer. */
+  html { touch-action: manipulation; }
+  button, .view-tab, .cal-day, .wk-day, .cal-item, .bd-row, .ios-row, .mtab, .gtab, .fchip, .filter-pill, .get-pill, .as-btn, img {
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+  @media (hover: none) {
+    .allbtn:hover, .btn-primary:hover, .empty-schedule .cta:hover, .cal-nav:hover, .cal-today-btn:hover, .manage-btn:hover,
+    .waitlist-btn:hover, .field-map-toggle:hover, .cal-item-cancel:hover, .toast-action:hover, .book-slot:hover, .daytoggle:hover {
+      transform: none !important; filter: none !important; opacity: 1; }
+    .allbtn:hover { background: var(--card); border-color: var(--line); color: var(--ink); }
+    .field-map-toggle:hover { background: var(--chip-bg); }
+  }
+  /* The page behind an open sheet is inert (ui/sheet.js). */
+  .share-backdrop { touch-action: none; }
+  .share-sheet { overscroll-behavior: contain; }
+  /* The keyboard covers the tab bar and the toast, as it does in every app. */
+  html.kb .view-tabs, html.kb .actions, html.kb .edge-bottom { display: none !important; }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2198,6 +2223,15 @@
   window.addEventListener('DOMContentLoaded', () => {
     syncStatusBar();
     call('Keyboard', 'setResizeMode', { mode: 'native' });
+    // The keyboard covers the tab bar and toast, as in every app; with the
+    // web view resized they would otherwise ride up on top of it.
+    try {
+      const kb = P().Keyboard;
+      if(kb && kb.addListener){
+        kb.addListener('keyboardWillShow', () => document.documentElement.classList.add('kb'));
+        kb.addListener('keyboardWillHide', () => document.documentElement.classList.remove('kb'));
+      }
+    } catch(e){}
     setTimeout(() => call('SplashScreen', 'hide'), 200);
   });
 
@@ -2243,16 +2277,15 @@
 <!-- Calendar sheet: sync (a feed the phone re-checks itself) or a one-time file -->
 <div class="share-modal" id="calSheet" style="display:none">
   <div class="share-backdrop" data-cal-close></div>
-  <div class="share-sheet" role="dialog" aria-modal="true" aria-label="Add to calendar">
-    <h3 class="cal-title" id="calSheetTitle">Add to your calendar</h3>
-    <p class="hint" id="calSheetHint">Sync it and your calendar updates itself whenever a practice is booked or cancelled. Download it and you get today's schedule, frozen.</p>
-    <div class="share-actions" style="flex-direction:column">
-      <button class="btn-primary" id="calSubscribeBtn" type="button">Sync (updates itself)</button>
-      <button class="allbtn" id="calCopyBtn" type="button">Copy link (for Google Calendar)</button>
-      <button class="allbtn" id="calDownloadBtn" type="button">Download once (.ics)</button>
-      <button class="allbtn" type="button" data-cal-close>Close</button>
+  <div class="share-sheet as-sheet" role="dialog" aria-modal="true" aria-labelledby="calSheetTitle" aria-describedby="calSheetHint">
+    <div class="as-group">
+      <div class="as-head"><h3 id="calSheetTitle">Add to Calendar</h3>
+        <p id="calSheetHint">Subscribe and your calendar updates itself when a practice is booked or cancelled. For Google Calendar, paste the link under Other calendars, From URL.</p></div>
+      <button class="as-btn" id="calSubscribeBtn" type="button">Subscribe in Calendar</button>
+      <button class="as-btn" id="calCopyBtn" type="button">Copy Link for Google Calendar</button>
+      <button class="as-btn" id="calDownloadBtn" type="button">Download Once</button>
     </div>
-    <p class="hint cal-google-hint">Google Calendar: paste the copied link under <span class="kbd">Other calendars</span> → <span class="kbd">From URL</span>.</p>
+    <div class="as-group"><button class="as-btn as-cancel" type="button" data-cal-close>Cancel</button></div>
   </div>
 </div>
 <!-- One confirmation sheet for every destructive action. The app previously had
@@ -2673,7 +2706,7 @@
 </div>
 
 <div class="actions" id="actionsBar">
-  <span id="status"></span>
+  <span id="status" role="status" aria-live="polite" aria-atomic="true"></span>
   <button id="statusClose" aria-label="Dismiss" title="Dismiss">&times;</button>
 </div>
 
@@ -2909,6 +2942,16 @@ const el = {
   pageFooter: document.getElementById('pageFooter'),
 };
 
+// Segmented controls are radio groups to VoiceOver ("Month, radio button,
+// 1 of 2, selected"). Every caller already toggles .active; this mirrors it.
+(function(){
+  const sync = b => b.setAttribute('aria-checked', String(b.classList.contains('active')));
+  const mo = new MutationObserver(list => list.forEach(m => sync(m.target)));
+  document.querySelectorAll('.mode-toggle, .gender-tabs').forEach(g => {
+    g.setAttribute('role', 'radiogroup');
+    g.querySelectorAll('.mtab, .gtab').forEach(b => { b.setAttribute('role', 'radio'); sync(b); mo.observe(b, { attributes: true, attributeFilter: ['class'] }); });
+  });
+})();
 // ============ ACCOUNT (monogram button + sheet) ============
 // The bottom bar owns destinations; this owns identity, this iPhone's
 // settings and the account actions, in the order iOS uses: who you are,
@@ -3666,17 +3709,16 @@ function positionModeThumb(container){
     const where = row.querySelector('.cal-where')?.textContent || '';
     const f = b && FIELD_MAP[b.field_id];
     const items = [];
-    if(f) items.push(`<button type="button" class="ctx-item" data-ctx-act="directions" data-url="${escSafe(fieldDirectionsUrl(f))}">Directions</button>`);
-    if(b) items.push(`<button type="button" class="ctx-item" data-ctx-act="ics" data-bid="${escSafe(b.id)}">Add to Calendar</button>`);
-    if(id) items.push(`<button type="button" class="ctx-item danger" data-ctx-act="cancel" data-bid="${escSafe(id)}">Cancel practice</button>`);
+    if(f) items.push(`<button type="button" class="as-btn" data-ctx-act="directions" data-url="${escSafe(fieldDirectionsUrl(f))}">Directions</button>`);
+    if(b) items.push(`<button type="button" class="as-btn" data-ctx-act="ics" data-bid="${escSafe(b.id)}">Add to Calendar</button>`);
+    if(id) items.push(`<button type="button" class="as-btn as-destructive" data-ctx-act="cancel" data-bid="${escSafe(id)}">Cancel Practice</button>`);
     if(!items.length) return;
     haptic('light');
     const host = document.getElementById('ctxMenu');
     host.innerHTML = `<div class="share-backdrop" data-ctx-close></div>
-      <div class="share-sheet">
-        <p class="ctx-head">${escSafe(time)}${where ? ' \u00b7 ' + escSafe(where) : ''}</p>
-        ${items.join('')}
-        <button type="button" class="ctx-item" data-ctx-close>Close</button>
+      <div class="share-sheet as-sheet" role="dialog" aria-modal="true" aria-label="${escSafe(time)}">
+        <div class="as-group"><div class="as-head"><h3>${escSafe(time)}</h3>${where ? `<p>${escSafe(where)}</p>` : ''}</div>${items.join('')}</div>
+        <div class="as-group"><button type="button" class="as-btn as-cancel" data-ctx-close>Cancel</button></div>
       </div>`;
     host.style.display = 'flex';
   }
@@ -4048,6 +4090,14 @@ function teardown(){
   el.viewSchedule.style.display = 'none';
   el.viewBook.style.display = 'none';
   el.viewAdmin.style.display = 'none';
+  // Every view and the title go: signing out from My Team or League used to
+  // leave that team's schedule under the sign-in card.
+  el.viewOpenWeek.style.display = 'none';
+  el.viewMyTeam.style.display = 'none';
+  el.viewLeague.style.display = 'none';
+  document.getElementById('largeTitle').style.display = 'none';
+  document.getElementById('nextPracticeCard').style.display = 'none';
+  el.actionsBar.classList.remove('show');
 }
 
 el.signOutBtn.addEventListener('click', () => sb.auth.signOut());
@@ -4506,7 +4556,10 @@ function switchView(view){
   const viewDir = VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(prevView) ? 1 : -1;
   currentView = view;
   syncBarButtons();
-  document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  document.querySelectorAll('.view-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === view);
+    if(t.dataset.view === view) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+  });
   positionViewTabsThumb(view);
   window.applyHeaderCondense?.();
   el.viewSchedule.style.display = view === 'schedule' ? 'block' : 'none';
@@ -5226,9 +5279,18 @@ el.myTeamExportCsvBtn.addEventListener('click', () => {
   if(!key) return;
   exportTeamScheduleCSV(key, teamLabel(...key.split('|')));
 });
-el.myTeamExportIcsBtn.addEventListener('click', () => {
+el.myTeamExportIcsBtn.addEventListener('click', async () => {
   const key = teamKeyFor(myProfile.team_id);
   if(!key) return;
+  // In the app, Calendar is the app's own job (EventKit, kept in sync), the
+  // same switch as Account > Add Practices to Calendar. A web subscription
+  // link would be a second, lesser way to do the same thing.
+  if(window.Native.features()){
+    const st = await window.Native.setSetting('calendar', true);
+    if(st && st.calendar) flash('Your practices are in Calendar, in a Seaford Lacrosse calendar.', 'ok');
+    else if(st && st.calendarAccess === 'denied') flash('Calendar access is off. Turn it on in Settings > Apps > Seaford Lacrosse.', 'warn');
+    return;
+  }
   openCalendarSheet(key, teamLabel(...key.split('|')));
 });
 // Calendar + share for whichever team the Schedule view is filtered to — so a
@@ -5249,7 +5311,7 @@ function openCalendarSheet(teamKey, teamLabelText){
   const teamId = teamsByKey[teamKey];
   if(!teamId) return;
   calSheetTeam = { key: teamKey, label: teamLabelText, id: teamId, https: TEAM_ICS_URL + '?team=' + encodeURIComponent(teamId) };
-  document.getElementById('calSheetTitle').textContent = 'Add ' + teamLabelText + ' to your calendar';
+  document.getElementById('calSheetTitle').textContent = 'Add ' + teamLabelText + ' to Calendar';
   const sheet = document.getElementById('calSheet');
   sheet.style.display = 'flex';
   if(hasGSAP() && motionOK()) gsap.fromTo(sheet.querySelector('.share-sheet'), { y: 36, opacity: 0, scale: .96 }, { y: 0, opacity: 1, scale: 1, duration: .42, ease: 'power3.out', clearProps: 'transform,opacity' });
@@ -5267,7 +5329,7 @@ document.getElementById('calSubscribeBtn').addEventListener('click', () => {
 });
 document.getElementById('calCopyBtn').addEventListener('click', async e => {
   if(!calSheetTeam) return;
-  try { await navigator.clipboard.writeText(calSheetTeam.https); e.target.textContent = 'Copied ✓'; haptic('success'); setTimeout(() => { e.target.textContent = 'Copy link (for Google Calendar)'; }, 2000); }
+  try { await navigator.clipboard.writeText(calSheetTeam.https); e.target.textContent = 'Copied'; haptic('success'); setTimeout(() => { e.target.textContent = 'Copy Link for Google Calendar'; }, 2000); }
   catch(err){ flash('Could not copy. Long-press the link instead: ' + calSheetTeam.https, 'err'); }
 });
 document.getElementById('calDownloadBtn').addEventListener('click', () => {
@@ -5413,6 +5475,8 @@ function confirmAction({ title, body, verb }){
   document.getElementById('confirmGoBtn').textContent = verb;
   m.style.display = 'flex';
   haptic('light');
+  const t = document.getElementById('confirmTitle');
+  t.setAttribute('tabindex', '-1'); setTimeout(() => t.focus({ preventScroll: true }), 30);
   if(hasGSAP() && motionOK()){
     gsap.fromTo(m.querySelector('.share-sheet'), { y: 36, opacity: 0, scale: .96 },
       { y: 0, opacity: 1, scale: 1, duration: .38, ease: 'power3.out', clearProps: 'transform' });

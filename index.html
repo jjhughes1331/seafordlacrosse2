@@ -2056,6 +2056,28 @@
   .share-sheet { overscroll-behavior: contain; }
   /* The keyboard covers the tab bar and the toast, as it does in every app. */
   html.kb .view-tabs, html.kb .actions, html.kb .edge-bottom { display: none !important; }
+
+  /* ---- Sign in: Apple's own shape ---------------------------------------- */
+  html.signed-out header, html.signed-out .edge-top { display: none !important; }
+  .auth-screen.auth-v3, .auth-screen:has(.auth-group) { max-width: 420px; margin: 0 auto; padding: calc(40px + var(--safe-top)) 16px 32px;
+    background: none; border: none; box-shadow: none; text-align: center; }
+  .auth-v3 .auth-icon { width: 88px; height: 88px; border-radius: 20px; display: block; margin: 0 auto 18px;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.12); background: #fff; padding: 0; }
+  .auth-title { font-size: var(--ios-large); font-weight: 700; color: var(--ink); line-height: 1.2; }
+  .auth-sub { font-size: var(--ios-body); color: var(--muted); margin: 6px 0 28px; }
+  .auth-group { text-align: left; margin-bottom: 14px; }
+  .auth-group .ios-field input { font-size: max(16px, var(--ios-body)); }
+  .auth-msg-v3 { font-size: var(--ios-foot); color: var(--danger); margin: -4px 8px 14px; text-align: left; line-height: 1.35; }
+  .auth-msg-v3.ok { color: var(--tint); }
+  .auth-primary { display: block; width: 100%; min-height: 52px; border: none; border-radius: 999px; background: var(--accent-fill); color: var(--on-accent);
+    font: inherit; font-size: var(--ios-body); font-weight: 600; cursor: pointer; }
+  .auth-primary:active { opacity: .8; }
+  .auth-primary:disabled { opacity: .6; }
+  .auth-link { display: inline-block; margin: 14px auto 0; min-height: 44px; padding: 0 12px; border: none; background: none;
+    color: var(--tint); font: inherit; font-size: var(--ios-body); cursor: pointer; }
+  .auth-foot { font-size: var(--ios-foot); color: var(--muted); margin: 26px 12px 0; line-height: 1.4; }
+  .auth-links { margin-top: 10px; }
+  .auth-links a { color: var(--tint); text-decoration: none; }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -3906,54 +3928,79 @@ function showLoginScreen(msg){
   // phone's widgets, Watch and Live Activity must stop showing the team.
   window.Native.clearContext();
   lastNativeContext = '';
+  document.documentElement.classList.add('signed-out');
+  // A form, so iOS offers Password AutoFill and the keyboard's Go signs in;
+  // one grouped block for both fields, the way Apple's own sign-ins look.
+  const typed = document.getElementById('loginEmail')?.value || '';
   el.authArea.innerHTML = `
-    <div class="auth-screen">
-      <img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse">
-      <h2>Sign in</h2>
-      <p class="hint">Use the email and password your director set up for you.</p>
-      <div class="field"><label>Email</label><input type="email" id="loginEmail"></div>
-      <div class="field"><label>Password</label><input type="password" id="loginPassword"></div>
-      <button class="btn-primary" id="loginBtn">Sign in</button>
-      <button class="link-btn" id="forgotBtn">Forgot your password?</button>
-      ${msg ? `<div class="auth-msg err">${escSafe(msg)}</div>` : ''}
-      <p class="invite-note">Access is by invite only. If you don't have an account, ask your team's director to invite you.</p>
-      <p class="invite-note"><a href="privacy.html">Privacy</a> &middot; <a href="support.html">Support</a></p>
+    <div class="auth-screen auth-v3">
+      <img class="auth-icon" src="apple-touch-icon.png" alt="">
+      <h1 class="auth-title">Seaford Lacrosse</h1>
+      <p class="auth-sub">Sign in with the email your director invited.</p>
+      <form id="loginForm" novalidate>
+        <div class="ios-group auth-group">
+          <label class="ios-row ios-field"><span class="sr-only">Email</span>
+            <input type="email" id="loginEmail" name="username" placeholder="Email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next" value="${escSafe(typed)}"></label>
+          <label class="ios-row ios-field"><span class="sr-only">Password</span>
+            <input type="password" id="loginPassword" name="password" placeholder="Password" autocomplete="current-password" enterkeyhint="go"></label>
+        </div>
+        <p class="auth-msg-v3" id="loginMsg" role="alert"${msg ? '' : ' hidden'}>${msg ? escSafe(msg) : ''}</p>
+        <button class="auth-primary" id="loginBtn" type="submit">Sign In</button>
+      </form>
+      <button class="auth-link" id="forgotBtn" type="button">Forgot Password?</button>
+      <p class="auth-foot">Access is by invite only. No account yet? Ask your team's director to invite you.</p>
+      <p class="auth-foot auth-links"><a href="privacy.html">Privacy Policy</a><span aria-hidden="true"> · </span><a href="support.html">Support</a></p>
     </div>`;
-  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('loginForm').addEventListener('submit', e => { e.preventDefault(); doLogin(); });
   document.getElementById('forgotBtn').addEventListener('click', doForgotPassword);
-  document.getElementById('loginPassword').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('loginEmail').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('loginPassword').focus(); } });
+}
+function setLoginMsg(text, ok){
+  const m = document.getElementById('loginMsg');
+  if(!m){ showLoginScreen(text); return; }
+  m.textContent = text; m.hidden = !text; m.classList.toggle('ok', !!ok);
+  if(text) haptic(ok ? 'success' : 'error');
+}
+// Supabase's wording ("Invalid login credentials") becomes what happened and
+// what to do about it.
+function loginErrorText(error){
+  const m = String(error && error.message || '');
+  if(/invalid login credentials/i.test(m)) return 'That email and password don’t match. Check them, or reset your password.';
+  if(/email not confirmed/i.test(m)) return 'This account hasn’t been set up yet. Open the invite email from your director first.';
+  if(/rate limit|too many/i.test(m)) return 'Too many tries. Wait a minute, then try again.';
+  return friendlyError(error, 'You weren’t signed in.');
 }
 
 async function doLogin(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
-  if(!email || !password){ showLoginScreen('Enter your email and password.'); return; }
-  const btn = document.getElementById('loginBtn'); btn.disabled = true; btn.textContent = 'Signing in…';
+  if(!email || !password){ setLoginMsg('Enter your email and password.'); return; }
+  const btn = document.getElementById('loginBtn'); btn.disabled = true; btn.textContent = 'Signing In…';
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ showLoginScreen(error.message); return; }
+  if(error){ btn.disabled = false; btn.textContent = 'Sign In'; setLoginMsg(loginErrorText(error)); return; }
   session = data.session;
   await loadProfileAndStart();
 }
 
 async function doForgotPassword(){
   const email = document.getElementById('loginEmail').value.trim();
-  if(!email){ showLoginScreen('Enter your email above first, then tap "Forgot your password?" again.'); return; }
+  if(!email){ setLoginMsg('Enter your email, then tap Forgot Password.'); document.getElementById('loginEmail').focus(); return; }
   const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href.split('#')[0] });
-  if(error){ showLoginScreen(error.message); return; }
-  showLoginScreen();
-  const msgBox = document.querySelector('.auth-screen');
-  msgBox.insertAdjacentHTML('beforeend', `<div class="auth-msg ok">Check your email for a password reset link.</div>`);
+  if(error){ setLoginMsg(friendlyError(error, 'The reset email wasn’t sent.')); return; }
+  setLoginMsg('Check your email for a link to reset your password.', true);
 }
 
 function showSetPasswordScreen(){
   el.authArea.innerHTML = `
     <div class="auth-screen">
       <img src="seaford-lacrosse-badge.png" alt="Seaford Lacrosse">
-      <h2>Set your password</h2>
-      <p class="hint">Welcome! Choose a password for your account.</p>
-      <div class="field"><label>New password</label><input type="password" id="newPassword"></div>
-      <div class="field"><label>Confirm password</label><input type="password" id="newPassword2"></div>
-      <button class="btn-primary" id="setPasswordBtn">Save password</button>
+      <h2>Choose a Password</h2>
+      <p class="hint">Welcome. This is the password you'll sign in with.</p>
+      <div class="ios-group auth-group">
+        <label class="ios-row ios-field"><span class="sr-only">New password</span><input type="password" id="newPassword" placeholder="New Password" autocomplete="new-password" enterkeyhint="next"></label>
+        <label class="ios-row ios-field"><span class="sr-only">Confirm password</span><input type="password" id="newPassword2" placeholder="Confirm Password" autocomplete="new-password" enterkeyhint="done"></label>
+      </div>
+      <button class="auth-primary" id="setPasswordBtn">Save Password</button>
       <div id="setPwMsg"></div>
     </div>`;
   document.getElementById('setPasswordBtn').addEventListener('click', async () => {
@@ -4041,6 +4088,7 @@ async function loadProfileAndStartInner(){
   loadWeather(); // fire-and-forget — never block sign-in on a third-party API
 
   el.authArea.innerHTML = '';
+  document.documentElement.classList.remove('signed-out');
   el.signedInBar.style.display = 'flex';
   el.viewTabs.style.display = 'flex';
   document.getElementById('accountBtn').style.display = 'flex';

@@ -36,8 +36,13 @@ grown past a screen, it wants its own file with one line pointing to it here.
 - `ui/*.js` — design v2 components, each self-contained and wired by event
   delegation so load order never matters: `spring.js` (interruptible spring
   solver), `field-menu.js` (field switcher), `aurora.js` (WebGL hero surface),
-  `ripple.js` (booking-landed moment). **`docs/DESIGN.md` is the design source
-  of truth** — principles, tokens, components, log
+  `ripple.js` (booking-landed moment), `sheet.js` (drag-to-dismiss and an
+  inert page for every `.share-modal`). **`docs/DESIGN.md` is the design
+  source of truth** — principles, tokens, components, log; v3 rules at its end
+- `vendor/` — supabase-js, GSAP, Flip, **pinned and served from here, not a
+  CDN**: the app bundles this page and must draw with no network. To upgrade,
+  replace the file and update the `<script>` tag and `sw.js` SHELL_FILES
+  (`sync-web.sh` in the app repo copies `vendor/`)
 - `sw.js`, `manifest.json` — PWA. The SW is **network-first** and skips Supabase, so it never serves stale data
 - `supabase/*.sql` — reference copies of applied schema/policy work
 - `supabase/functions/*.ts` — reference copies of `manage-user` and `invite-coach` (`send-push` and `team-ics` are read-only in the dashboard; both reviewed 2026-09-18)
@@ -101,8 +106,12 @@ sync ios` and a new build. The web keeps deploying instantly as always.
 - `window.__IS_NATIVE_APP` gates native behaviour in this file: Taptic haptics,
   the iOS share sheet, native OneSignal (the web SDK is not loaded there), the
   system browser for external links, no service worker, no install nudge
-- Account deletion is an App Store requirement: menu > Delete my account,
-  `manage-user` action `delete-me`
+- Account deletion is an App Store requirement: account sheet (the monogram,
+  top right) > Delete Account, `manage-user` action `delete-me`
+- The app's pull-to-refresh is a native `UIRefreshControl`
+  (`MainViewController`) that awaits `window.appRefresh()`; the JS pull is
+  Safari-only. The app also sets `html.lpm` (Low Power Mode); `html.kb` is
+  set while the keyboard is up
 - Native launch: `MainViewController` (set in **SceneDelegate**, not the
   storyboard, which Capacitor 8 ignores) lays a Metal scene
   (`LaunchShader.swift`) over the web view. Its clock starts in
@@ -148,7 +157,12 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
 - **44pt minimum** tap target; small controls get a `::before` overlay
 - **One confirmation model**: `confirmAction()` sheet for anything destructive.
   `armTwoTap` survives only on booking a slot, which has Undo
-- Phones have **no footer**: Appearance, Privacy, Support live in the menu
+- Phones have **no footer**: Appearance, Privacy, Support live in the account
+  sheet (monogram, top right). There is no hamburger
+- **v3 type tokens are ratios of the root**: `1rem` is iOS Body (17pt), not
+  16px. `--ios-body` is `1rem`; see DESIGN.md v3. Nothing under 11pt
+- **Book on a phone** is a week strip plus one day as a grouped list with GET
+  pills (Book -> Confirm via `armTwoTap`). Desktop keeps the week agenda
 - The tab bar's shape, order and labels are JJ's — do not change them
 - **Book never preselects a field** (JJ, 2026-09-22): only a starred favourite
   or the last field chosen; otherwise the menu reads "Choose a field", because a
@@ -194,3 +208,11 @@ rendered output is what a coach sees.**
   be the pre-fade one: `pixel-audit.js` turns transitions off for that reason
 - Edge Functions: never nest template literals in the source you inject. Build
   it as an array of single-quoted strings, or fetch the raw file from GitHub
+- An inline `style.display = 'block'`/`'inline-block'` beats the phone CSS
+  (the tab bar's flex column, the one-line filters). Show things with
+  `style.display = ''` and let the stylesheet decide
+- Fixed layers must sit **under `<header>`'s z-index (550)** unless they mean
+  to cover the tab bar: the bar is a fixed child of the header, so it paints
+  at 550, not at its own 700
+- The dev simulator (iPhone 17 Pro) is shared with JJ's other project's
+  session; `dev-sim.sh` takes `DEV=<udid>` to use another

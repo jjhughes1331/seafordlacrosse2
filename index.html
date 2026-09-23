@@ -23,9 +23,11 @@
 <script src="ui/field-menu.js" defer></script>
 <script src="ui/aurora.js" defer></script>
 <script src="ui/ripple.js" defer></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="ui/sheet.js" defer></script>
+<!-- Manrope draws only the wordmark and the share card, so it must never hold
+     up first paint: print-media stylesheets don't block rendering. -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- ============ FIXTURE MODE (?fixture=1) ============
      Every signed-in surface in this app was previously unverifiable without a
      human typing a password, which meant UI bugs only surfaced against live
@@ -247,11 +249,11 @@
   });
 })();
 </script>
-<!-- Motion + 3D. Everything that uses these is guarded (window.gsap / window.THREE)
-     and degrades to the plain CSS behavior if a CDN is blocked or offline. -->
+<!-- Motion. Everything that uses it is guarded (window.gsap) and degrades to
+     the plain CSS behavior if a CDN is blocked or offline. (three.js used to
+     load here too: ~600 KB parsed on every launch, used by nothing.) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
 <style>
   :root {
     /* Core greens — from the lacrosse crest, used for functional UI (buttons, badges, highlights) */
@@ -1718,6 +1720,105 @@
   }
   .next-card.hero .row2 a:active, .next-card.hero .row2 button:active { transform: scale(.96); }
   .next-card.hero .hintline { display: none; }
+
+  /* ===================================================================
+     DESIGN v3 — "as if Apple built it". docs/DESIGN.md, v3 section.
+     iOS system grammar everywhere; the field hues and the launch are the
+     only things that are ours.
+     =================================================================== */
+  :root {
+    /* iOS text styles (Large Title 34, Title 2 22, Headline 17 semibold,
+       Body 17, Subheadline 15, Footnote 13, Caption 12), in rem so the
+       reader's text size setting scales them. */
+    --ios-large: 2.125rem; --ios-title2: 1.375rem; --ios-title3: 1.25rem; --ios-body: 1.0625rem;
+    --ios-callout: 1rem; --ios-sub: .9375rem; --ios-foot: .8125rem; --ios-cap: .75rem;
+    --group-bg: var(--chalk);           /* systemGroupedBackground */
+    --cell-bg: var(--card);             /* secondarySystemGroupedBackground */
+    --group-radius: 26px;               /* iOS 26 inset grouped corner */
+    --row-min: 52px;
+    --sep: var(--line);
+    --tint: var(--accent-fill);
+    --glass: rgba(255,255,255,.72);
+    --glass-edge: rgba(255,255,255,.9);
+    --glass-shadow: 0 8px 24px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --glass: rgba(44,44,46,.72); --glass-edge: rgba(255,255,255,.12); --glass-shadow: 0 8px 24px rgba(0,0,0,.5);
+  } }
+  :root[data-theme="dark"] { --glass: rgba(44,44,46,.72); --glass-edge: rgba(255,255,255,.12); --glass-shadow: 0 8px 24px rgba(0,0,0,.5); }
+
+  /* ---- Account button: the monogram, top right ---------------------- */
+  #accountBtn {
+    position: fixed; z-index: 610;
+    top: calc(10px + var(--safe-top)); right: calc(16px + var(--safe-right));
+    width: 44px; height: 44px; padding: 4px; border: none; background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; -webkit-touch-callout: none;
+  }
+  .monogram {
+    width: 36px; height: 36px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    /* Apple's contact avatar: a soft grey gradient with white initials */
+    background: linear-gradient(180deg, #a5abb8, #858993); color: #fff;
+    font-family: ui-rounded, "SF Pro Rounded", var(--font-body); font-weight: 600; font-size: .9375rem; letter-spacing: .2px;
+    box-shadow: 0 0 0 .5px rgba(0,0,0,.06), var(--glass-shadow);
+  }
+  .monogram svg { width: 60%; height: 60%; margin-top: 12%; }
+  #accountBtn:active .monogram { transform: scale(.92); transition: transform .12s; }
+  #accountBtn:focus { outline: none; }
+  #accountBtn:focus-visible .monogram { box-shadow: 0 0 0 2px var(--chalk), 0 0 0 4px var(--tint); }
+  .monogram-lg { width: 84px; height: 84px; font-size: 2.1rem; box-shadow: none; }
+  /* The title row makes room for the monogram, and the crest leaves it:
+     Apple's apps don't stamp a logo on every screen. */
+  .large-title { padding-right: 64px; }
+  .large-title .lt-crest { display: none; }
+  @media (min-width: 701px) {
+    #accountBtn { top: calc(18px + var(--safe-top)); right: 20px; }
+  }
+
+  /* ---- Sheets: grabber, centred title, Done ------------------------- */
+  .ios-sheet { padding: 0 0 calc(12px + var(--safe-bottom)); background: var(--group-bg); display: flex; flex-direction: column; }
+  .ios-sheet::before { position: absolute; top: 0; left: 50%; transform: translateX(-50%); margin: 6px 0 0; z-index: 2; }
+  .share-sheet { border-radius: 28px 28px 0 0; border: none; }
+  .sheet-bar { position: sticky; top: 0; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    min-height: 56px; padding: 10px 12px 0; background: var(--group-bg); }
+  .sheet-bar h3 { font-size: var(--ios-body); font-weight: 600; color: var(--ink); text-align: center; outline: none; }
+  .sheet-done { justify-self: end; min-height: 44px; min-width: 44px; padding: 0 8px; border: none; background: none;
+    color: var(--tint); font: inherit; font-size: var(--ios-body); font-weight: 600; cursor: pointer; }
+  .sheet-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 0 16px 8px; flex: 1; }
+  @media (min-width: 701px) { .ios-sheet { border-radius: 20px; max-height: min(760px, 90vh); } }
+
+  /* ---- Inset grouped lists (Settings) -------------------------------- */
+  .ios-group { background: var(--cell-bg); border-radius: var(--group-radius); overflow: hidden; margin: 0 0 24px; }
+  .ios-group-header { font-size: var(--ios-foot); color: var(--muted); margin: 0 0 7px 20px; font-weight: 400; }
+  .ios-group-footer { font-size: var(--ios-foot); color: var(--muted); margin: -17px 20px 24px; line-height: 1.35; }
+  .ios-group-footer:empty { display: none; }
+  .ios-row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    width: 100%; min-height: var(--row-min); padding: 11px 16px 11px 20px; margin: 0;
+    background: none; border: none; border-radius: 0; font: inherit; font-size: var(--ios-body); color: var(--ink);
+    text-align: left; text-decoration: none; cursor: pointer; -webkit-touch-callout: none; }
+  .ios-row + .ios-row::before { content: ''; position: absolute; top: 0; left: 20px; right: 0; height: .5px; background: var(--sep); }
+  .ios-row:active { background: var(--chip-bg); }
+  .ios-row .row-chevron { width: 14px; height: 14px; color: var(--silver-deep); flex: none; margin-left: 6px; }
+  .ios-value { display: inline-flex; align-items: center; color: var(--muted); }
+  .ios-destructive { justify-content: center; color: var(--danger); font-weight: 400; }
+  .ios-select-row { cursor: pointer; }
+  .ios-select-row select { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; font-size: 16px; cursor: pointer; }
+  .ios-field { cursor: text; }
+  .ios-field > span { flex: none; width: 88px; }
+  .ios-field input { flex: 1; min-width: 0; border: none; background: none; outline: none; padding: 0; margin: 0;
+    font: inherit; font-size: var(--ios-body); color: var(--ink); text-align: left; }
+  .ios-field input::placeholder { color: var(--silver-deep); }
+  .ios-group .switch-row .switch-text { font-size: var(--ios-body); }
+  .ios-group .switch-row .switch-text small { font-size: var(--ios-foot); margin-top: 1px; }
+
+  /* ---- Account sheet ------------------------------------------------ */
+  .acct-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 0 26px; }
+  .acct-hero .monogram-lg { margin-bottom: 12px; }
+  .acct-name { font-size: var(--ios-title2); font-weight: 700; letter-spacing: -.3px; color: var(--ink); }
+  .acct-meta { font-size: var(--ios-sub); color: var(--muted); margin-top: 2px; }
+  .acct-about { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0 12px;
+    color: var(--muted); font-size: var(--ios-foot); }
+  .acct-about img { height: 44px; width: auto; opacity: .9; }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -1773,12 +1874,17 @@
   window.Native = {
     active: native,
     // Returns true when it handled the feedback, so the caller skips its own.
+    // One feeling per outcome, the way iOS does it: a selection tick for
+    // pickers and segments, a light tap for opening things, a firmer one for
+    // committing, and the three notification patterns for how it turned out.
     haptic(kind){
       if(!native) return false;
-      if(kind === 'success' || kind === 'error'){
-        call('Haptics', 'notification', { type: kind === 'success' ? 'SUCCESS' : 'ERROR' });
+      if(kind === 'success' || kind === 'error' || kind === 'warning'){
+        call('Haptics', 'notification', { type: kind.toUpperCase() });
+      } else if(kind === 'selection'){
+        call('Haptics', 'selectionStart'); call('Haptics', 'selectionChanged'); call('Haptics', 'selectionEnd');
       } else {
-        call('Haptics', 'impact', { style: 'LIGHT' });
+        call('Haptics', 'impact', { style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' });
       }
       return true;
     },
@@ -1902,10 +2008,23 @@
   const INVITE_FUNCTION_URL = "https://gjpqwmcdejpvffdimddk.supabase.co/functions/v1/invite-coach";
 </script>
 
-<button id="hamburgerBtn" type="button" aria-label="Menu" aria-expanded="false" style="display:none">
-  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.6 5.4h16.8a1.5 1.5 0 0 1 0 3H3.6a1.5 1.5 0 0 1 0-3Zm0 5.1h16.8a1.5 1.5 0 0 1 0 3H3.6a1.5 1.5 0 0 1 0-3Zm0 5.1h16.8a1.5 1.5 0 0 1 0 3H3.6a1.5 1.5 0 0 1 0-3Z"/></svg>
+<!-- Account: the monogram at the top right, as in Apple's own apps. It opens
+     a sheet that holds who you are, this iPhone's settings, and the account
+     actions. (It replaced a hamburger drop-down, which is web grammar.) -->
+<button id="accountBtn" type="button" aria-label="Account" aria-haspopup="dialog" style="display:none">
+  <span class="monogram" id="accountMonogram" aria-hidden="true"></span>
 </button>
-<nav id="hamburgerMenu" class="hamburger-menu"></nav>
+<div class="share-modal" id="accountSheet" style="display:none">
+  <div class="share-backdrop" data-account-close></div>
+  <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="accountSheetTitle">
+    <div class="sheet-bar">
+      <span></span>
+      <h3 id="accountSheetTitle">Account</h3>
+      <button type="button" class="sheet-done" data-account-close>Done</button>
+    </div>
+    <div class="sheet-scroll" id="accountBody"></div>
+  </div>
+</div>
 <!-- Calendar sheet: sync (a feed the phone re-checks itself) or a one-time file -->
 <div class="share-modal" id="calSheet" style="display:none">
   <div class="share-backdrop" data-cal-close></div>
@@ -2566,96 +2685,141 @@ const el = {
   pageFooter: document.getElementById('pageFooter'),
 };
 
-// ============ HAMBURGER MENU (mirrors whichever view-tabs are currently visible,
-// so role-based visibility — coach vs director vs admin — is automatic, not duplicated) ============
+// ============ ACCOUNT (monogram button + sheet) ============
+// The bottom bar owns destinations; this owns identity, this iPhone's
+// settings and the account actions, in the order iOS uses: who you are,
+// settings, then the destructive actions last and in red.
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2a.8.8 0 0 1 .72.45l2.5 5.06 5.59.81a.8.8 0 0 1 .44 1.37l-4.04 3.94.95 5.57a.8.8 0 0 1-1.16.84L12 17.6l-5 2.63a.8.8 0 0 1-1.16-.84l.95-5.57-4.04-3.94a.8.8 0 0 1 .44-1.37l5.59-.81 2.5-5.06A.8.8 0 0 1 12 2.2Z"/></svg>';
-function rebuildHamburgerMenu(){
-  // This used to re-render every visible tab, so a phone carried two complete
-  // navigation systems for the same destinations - something no app a coach
-  // already uses does. The bottom bar owns destinations; this owns identity.
-  const menu = document.getElementById('hamburgerMenu');
-  if(!menu) return;
-  const identity = myProfile ? `<div class="hamburger-identity">
-    <span class="who">${escSafe(el.whoName.textContent)}</span>
-    <span class="role-pill">${escSafe(el.rolePill.textContent)}</span>
-  </div>` : '';
-  // Accounts created before names existed have none, and a coach should be able
-  // to fix their own without asking an admin. Open when it's missing, tucked
-  // behind a button once it's set.
-  const named = myProfile && (myProfile.first_name || myProfile.last_name);
-  const nameForm = myProfile ? `<div class="hamburger-name" id="hamburgerName"${named ? ' hidden' : ''}>
-      <input type="text" id="myFirstName" placeholder="First name" autocomplete="given-name" value="${escSafe(myProfile.first_name || '')}">
-      <input type="text" id="myLastName" placeholder="Last name" autocomplete="family-name" value="${escSafe(myProfile.last_name || '')}">
-      <button type="button" class="allbtn" id="saveMyNameBtn">Save name</button>
-      <span class="hint" id="myNameStatus"></span>
-    </div>
-    ${named ? '<button type="button" class="hamburger-editname" id="editMyNameBtn">Edit your name</button>' : ''}` : '';
-  const signOut = myProfile ? `<button type="button" class="hamburger-signout" id="hamburgerSignOutBtn">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8a1.3 1.3 0 0 1 .92.38l4 4a1.3 1.3 0 1 1-1.84 1.84L13.3 6.24V14.4a1.3 1.3 0 0 1-2.6 0V6.24L8.92 8.02a1.3 1.3 0 1 1-1.84-1.84l4-4A1.3 1.3 0 0 1 12 1.8ZM4.4 13.1a1.3 1.3 0 0 1 1.3 1.3v4.2c0 .5.4.9.9.9h10.8c.5 0 .9-.4.9-.9v-4.2a1.3 1.3 0 1 1 2.6 0v4.2a3.5 3.5 0 0 1-3.5 3.5H6.6a3.5 3.5 0 0 1-3.5-3.5v-4.2a1.3 1.3 0 0 1 1.3-1.3Z"/></svg>
-    Sign out
-  </button>` : '';
-  // The App Store requires an account to be deletable from inside the app
-  // (5.1.1(v)). Last in the menu, quiet, and behind the same confirm sheet as
-  // every other destructive action.
-  const deleteAcct = myProfile ? `<button type="button" class="hamburger-delete" id="deleteMyAccountBtn">Delete my account</button>` : '';
-  const themeNow = document.getElementById('themeToggleLabel')?.textContent || 'Match system theme';
-  const extras = `<div class="hamburger-extras">
-      <button type="button" class="hamburger-row" data-menu-theme>Appearance<span>${escSafe(themeNow)}</span></button>
-      <a class="hamburger-row" href="privacy.html" target="_blank" rel="noopener">Privacy</a>
-      <a class="hamburger-row" href="support.html" target="_blank" rel="noopener">Support</a>
+const CHEVRON_SVG = '<svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg>';
+const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.2a4.4 4.4 0 1 0 0-8.8 4.4 4.4 0 0 0 0 8.8Zm0 2.2c-4.6 0-8.2 2.4-8.2 5.2 0 .6.5 1 1 1h14.4c.5 0 1-.4 1-1 0-2.8-3.6-5.2-8.2-5.2Z"/></svg>';
+function initialsOf(p){
+  if(!p) return '';
+  const a = (p.first_name || '').trim(), b = (p.last_name || '').trim();
+  return ((a[0] || '') + (b[0] || '')).toUpperCase();
+}
+function paintMonogram(){
+  const m = document.getElementById('accountMonogram');
+  if(!m) return;
+  const ini = initialsOf(myProfile);
+  m.innerHTML = ini ? escSafe(ini) : PERSON_SVG;
+  document.getElementById('accountBtn')?.setAttribute('aria-label', myProfile ? `Account, ${personName(myProfile)}` : 'Account');
+}
+function accountRoleLine(){
+  if(!myProfile) return '';
+  const role = ROLE_LABEL[myProfile.role] || myProfile.role;
+  const Role = role.charAt(0).toUpperCase() + role.slice(1);
+  if(onATeam()){
+    const t = teamsById[myProfile.team_id];
+    return t ? `${Role} · ${teamLabel(t.gender, t.grade)}` : Role;
+  }
+  if(myProfile.role === 'director') return `${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} ${Role}`;
+  return Role;
+}
+function rebuildAccountSheet(){
+  const body = document.getElementById('accountBody');
+  if(!body || !myProfile) return;
+  const named = !!(myProfile.first_name || myProfile.last_name);
+  const ini = initialsOf(myProfile);
+  const hero = `<div class="acct-hero">
+      <span class="monogram monogram-lg" aria-hidden="true">${ini ? escSafe(ini) : PERSON_SVG}</span>
+      <p class="acct-name">${named ? escSafe(personName(myProfile)) : 'Add your name'}</p>
+      ${myProfile.email ? `<p class="acct-meta">${escSafe(myProfile.email)}</p>` : ''}
+      <p class="acct-meta">${escSafe(accountRoleLine())}</p>
     </div>`;
-  const device = (myProfile && window.Native.features()) ? `<div class="hamburger-extras" id="deviceSettings">
-      <p class="hamburger-heading">On this iPhone</p>
-      <label class="hamburger-row switch-row">
+  // Accounts created before names existed have none, and a coach should be
+  // able to fix their own without asking an admin: open when missing.
+  const nameGroup = `<p class="ios-group-header">Name</p>
+    <div class="ios-group">
+      <label class="ios-row ios-field"><span>First</span><input type="text" id="myFirstName" placeholder="Required" autocomplete="given-name" enterkeyhint="next" value="${escSafe(myProfile.first_name || '')}"></label>
+      <label class="ios-row ios-field"><span>Last</span><input type="text" id="myLastName" placeholder="Required" autocomplete="family-name" enterkeyhint="done" value="${escSafe(myProfile.last_name || '')}"></label>
+    </div>
+    <p class="ios-group-footer" id="myNameStatus">${named ? 'This is how directors and other coaches see you.' : 'Directors see this when you book, instead of your team name.'}</p>`;
+  const device = window.Native.features() ? `<p class="ios-group-header">On This iPhone</p>
+    <div class="ios-group" id="deviceSettings">
+      <label class="ios-row switch-row">
         <span class="switch-text">Practice on Lock Screen<small>A countdown on practice day</small></span>
         <input type="checkbox" class="ios-switch" data-device-setting="liveActivity" disabled>
       </label>
-      <label class="hamburger-row switch-row">
-        <span class="switch-text">Add practices to Calendar<small>A Seaford Lacrosse calendar that stays up to date</small></span>
+      <label class="ios-row switch-row">
+        <span class="switch-text">Add Practices to Calendar<small>A Seaford Lacrosse calendar that stays up to date</small></span>
         <input type="checkbox" class="ios-switch" data-device-setting="calendar" disabled>
       </label>
-      <p class="hamburger-note" id="deviceSettingsNote" hidden></p>
-    </div>` : '';
-  // Settings first, account actions last: the iOS order, destructive at the bottom.
-  menu.innerHTML = identity + nameForm + device + extras + signOut + deleteAcct;
-  if(device) wireDeviceSettings(menu);
-  menu.querySelector('[data-menu-theme]')?.addEventListener('click', e => {
-    document.getElementById('themeToggleBtn')?.click();
-    const lbl = document.getElementById('themeToggleLabel')?.textContent || '';
-    e.currentTarget.querySelector('span').textContent = lbl;
-    haptic('light');
+    </div>
+    <p class="ios-group-footer" id="deviceSettingsNote" hidden></p>` : '';
+  const theme = window.Theme ? window.Theme.get() : '';
+  const general = `<div class="ios-group">
+      <label class="ios-row ios-select-row"><span>Appearance</span>
+        <span class="ios-value">${theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'Automatic'}${CHEVRON_SVG}</span>
+        <select id="appearanceSelect" aria-label="Appearance">
+          <option value=""${!theme ? ' selected' : ''}>Automatic</option>
+          <option value="light"${theme === 'light' ? ' selected' : ''}>Light</option>
+          <option value="dark"${theme === 'dark' ? ' selected' : ''}>Dark</option>
+        </select>
+      </label>
+      <a class="ios-row" href="privacy.html" target="_blank" rel="noopener"><span>Privacy Policy</span>${CHEVRON_SVG}</a>
+      <a class="ios-row" href="support.html" target="_blank" rel="noopener"><span>Support</span>${CHEVRON_SVG}</a>
+    </div>`;
+  // The App Store requires an account to be deletable from inside the app
+  // (5.1.1(v)). Last, quiet, and behind the same confirm sheet as every other
+  // destructive action.
+  const actions = `<div class="ios-group">
+      <button type="button" class="ios-row ios-destructive" id="accountSignOutBtn">Sign Out</button>
+    </div>
+    <div class="ios-group">
+      <button type="button" class="ios-row ios-destructive" id="deleteMyAccountBtn">Delete Account</button>
+    </div>
+    <p class="ios-group-footer">Practices your team has booked stay on the schedule.</p>
+    <div class="acct-about">
+      <picture><source srcset="seaford-lacrosse-badge-dark.png" media="(prefers-color-scheme: dark)"><img src="seaford-lacrosse-badge.png" alt=""></picture>
+      <span>Seaford Lacrosse</span>
+    </div>`;
+  body.innerHTML = hero + nameGroup + device + general + actions;
+  if(device) wireDeviceSettings(body);
+
+  document.getElementById('appearanceSelect').addEventListener('change', e => {
+    window.Theme.set(e.target.value || null);
+    const label = e.target.value === 'light' ? 'Light' : e.target.value === 'dark' ? 'Dark' : 'Automatic';
+    e.target.parentElement.querySelector('.ios-value').firstChild.textContent = label;
+    haptic('selection');
   });
-  document.getElementById('deleteMyAccountBtn')?.addEventListener('click', async () => {
+  document.getElementById('deleteMyAccountBtn').addEventListener('click', async () => {
     const ok = await confirmAction({
       title: 'Delete your account?',
       body: 'Your account is removed for good and you are signed out. Practices your team has already booked stay on the schedule.',
-      verb: 'Delete my account',
+      verb: 'Delete Account',
     });
     if(!ok) return;
     const res = await manageUser({ action: 'delete-me' }).catch(err => ({ ok: false, error: err.message }));
-    if(!res.ok){ flash(res.error || 'Could not delete your account', 'err'); return; }
+    if(!res.ok){ flash(res.error || 'Your account could not be deleted. Try again in a moment.', 'err'); return; }
+    closeAccountSheet();
     await sb.auth.signOut();
   });
-  document.getElementById('editMyNameBtn')?.addEventListener('click', e => {
-    document.getElementById('hamburgerName').hidden = false;
-    e.target.remove();
-  });
-  document.getElementById('saveMyNameBtn')?.addEventListener('click', async () => {
-    const first = document.getElementById('myFirstName').value.trim();
-    const last = document.getElementById('myLastName').value.trim();
-    const status = document.getElementById('myNameStatus');
-    if(!first && !last){ status.textContent = 'Enter a first or last name.'; return; }
-    status.textContent = 'Saving…';
-    const res = await manageUser({ action: 'set-name', userId: myProfile.id, firstName: first, lastName: last })
-      .catch(err => ({ ok: false, error: err.message }));
-    if(!res.ok){ status.textContent = res.error || 'Could not save'; return; }
-    myProfile.first_name = first; myProfile.last_name = last;
-    el.whoName.textContent = personName(myProfile);
-    status.textContent = 'Saved';
-    haptic('success');
-    rebuildHamburgerMenu();
-  });
-  document.getElementById('hamburgerSignOutBtn')?.addEventListener('click', () => sb.auth.signOut());
+  document.getElementById('accountSignOutBtn').addEventListener('click', () => { closeAccountSheet(); sb.auth.signOut(); });
+
+  // Saving a name: on Return in the last field, or when the sheet closes with
+  // the fields changed. No separate Save button, the way Contacts works.
+  const first = document.getElementById('myFirstName'), last = document.getElementById('myLastName');
+  first.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); last.focus(); } });
+  last.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); last.blur(); saveMyName(); } });
+}
+async function saveMyName(){
+  if(!myProfile) return;
+  const f = document.getElementById('myFirstName'), l = document.getElementById('myLastName');
+  if(!f || !l) return;
+  const first = f.value.trim(), last = l.value.trim();
+  if(first === (myProfile.first_name || '') && last === (myProfile.last_name || '')) return;
+  const status = document.getElementById('myNameStatus');
+  if(!first && !last){ if(status) status.textContent = 'Enter a first or last name.'; return; }
+  if(status) status.textContent = 'Saving…';
+  const res = await manageUser({ action: 'set-name', userId: myProfile.id, firstName: first, lastName: last })
+    .catch(err => ({ ok: false, error: err.message }));
+  if(!res.ok){ flash(res.error || 'Your name could not be saved. Try again in a moment.', 'err'); if(status) status.textContent = ''; return; }
+  myProfile.first_name = first; myProfile.last_name = last;
+  el.whoName.textContent = personName(myProfile);
+  paintMonogram();
+  haptic('success');
+  if(document.getElementById('accountSheet').style.display !== 'none') rebuildAccountSheet();
+  else flash('Name saved', 'ok');
 }
 // The two native switches. The app owns the truth (permissions can change in
 // Settings at any time), so the switches read it every time the menu opens.
@@ -2685,25 +2849,37 @@ async function wireDeviceSettings(menu){
     }
   }));
 }
-function closeHamburgerMenu(){
-  document.getElementById('hamburgerMenu')?.classList.remove('open');
-  document.getElementById('hamburgerBtn')?.classList.remove('open');
-  document.getElementById('hamburgerBtn')?.setAttribute('aria-expanded', 'false');
+let accountOpenedByKeyboard = false;
+function openAccountSheet(viaKeyboard){
+  accountOpenedByKeyboard = !!viaKeyboard;
+  rebuildAccountSheet();
+  const m = document.getElementById('accountSheet');
+  m.style.display = 'flex';
+  document.getElementById('accountBtn').setAttribute('aria-expanded', 'true');
+  haptic('light');
+  if(window.Spring && !Spring.reduced()){
+    const sheet = m.querySelector('.share-sheet');
+    Spring.set(sheet, { y: sheet.offsetHeight * .6, opacity: 1 });
+    Spring.to(sheet, { y: 0 }, { preset: 'gentle' }).then(() => { sheet.style.transform = ''; });
+  }
+  setTimeout(() => document.getElementById('accountSheetTitle')?.focus?.(), 50);
 }
-document.getElementById('hamburgerBtn').addEventListener('click', e => {
-  e.stopPropagation();
-  const btn = document.getElementById('hamburgerBtn');
-  const menu = document.getElementById('hamburgerMenu');
-  const opening = !menu.classList.contains('open');
-  if(opening){ rebuildHamburgerMenu(); haptic('light'); }
-  menu.classList.toggle('open', opening);
-  btn.classList.toggle('open', opening);
-  btn.setAttribute('aria-expanded', String(opening));
+function closeAccountSheet(){
+  const m = document.getElementById('accountSheet');
+  if(!m || m.style.display === 'none') return;
+  saveMyName();
+  m.style.display = 'none';
+  document.getElementById('accountBtn')?.setAttribute('aria-expanded', 'false');
+  // Hand focus back only to someone who navigates by focus (keyboard, and
+  // VoiceOver's activate, which arrives as a click with detail 0); a finger
+  // would just see a focus ring appear on the button.
+  if(accountOpenedByKeyboard) document.getElementById('accountBtn')?.focus?.();
+}
+document.getElementById('accountBtn').addEventListener('click', e => { e.stopPropagation(); openAccountSheet(e.detail === 0); });
+document.getElementById('accountSheet').addEventListener('click', e => {
+  if(e.target.closest('[data-account-close]')) closeAccountSheet();
 });
-document.addEventListener('click', e => {
-  if(!e.target.closest('#hamburgerMenu') && !e.target.closest('#hamburgerBtn')) closeHamburgerMenu();
-});
-document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburgerMenu(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAccountSheet(); });
 
 // ============ PULL-TO-REFRESH ============
 // Realtime already keeps bookings/waitlist/lock state live, so this is mostly
@@ -2789,13 +2965,14 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeHamburge
     if(window.__syncStatusBar) window.__syncStatusBar();
   }
 
+  window.Theme = { get: getStored, set(v){ setStored(v); apply(); } };
   document.addEventListener('click', e => {
     if(!e.target.closest('#themeToggleBtn')) return;
     const stored = getStored();
     const next = stored === null ? 'light' : stored === 'light' ? 'dark' : null;
     setStored(next);
     apply();
-    haptic('light');
+    haptic('selection');
   });
 
   apply();
@@ -2881,7 +3058,7 @@ function attachSwipeNav(gridEl, getPrevBtn, getNextBtn){
     const dx = touch.clientX - startX, dy = touch.clientY - startY;
     if(Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.6) return; // mostly-vertical or too short = a scroll, not a swipe
     const btn = dx < 0 ? getNextBtn() : getPrevBtn();
-    if(btn && btn.offsetParent !== null){ haptic('light'); btn.click(); }
+    if(btn && btn.offsetParent !== null){ haptic('selection'); btn.click(); }
   }, { passive: true });
 }
 
@@ -3331,7 +3508,21 @@ const ICON_WARN = '<svg class="toast-icon"viewBox="0 0 24 24" fill="currentColor
 
 // action: optional { label, onClick } — renders a pill button inside the
 // toast (e.g. Undo). It lives exactly as long as the toast does.
+// What a coach reads when something fails: what didn't happen, and what to
+// do. Raw database text ("violates row-level security...") never reaches them.
+function friendlyError(error, lead){
+  const msg = String(error && (error.message || error) || '');
+  if(!navigator.onLine || /failed to fetch|networkerror|load failed|network/i.test(msg))
+    return `${lead} You're offline. Try again when you have signal.`;
+  if(error && error.code === '42501') return `${lead} Your account doesn't have permission for that.`;
+  if(error && error.code === '23505') return `${lead} Someone else just changed that slot.`;
+  return `${lead} Try again in a moment.`;
+}
 function flash(msg, type, action){
+  // 'warn' looks like an error but feels like iOS's warning: nothing broke,
+  // something just changed under you (another coach took the slot).
+  const warn = type === 'warn';
+  if(warn) type = 'err';
   const icon = type === 'ok' ? ICON_CHECK : type === 'err' ? ICON_WARN : '';
   el.status.innerHTML = icon + '<span>' + escSafe(msg) + '</span>';
   if(action){
@@ -3343,7 +3534,7 @@ function flash(msg, type, action){
   el.status.className = (type||'');
   el.actionsBar.classList.remove('swiping'); el.actionsBar.style.transform = '';
   el.actionsBar.classList.add('show');
-  if(type === 'ok') haptic('success'); else if(type === 'err') haptic('error');
+  if(warn) haptic('warning'); else if(type === 'ok') haptic('success'); else if(type === 'err') haptic('error');
   clearTimeout(flash._t);
   // Longer messages (and errors) get more time to read, not a flat 4s for everything.
   const base = type === 'err' ? 5500 : action ? 6000 : 4000;
@@ -3363,7 +3554,7 @@ function flashBooked(payload, insertedId){
   if(!insertedId){ flash(msg, 'ok'); return; }
   flash(msg, 'ok', { label: 'Undo', onClick: async () => {
     const { error } = await sb.from('bookings').delete().eq('id', insertedId);
-    if(error){ flash('Could not undo: ' + error.message, 'err'); return; }
+    if(error){ flash(friendlyError(error, 'That couldn\'t be undone.'), 'err'); return; }
     await refreshBookings();
     rerenderCurrentView();
     flash('Booking undone', 'ok');
@@ -3553,13 +3744,16 @@ async function loadProfileAndStartInner(){
   el.authArea.innerHTML = '';
   el.signedInBar.style.display = 'flex';
   el.viewTabs.style.display = 'flex';
-  document.getElementById('hamburgerBtn').style.display = 'flex';
+  document.getElementById('accountBtn').style.display = 'flex';
+  paintMonogram();
   el.pageFooter.style.display = 'block';
   el.whoName.textContent = personName(myProfile);
   el.rolePill.textContent = ROLE_LABEL[myProfile.role] || myProfile.role;
-  if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = 'inline-block';
-  if(onATeam()) el.myTeamTab.style.display = 'inline-block';
-  if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = 'inline-block';
+  // '' hands display back to the stylesheet. An inline 'inline-block' beat the
+  // phone tab bar's flex column, so these tabs sat 3pt off the other icons.
+  if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = '';
+  if(onATeam()) el.myTeamTab.style.display = '';
+  if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = '';
   // Assistants don't book, so Book and Find a Time aren't theirs to see.
   document.querySelectorAll('.view-tab[data-view="book"], .view-tab[data-view="openweek"]')
     .forEach(t => { t.style.display = canBook() ? '' : 'none'; });
@@ -3597,8 +3791,11 @@ function teardown(){
   myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
-  document.getElementById('hamburgerBtn').style.display = 'none';
-  closeHamburgerMenu();
+  document.getElementById('accountBtn').style.display = 'none';
+  closeAccountSheet();
+  // Role tabs belong to the person who signed in; the next person on this
+  // device must not inherit an Admin or League tab.
+  [el.adminTab, el.myTeamTab, el.leagueTab].forEach(t => { t.style.display = 'none'; });
   el.pageFooter.style.display = 'none';
   el.teamPicker.style.display = 'none';
   el.lockedTeamBanner.style.display = 'none';
@@ -3620,7 +3817,7 @@ function indexTeams(rows){
 }
 async function loadTeams(){
   const { data, error } = await sb.from('teams').select('*');
-  if(error){ flash('Could not load teams: '+error.message, 'err'); return; }
+  if(error){ flash(friendlyError(error, 'Teams didn\'t load.'), 'err'); return; }
   indexTeams(data);
 }
 
@@ -3647,7 +3844,7 @@ setInterval(paintSyncedLabel, 30000);
 
 async function refreshBookings(){
   const { data, error } = await sb.from('bookings').select('*');
-  if(error){ flash('Could not load bookings: '+error.message, 'err'); return; }
+  if(error){ flash(friendlyError(error, 'The schedule didn\'t load.'), 'err'); return; }
   bookingsCache = data;
   lastSyncedAt = Date.now();
   writeCache();
@@ -3979,7 +4176,7 @@ document.getElementById('viewTabs').addEventListener('click', e => {
     const tab = target && target.closest ? target.closest('.view-tab') : null;
     if(tab && tab.style.display !== 'none' && tab.dataset.view !== pendingView){
       pendingView = tab.dataset.view;
-      haptic('light');
+      haptic('selection');
       positionViewTabsThumb(pendingView);
       document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view === pendingView));
     }
@@ -4052,7 +4249,7 @@ function placeTeamPicker(view){
 function switchView(view){
   if(!canBook() && (view === 'book' || view === 'openweek')) view = 'schedule';
   if(view !== currentView){
-    haptic('light');
+    // iOS tab bars are silent on tap; the scrub gesture ticks instead.
     // A tab opens at its top. Carrying the last tab's scroll over left the new
     // tab's title half under the bar.
     window.scrollTo(0, 0);
@@ -5265,7 +5462,7 @@ el.dateJumpInput.addEventListener('change', () => {
   const picked = parseISO(el.dateJumpInput.value);
   if(bookViewMode === 'month') currentMonthFirst = firstDayOfMonth(picked);
   else currentWeekMonday = mondayOf(picked);
-  haptic('light');
+  haptic('selection');
   renderWeek();
   el.dateJumpInput.value = '';
 });
@@ -5559,7 +5756,7 @@ el.weekGrid.addEventListener('click', async e => {
     document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
     positionModeThumb(el.bookModeToggle);
     currentWeekMonday = mondayOf(parseISO(jumpBtn.dataset.jumpdate));
-    haptic('light');
+    haptic('selection');
     renderWeek();
     return;
   }
@@ -5578,7 +5775,7 @@ el.weekGrid.addEventListener('click', async e => {
     });
     if(error){
       if(error.code === '23505') flash('Already on the waitlist for that slot.', 'err');
-      else flash('Could not join waitlist: '+error.message, 'err');
+      else flash(friendlyError(error, 'You weren\'t added to the waitlist.'), 'err');
     } else {
       flash('Added to the waitlist. You\'ll get a heads-up here if it opens up.', 'ok');
     }
@@ -5588,7 +5785,7 @@ el.weekGrid.addEventListener('click', async e => {
   }
   if(leaveWaitBtn){
     const { error } = await sb.from('waitlist').delete().eq('id', leaveWaitBtn.dataset.leavewait);
-    if(error) flash('Could not leave waitlist: '+error.message, 'err');
+    if(error) flash(friendlyError(error, 'You\'re still on the waitlist.'), 'err');
     else flash('Left the waitlist', 'ok');
     await refreshWaitlist();
     renderWeek();
@@ -5607,9 +5804,9 @@ el.weekGrid.addEventListener('click', async e => {
     }).select().single();
     let flipState = null, burstAt = null;
     if(error){
-      if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
-      else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
-      else flash('Booking failed: '+error.message, 'err');
+      if(error.code === '23505') flash('Another coach just booked that time. Pick another slot.', 'warn');
+      else if(error.code === '42501') flash('Your team can\'t book this slot yet. Earlier grades are still choosing.', 'warn');
+      else flash(friendlyError(error, 'The practice wasn\'t booked.'), 'err');
     } else {
       flashBooked(payload, inserted?.id);
       // Capture the "+ Book" chip's geometry now; after the re-render, Flip
@@ -5637,7 +5834,7 @@ el.weekGrid.addEventListener('click', async e => {
     });
     if(!ok) return;
     const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();
-    if(error){ flash('Cancel failed: '+error.message, 'err'); }
+    if(error){ flash(friendlyError(error, 'The practice wasn\'t cancelled.'), 'err'); }
     else if(!data || !data.length){ flash('Could not cancel. You may not have permission.', 'err'); }
     else { flash('Booking cancelled', 'ok'); }
     await refreshBookings();
@@ -5825,7 +6022,7 @@ document.addEventListener('click', async e => {
   });
   if(!ok) return;
   const { data, error } = await sb.from('bookings').delete().eq('id', x.dataset.cancel).select();
-  if(error) flash('Cancel failed: ' + error.message, 'err');
+  if(error) flash(friendlyError(error, 'The practice wasn\'t cancelled.'), 'err');
   else if(!data || !data.length) flash('Could not cancel. You may not have permission.', 'err');
   else flash('Booking cancelled', 'ok');
   await refreshBookings();
@@ -5855,7 +6052,7 @@ document.addEventListener('click', e => {
     const target = now < SEASON_START ? SEASON_START : (now > SEASON_END ? SEASON_END : now);
     st.monthFirst = firstDayOfMonth(target); st.selected = fmtDateISO(target);
   }
-  haptic('light');
+  haptic('selection');
   if(which === 'league') renderLeague(); else renderScheduleCalendar();
   calAnimate(host, action, ringState, dir);
   if(action === 'day'){
@@ -6119,7 +6316,7 @@ function renderOpenWeek(){
 el.openWeekFieldChips.addEventListener('click', e => {
   const chip = e.target.closest('.fchip'); if(!chip) return;
   openWeekField = chip.dataset.id || null;
-  finderLimit = 40; haptic('light'); renderOpenWeek();
+  finderLimit = 40; haptic('selection'); renderOpenWeek();
 });
 el.openWeekResults.addEventListener('click', e => {
   if(e.target.closest('#finderMoreBtn')){ finderLimit += 40; renderOpenWeek(); }
@@ -6129,7 +6326,7 @@ document.getElementById('peoplePaneToggle').addEventListener('click', e => {
   document.querySelectorAll('#peoplePaneToggle .mtab').forEach(t => t.classList.toggle('active', t === btn));
   document.querySelectorAll('[data-peoplepane]').forEach(pane => { pane.hidden = pane.dataset.peoplepane !== btn.dataset.people; });
   positionModeThumb(document.getElementById('peoplePaneToggle'));
-  haptic('light');
+  haptic('selection');
 });
 document.getElementById('adminPaneToggle').addEventListener('click', e => {
   const btn = e.target.closest('[data-pane]'); if(!btn) return;
@@ -6141,7 +6338,7 @@ document.getElementById('adminPaneToggle').addEventListener('click', e => {
   // it the moment the pane comes back.
   if(btn.dataset.pane === 'people') positionModeThumb(document.getElementById('peoplePaneToggle'));
   if(btn.dataset.pane === 'reports') loadActivity();
-  haptic('light');
+  haptic('selection');
 });
 el.finderDays.addEventListener('click', e => {
   const b = e.target.closest('[data-finderday]'); if(!b) return;
@@ -6174,7 +6371,7 @@ async function repeatForSeason(payload, teamId){
   const { data, error } = await sb.from('bookings').insert(rows).select();
   await refreshBookings();
   renderOpenWeek();
-  if(error) flash('Could not repeat: ' + error.message, 'err');
+  if(error) flash(friendlyError(error, 'Next week wasn\'t booked.'), 'err');
   else flash('Booked ' + (data ? data.length : rows.length) + ' more ' + DOW_FULL[dow] + 's at ' + payload.time + '.', 'ok');
 }
 // A team can legitimately want two fields at once, so this warns rather than
@@ -6204,9 +6401,9 @@ el.openWeekResults.addEventListener('click', async e => {
     time: payload.time, team_id: teamId, booked_by: session.user.id,
   }).select().single();
   if(error){
-    if(error.code === '23505') flash('Someone just booked that slot first.', 'err');
-    else if(error.code === '42501') flash('You are not authorized to book for this team.', 'err');
-    else flash('Booking failed: '+error.message, 'err');
+    if(error.code === '23505') flash('Another coach just booked that time. Pick another slot.', 'warn');
+    else if(error.code === '42501') flash('Your team can\'t book this slot yet. Earlier grades are still choosing.', 'warn');
+    else flash(friendlyError(error, 'The practice wasn\'t booked.'), 'err');
   } else {
     const dow = DOW_FULL[parseISO(payload.date).getDay()];
     flash('Booked ' + payload.time + ' on ' + fmtDateLong(payload.date) + '.', 'ok',
@@ -6691,7 +6888,7 @@ function renderActivity(){
 }
 el.activityFilter.addEventListener('click', e => {
   const b = e.target.closest('[data-activity]'); if(!b) return;
-  activityFilter = b.dataset.activity; haptic('light'); renderActivity();
+  activityFilter = b.dataset.activity; haptic('selection'); renderActivity();
 });
 
 async function loadUserList(){
@@ -6887,6 +7084,14 @@ el.coachListBody.addEventListener('click', async e => {
 });
 
 // ============ BULK INVITE FROM SPREADSHEET ============
+function loadScript(src){
+  return new Promise((resolve, reject) => {
+    const tag = document.createElement('script');
+    tag.src = src; tag.onload = resolve;
+    tag.onerror = () => reject(new Error('Could not load ' + src));
+    document.head.appendChild(tag);
+  });
+}
 el.bulkUploadBtn.addEventListener('click', async () => {
   const file = el.bulkFileInput.files[0];
   if(!file){ el.bulkResults.innerHTML = `<div class="status err">Choose a file first.</div>`; return; }
@@ -6897,6 +7102,9 @@ el.bulkUploadBtn.addEventListener('click', async () => {
   let rows;
   try {
     const data = await file.arrayBuffer();
+    // ~900 KB that only this admin tool needs: fetched on first use instead of
+    // being parsed on every coach's launch.
+    if(!window.XLSX) await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
     const wb = XLSX.read(data, { type: 'array' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });

@@ -1874,7 +1874,7 @@
   #weekGrid .ios-group-header { font-variant-numeric: tabular-nums; }
   .bd-row { cursor: default; }
   .bd-row:active { background: none; }
-  .bd-sub { display: flex; flex-direction: column; min-width: 0; font-size: var(--ios-body); color: var(--ink); }
+  .bd-sub { flex: 1; display: flex; flex-direction: column; min-width: 0; font-size: var(--ios-body); color: var(--ink); }
   .bd-sub small { font-size: var(--ios-sub); color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bd-row.past { opacity: .5; }
   .bd-row.mine { background: var(--mine-bg); }
@@ -1889,7 +1889,7 @@
   @keyframes justBooked { 0% { background: color-mix(in srgb, var(--mine) 45%, var(--cell-bg)); } 100% { background: var(--mine-bg); } }
 
   /* The App Store's GET pill: a tinted capsule, bold label, 44pt target. */
-  .get-pill, #weekGrid .get-pill { flex: none; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  .get-pill, #weekGrid .get-pill, #openWeekResults .get-pill { flex: none; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
     min-width: 76px; min-height: 30px; padding: 0 16px; margin: 0; border: none; border-radius: 999px;
     background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint);
     font: inherit; font-size: var(--ios-sub); font-weight: 700; letter-spacing: -.1px; cursor: pointer; }
@@ -1952,6 +1952,32 @@
   .tip-done { color: var(--accent-fill); display: flex; }
   .tip-done svg { width: 17px; height: 17px; }
   .sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---- Find a Time on a phone ---------------------------------------- */
+  .finder-bar { display: none; }
+  @media (max-width: 700px) {
+    .finder-bar { display: flex; gap: 8px; overflow-x: auto; margin: 4px -16px 18px; padding: 2px 16px; scrollbar-width: none; }
+    .finder-bar::-webkit-scrollbar { display: none; }
+    #viewOpenWeek .section-label, #finderDays, #finderTimes, #openWeekFieldChips { display: none !important; }
+    #viewOpenWeek #finderUsualNote, #viewOpenWeek #openWeekCount { display: none; }
+  }
+  .filter-pill { position: relative; flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px 0 14px;
+    border-radius: 999px; background: var(--cell-bg); color: var(--ink); font-size: var(--ios-sub); font-weight: 500;
+    box-shadow: inset 0 0 0 .5px var(--sep); cursor: pointer; white-space: nowrap; }
+  .filter-pill.on { background: color-mix(in srgb, var(--tint) 14%, var(--cell-bg)); color: var(--tint); box-shadow: none; font-weight: 600; }
+  .filter-pill .pill-chev { width: 12px; height: 12px; opacity: .7; }
+  .filter-pill .fm-dot { width: 9px; height: 9px; }
+  .filter-pill select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; }
+  .filter-pill::before { content: ''; position: absolute; inset: -4px 0; }
+  .finder-note { font-size: var(--ios-foot); color: var(--muted); margin: -8px 4px 16px; }
+  .fw-day { display: flex; justify-content: space-between; margin-right: 20px; }
+  .fw-day span:first-child { color: var(--ink); font-weight: 600; font-size: var(--ios-sub); }
+  .ios-row:has(> .fw-dot) + .ios-row::before { left: 50px; }
+  .fw-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: -2px; }
+  .ios-more { display: block; width: 100%; min-height: 50px; margin: -8px 0 24px; border: none; background: var(--cell-bg);
+    border-radius: var(--group-radius); color: var(--tint); font: inherit; font-size: var(--ios-body); cursor: pointer; }
+  #openWeekResults .get-pill.armed { background: var(--tint) !important; color: var(--on-accent); padding-right: 30px !important; }
+  #openWeekResults .get-pill.armed .plus { color: var(--on-accent); }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2356,6 +2382,9 @@
 <!-- ============ OPEN THIS WEEK VIEW ============ -->
 <div id="viewOpenWeek" style="display:none">
   <div class="wrap">
+    <!-- Phone: filters are one line of pull-down pills over native pickers
+         (Maps' filter chips), so the results start on the first screen. -->
+    <div class="finder-bar" id="finderBar" role="group" aria-label="Filters"></div>
     <p class="section-label">Days</p>
     <div class="finder-days" id="finderDays"></div>
     <p class="section-label" style="margin-top:14px">Time</p>
@@ -6557,8 +6586,10 @@ function renderOpenWeek(){
   const u = usualPattern();
   el.finderUsualNote.textContent = (u && finderPrefilled) ? 'Your team’s usual days and time' : '';
 
+  buildFinderBar();
   const all = findOpenSlots();
   const shown = all.slice(0, finderLimit);
+  if(isMobileViewport()){ renderOpenWeekMobile(all, shown, u && finderPrefilled); return; }
   const byDay = {};
   shown.forEach(s => { (byDay[s.dateStr] = byDay[s.dateStr] || []).push(s); });
 
@@ -6605,6 +6636,70 @@ function renderOpenWeek(){
   el.openWeekResults.innerHTML = html;
   const nx = all[0];
   el.openWeekCount.innerHTML = `Next open: <b>${escSafe(dowOfISO(nx.dateStr))}, ${escSafe(fmtDateLong(nx.dateStr))}, ${escSafe(formatSlotTime(nx.time))}</b> at ${escSafe(nx.fieldName)}`;
+}
+// ---- Find a Time on a phone ------------------------------------------
+function finderDaysLabel(){
+  const d = [...finderDays].sort((a, b) => a - b);
+  if(!d.length || d.length === 7) return 'Any Day';
+  if(d.join() === '1,2,3,4,5') return 'Weekdays';
+  if(d.join() === '0,6') return 'Weekends';
+  if(d.length <= 3) return d.map(i => DOW_SHORT[i]).join(', ');
+  return `${d.length} Days`;
+}
+function buildFinderBar(){
+  const bar = document.getElementById('finderBar');
+  if(!bar) return;
+  const time = FINDER_TIMES.find(t => t.id === finderTime) || FINDER_TIMES[0];
+  const field = openWeekField ? FIELD_MAP[openWeekField] : null;
+  const pill = (cls, label, dot, select) => `<label class="filter-pill${cls}">${dot}<span>${escSafe(label)}</span>
+      <svg class="pill-chev" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" d="m6.5 9.5 5.5 5.5 5.5-5.5"/></svg>${select}</label>`;
+  const days = `<select multiple aria-label="Days" data-finder-select="days">${DOW_FULL.map((n, i) =>
+    `<option value="${i}"${finderDays.has(i) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+  const times = `<select aria-label="Time" data-finder-select="time">${FINDER_TIMES.map(t =>
+    `<option value="${t.id}"${t.id === finderTime ? ' selected' : ''}>${escSafe(t.name === 'Any time' ? 'Any Time' : t.name + (t.id === 'evening' ? ' PM' : ''))}</option>`).join('')}</select>`;
+  const fields = `<select aria-label="Field" data-finder-select="field"><option value=""${!field ? ' selected' : ''}>All Fields</option>${FIELDS.map(f =>
+    `<option value="${f.id}"${field && f.id === field.id ? ' selected' : ''}>${escSafe(f.name)}</option>`).join('')}</select>`;
+  bar.innerHTML = pill(finderDays.size && finderDays.size < 7 ? ' on' : '', finderDaysLabel(), '', days)
+    + pill(finderTime !== 'any' ? ' on' : '', time.id === 'any' ? 'Any Time' : time.name + (time.id === 'evening' ? ' PM' : ''), '', times)
+    + pill(field ? ' on' : '', field ? (field.short || field.name) : 'All Fields',
+        field ? `<span class="fm-dot" style="--c:var(--field-${field.id})"></span>` : '', fields);
+}
+document.getElementById('finderBar').addEventListener('change', e => {
+  const sel = e.target.closest('[data-finder-select]');
+  if(!sel) return;
+  const kind = sel.dataset.finderSelect;
+  if(kind === 'days'){ finderDays = new Set([...sel.selectedOptions].map(o => Number(o.value))); }
+  else if(kind === 'time'){ finderTime = sel.value; }
+  else if(kind === 'field'){ openWeekField = sel.value || null; }
+  finderLimit = 40; haptic('selection'); renderOpenWeek();
+});
+function renderOpenWeekMobile(all, shown, usual){
+  el.openWeekCount.innerHTML = '';
+  el.finderUsualNote.textContent = '';
+  if(!all.length){
+    const where = openWeekField ? FIELD_MAP[openWeekField].name : 'any field';
+    el.openWeekResults.innerHTML = `<div class="bd-empty"><b>Nothing Open</b><br>Nothing at ${escSafe(where)} matches these days and times for the rest of the season. Try more days or another time.</div>`;
+    return;
+  }
+  const byDay = {};
+  shown.forEach(sl => { (byDay[sl.dateStr] = byDay[sl.dateStr] || []).push(sl); });
+  let html = usual ? `<p class="finder-note">Showing your team’s usual days and time.</p>` : '';
+  Object.keys(byDay).sort().forEach(dateStr => {
+    const slots = byDay[dateStr].sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.fieldName.localeCompare(b.fieldName) || a.sub.localeCompare(b.sub));
+    html += `<p class="ios-group-header fw-day"><span>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</span><span>${slots.length} open</span></p><div class="ios-group">`;
+    slots.forEach(sl => {
+      const payload = JSON.stringify({fieldId: sl.fieldId, date: dateStr, subfield: sl.sub, time: sl.time}).replace(/'/g, "&#39;");
+      const when = formatSlotTime(sl.time), f = FIELD_MAP[sl.fieldId];
+      html += `<div class="ios-row bd-row">
+        <span class="fw-dot" style="--c:var(--field-${sl.fieldId})" aria-hidden="true"></span>
+        <span class="bd-sub">${escSafe(when)}<small>${escSafe((f && (f.short || f.name)) || sl.fieldName)} · ${escSafe(sl.sub)}</small></span>
+        <button type="button" class="get-pill book-slot" data-book='${payload}' aria-label="Book ${escSafe(sl.fieldName)} ${escSafe(sl.sub)}, ${dowOfISO(dateStr)} ${fmtDateLong(dateStr)}, ${escSafe(when)}"><span class="plus">Book</span></button>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  if(all.length > shown.length) html += `<button type="button" class="ios-more" id="finderMoreBtn">Show ${Math.min(40, all.length - shown.length)} More</button>`;
+  el.openWeekResults.innerHTML = html;
 }
 el.openWeekFieldChips.addEventListener('click', e => {
   const chip = e.target.closest('.fchip'); if(!chip) return;
@@ -6685,9 +6780,11 @@ el.openWeekResults.addEventListener('click', async e => {
   if(clash && bookBtn.dataset.clashOk !== '1'){
     bookBtn.dataset.clashOk = '1';
     const where = FIELD_MAP[clash.field_id] ? FIELD_MAP[clash.field_id].name : clash.field_id;
-    flash('Heads up: this team already has ' + clash.time + ' at ' + where + ' that day. Tap Book again to add it anyway.', 'err');
+    flash('Your team already practices ' + formatSlotTime(clash.time) + ' at ' + where + ' that day. Tap Book again to add this one too.', 'warn');
     return;
   }
+  // The same two-step as Book (the App Store's GET, then Confirm).
+  if(bookBtn.classList.contains('get-pill') && !armTwoTap(bookBtn, '<span class="plus">Confirm</span>')) return;
   bookBtn.disabled = true;
   const { data: inserted, error } = await sb.from('bookings').insert({
     field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
@@ -6699,9 +6796,8 @@ el.openWeekResults.addEventListener('click', async e => {
     else flash(friendlyError(error, 'The practice wasn\'t booked.'), 'err');
   } else {
     const dow = DOW_FULL[parseISO(payload.date).getDay()];
-    flash('Booked ' + payload.time + ' on ' + fmtDateLong(payload.date) + '.', 'ok',
+    flash('Booked ' + formatSlotTime(payload.time) + ' on ' + fmtDateLong(payload.date) + '.', 'ok',
       { label: 'Repeat every ' + dow, onClick: () => repeatForSeason(payload, teamId) });
-    haptic('success');
   }
   await refreshBookings();
   renderOpenWeek();

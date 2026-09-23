@@ -1566,6 +1566,17 @@
     #hamburgerBtn:hover { background: var(--chip-bg); }
   }
 
+  /* ---- Book: choosing a field is the first step, and looks like one --- */
+  .fm-trigger.needs-choice {
+    background: color-mix(in srgb, var(--accent-fill) 16%, transparent); color: var(--accent-fill);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-fill) 35%, transparent);
+  }
+  .fm-trigger.needs-choice .fm-chev { color: var(--accent-fill); }
+  #fieldNote { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 4px; }
+  #fieldNote .field-note-text { margin: 0; font-size: var(--fs-sm); line-height: 1.45; color: var(--muted); }
+  #fieldNote .field-map-toggle { margin: 0; }
+  #fieldNote .field-map-box { align-self: stretch; }
+
   /* ---- Next Practice hero (ui/aurora.js) ---------------------------- */
   .next-card.hero {
     position: relative; overflow: hidden; isolation: isolate; border: none; color: #fff;
@@ -2264,7 +2275,15 @@ function getFavoriteField(){ try { return localStorage.getItem('seaford-fav-fiel
 function setFavoriteField(id){ try { id ? localStorage.setItem('seaford-fav-field', id) : localStorage.removeItem('seaford-fav-field'); } catch(e){} }
 function toggleFavoriteField(id){ setFavoriteField(getFavoriteField() === id ? null : id); }
 
-let selectedField = (getFavoriteField() && FIELD_MAP[getFavoriteField()]) ? getFavoriteField() : 'seamans';
+// JJ, 2026-09-22: preselecting Seamans Neck hid that four other fields exist.
+function defaultBookField(){
+  const fav = getFavoriteField();
+  if(fav && FIELD_MAP[fav]) return fav;
+  let last = null;
+  try { last = localStorage.getItem('seaford-last-field'); } catch(e){}
+  return (last && FIELD_MAP[last]) ? last : null;
+}
+let selectedField = defaultBookField();
 let currentWeekMonday = mondayOf(SEASON_START);
 let bookViewMode = 'month'; // 'week' | 'month' | 'season'
 let currentMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
@@ -3354,7 +3373,7 @@ async function loadProfileAndStartInner(){
     // team just duplicated that tab and made this one's name untrue.
     scheduleGender = myProfile.gender;
     scheduleGrade = null;
-    selectedField = 'seamans';
+    selectedField = defaultBookField();
   } else if(myProfile.role === 'director'){
     scheduleGender = myProfile.gender;
   } else {
@@ -4746,10 +4765,11 @@ function fieldColor(id){
 const FM_CHEV = '<svg class="fm-chev" viewBox="0 0 12 12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m2.5 4.5 3.5 3.5 3.5-3.5"/></svg>';
 function fieldMenuTrigger(key, id){
   const f = id && id !== 'all' ? FIELD_MAP[id] : null;
+  const choose = !f && key === 'book';
   const dot = f ? `<span class="fm-dot" style="--c:var(--field-${f.id})"></span>`
                 : '<span class="fm-dot fm-dot-all" aria-hidden="true"><i></i><i></i><i></i></span>';
-  const label = f ? f.name : 'All fields';
-  return `<button type="button" class="fm-trigger" data-field-menu="${key}" aria-haspopup="listbox" aria-expanded="false">${dot}<span class="fm-label">${escSafe(label)}</span>${FM_CHEV}</button>`;
+  const label = f ? f.name : choose ? 'Choose a field' : 'All fields';
+  return `<button type="button" class="fm-trigger${choose ? ' needs-choice' : ''}" data-field-menu="${key}" aria-haspopup="listbox" aria-expanded="false">${dot}<span class="fm-label">${escSafe(label)}</span>${FM_CHEV}</button>`;
 }
 // What each field is, in the fewest words: how many sub-fields and which days.
 function fieldDetail(f){
@@ -4778,7 +4798,7 @@ function fieldDirectionsUrl(f){
 function fieldNoteHTML(f){
   if(!f) return '';
   const q = fieldMapQuery(f);
-  return `${f.note ? escSafe(f.note) : ''}
+  return `${f.note ? `<p class="field-note-text">${escSafe(f.note)}</p>` : ''}
     <button class="field-map-toggle" data-mapfor="${f.id}" type="button"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Map</button>
     <div class="field-map-box" id="mapbox-${f.id}" style="display:none">
       <a class="field-map-directions" href="${fieldDirectionsUrl(f)}" target="_blank" rel="noopener">Get directions</a>
@@ -4797,10 +4817,24 @@ document.addEventListener('click', e => {
 
 function buildFieldChips(){
   el.fieldChips.innerHTML = fieldMenuTrigger('book', selectedField);
-  el.fieldNote.innerHTML = fieldNoteHTML(FIELD_MAP[selectedField]);
+  el.fieldNote.innerHTML = selectedField
+    ? fieldNoteHTML(FIELD_MAP[selectedField])
+    : `<p class="field-note-text">${FIELDS.length} fields, each with its own days and times. Pick one to see what is open.</p>`;
+  const hasField = !!selectedField;
+  const showLabel = el.bookModeToggle && el.bookModeToggle.previousElementSibling;
+  if(el.bookModeToggle) el.bookModeToggle.style.display = hasField ? '' : 'none';
+  if(showLabel && showLabel.classList.contains('section-label')) showLabel.style.display = hasField ? '' : 'none';
+  if(!hasField){
+    el.calendarSection.style.display = 'none';
+    el.recurringCard.style.display = 'none';
+  } else {
+    // It was measured while hidden (width 0); measure again now it's visible.
+    requestAnimationFrame(() => positionModeThumb(el.bookModeToggle));
+  }
 }
 function selectBookField(id){
   selectedField = id;
+  try { localStorage.setItem('seaford-last-field', id); } catch(e){}
   buildFieldChips();
   recurringSelectedDays.clear();
   buildRecurringUI();
@@ -4947,6 +4981,7 @@ function renderBookMonthGridMobile(monthFirst){
 }
 
 function renderWeek(){
+  if(!selectedField){ buildFieldChips(); return; }
   if(bookViewMode === 'season'){
     el.calendarSection.style.display = 'none';
     el.recurringCard.style.display = 'block';
@@ -5047,6 +5082,7 @@ function pairsForDay(field, dayNum){
 
 function buildRecurringUI(){
   const field = FIELD_MAP[selectedField];
+  if(!field) return;
   el.recurringFieldName.textContent = field.name;
   el.recurringDays.innerHTML = '';
   for(let d=0; d<7; d++){
@@ -5070,6 +5106,7 @@ el.recurringDays.addEventListener('click', e => {
 
 function updateRecurringSlotOptions(){
   const field = FIELD_MAP[selectedField];
+  if(!field) return;
   const days = [...recurringSelectedDays];
   el.recurringResults.innerHTML = '';
   if(!days.length){

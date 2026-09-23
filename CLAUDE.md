@@ -131,6 +131,12 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
   `armTwoTap` survives only on booking a slot, which has Undo
 - Phones have **no footer**: Appearance, Privacy, Support live in the menu
 - The tab bar's shape, order and labels are JJ's — do not change them
+- **Book never preselects a field** (JJ, 2026-09-22): only a starred favourite
+  or the last field chosen; otherwise the menu reads "Choose a field", because a
+  silent default hid that four other fields exist
+- **App icon is the full crest with its wordmark, on white** (JJ's call over a
+  helmet-only crop). No dark or tinted variants: it shows as-is everywhere.
+  Web home-screen icons (`apple-touch-icon`, `icon-*.png`) use the same art
 
 ## Verifying — do this instead of grepping
 Three separate times a source grep said "clean" and the running page disagreed:

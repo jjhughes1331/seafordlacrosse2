@@ -1819,6 +1819,88 @@
   .acct-about { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0 12px;
     color: var(--muted); font-size: var(--ios-foot); }
   .acct-about img { height: 44px; width: auto; opacity: .9; }
+
+  /* ---- Segmented controls: iOS proportions on a phone ---------------- */
+  @media (max-width: 700px) {
+    .mode-toggle, .gender-tabs { width: auto; display: flex; padding: 2px; }
+    .mode-toggle .mtab, .gender-tabs .gtab { flex: 1 1 0; min-height: 32px; padding: 4px 8px;
+      font-size: var(--ios-foot); font-weight: 500; position: relative; }
+    .mode-toggle .mtab.active, .gender-tabs .gtab.active { font-weight: 600; }
+    /* 32pt to look at, 44pt to hit: the overlay carries the target. */
+    .mode-toggle .mtab::before, .gender-tabs .gtab::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; }
+    .mode-toggle-thumb { top: 2px; left: 2px; height: calc(100% - 4px); }
+    #scheduleModeToggle { margin: 16px 16px 0; }
+    #viewBook .mode-toggle { margin: 4px 0 18px; }
+    /* Book reads top to bottom as a sentence, not a form: no field labels. */
+    #viewBook > .section-label { display: none; }
+    #viewBook .fm-trigger { margin-top: 2px; }
+  }
+
+  /* ---- Week / month header: Calendar's (title left, chevrons right) --- */
+  @media (max-width: 700px) {
+    #viewBook .weeknav { margin: 0 0 6px; padding: 0; gap: 0; }
+    #viewBook .weeknav .label { order: -1; flex: 1; text-align: left; font-size: var(--ios-title3); font-weight: 700;
+      letter-spacing: -.3px; color: var(--ink); }
+    #viewBook .weeknav button { width: 44px; min-width: 44px; padding: 0; font-size: 0; color: var(--tint); }
+    #viewBook .weeknav button::after { content: ''; width: 11px; height: 11px; border: solid currentColor;
+      border-width: 0 0 2.6px 2.6px; border-radius: 1.5px; transform: rotate(45deg); margin-left: 4px; }
+    #viewBook .weeknav button:last-child::after { transform: rotate(-135deg); margin: 0 4px 0 0; }
+    #viewBook .weeknav button:disabled { color: var(--silver-deep); opacity: .5; }
+  }
+
+  /* ---- Book: week strip ------------------------------------------------ */
+  .wk-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin: 2px -4px 14px; }
+  .wk-day { display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 64px; padding: 4px 0 6px;
+    border: none; background: none; border-radius: 14px; color: var(--ink); font: inherit; cursor: pointer; }
+  .wk-dow { font-size: var(--ios-cap); font-weight: 600; color: var(--muted); letter-spacing: .2px; }
+  .wk-num { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: var(--ios-body); font-weight: 500; font-variant-numeric: tabular-nums; transition: background-color .15s; }
+  .wk-day.today .wk-num { color: var(--danger); font-weight: 600; }
+  .wk-day.sel .wk-num { background: var(--ink); color: var(--chalk); font-weight: 600; }
+  .wk-day.sel.today .wk-num { background: var(--danger); color: #fff; }
+  .wk-day.closed { cursor: default; }
+  .wk-day.closed .wk-num { color: var(--silver-deep); }
+  .wk-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .wk-dot.open { background: var(--tint); }
+  .wk-dot.mine { background: var(--mine); }
+  .wk-day:active:not(.closed) .wk-num { background: var(--chip-bg); }
+  .wk-day.sel:active .wk-num { background: var(--ink); }
+
+  /* ---- Book: one day as a grouped list ------------------------------- */
+  .bd-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 4px 14px; }
+  .bd-head h3 { font-size: var(--ios-title3); font-weight: 700; letter-spacing: -.3px; color: var(--ink); }
+  .bd-empty { color: var(--muted); font-size: var(--ios-sub); text-align: center; padding: 28px 12px; }
+  #weekGrid .ios-group-header { font-variant-numeric: tabular-nums; }
+  .bd-row { cursor: default; }
+  .bd-row:active { background: none; }
+  .bd-sub { display: flex; flex-direction: column; min-width: 0; font-size: var(--ios-body); color: var(--ink); }
+  .bd-sub small { font-size: var(--ios-sub); color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bd-row.past { opacity: .5; }
+  .bd-row.mine { background: var(--mine-bg); }
+  .bd-row.mine .bd-sub small { color: color-mix(in srgb, var(--mine) 55%, var(--ink)); font-weight: 600; }
+  .bd-yours { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: color-mix(in srgb, var(--mine) 60%, var(--ink));
+    font-size: var(--ios-sub); font-weight: 600; }
+  .bd-yours svg { width: 15px; height: 15px; }
+  .bd-x { flex: none; width: 44px; height: 44px; margin: -10px -12px -10px -6px; border: none; background: none; color: var(--silver-deep);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .bd-x svg { width: 22px; height: 22px; }
+  .bd-row.just-booked { animation: justBooked 1.3s ease-out; }
+  @keyframes justBooked { 0% { background: color-mix(in srgb, var(--mine) 45%, var(--cell-bg)); } 100% { background: var(--mine-bg); } }
+
+  /* The App Store's GET pill: a tinted capsule, bold label, 44pt target. */
+  .get-pill, #weekGrid .get-pill { flex: none; position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    min-width: 76px; min-height: 30px; padding: 0 16px; margin: 0; border: none; border-radius: 999px;
+    background: color-mix(in srgb, var(--tint) 14%, transparent); color: var(--tint);
+    font: inherit; font-size: var(--ios-sub); font-weight: 700; letter-spacing: -.1px; cursor: pointer; }
+  .get-pill::before { content: ''; position: absolute; inset: -7px -4px; }
+  .get-pill .plus { color: inherit; font-weight: 700; }
+  .get-pill svg { width: 13px; height: 13px; }
+  .get-pill.quiet, #weekGrid .get-pill.quiet { background: var(--chip-bg); color: var(--ink); font-weight: 600; }
+  .get-pill.on, #weekGrid .get-pill.on { background: var(--mine-bg); color: color-mix(in srgb, var(--mine) 60%, var(--ink)); }
+  .get-pill:active { opacity: .6; }
+  #weekGrid .get-pill.armed { background: var(--tint) !important; color: var(--on-accent); padding-right: 30px !important; }
+  #weekGrid .get-pill.armed .plus { color: var(--on-accent); }
+  @media (prefers-reduced-motion: reduce) { .bd-row.just-booked { animation: none; } }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -5558,12 +5640,115 @@ function renderWeek(){
     const sunday = addDays(monday, 6);
     el.weekNavBar.style.display = 'flex';
     el.monthNavBar.style.display = 'none';
-    el.weekLabel.textContent = `${MONTHS[monday.getMonth()]} ${monday.getDate()} - ${MONTHS[sunday.getMonth()]} ${sunday.getDate()}, 2027`;
+    el.weekLabel.textContent = monday.getMonth() === sunday.getMonth()
+      ? `${MONTHS[monday.getMonth()]} ${monday.getDate()}\u2013${sunday.getDate()}, ${sunday.getFullYear()}`
+      : `${MONTHS[monday.getMonth()].slice(0,3)} ${monday.getDate()} \u2013 ${MONTHS[sunday.getMonth()].slice(0,3)} ${sunday.getDate()}, ${sunday.getFullYear()}`;
     el.prevWeek.disabled = addDays(monday, -7) < mondayOf(SEASON_START);
     el.nextWeek.disabled = addDays(monday, 7) > SEASON_END;
-    renderBookRange(monday, sunday, false);
+    if(isMobileViewport()) renderBookDayMobile(monday);
+    else renderBookRange(monday, sunday, false);
   }
 }
+
+// ---- Book on a phone: Calendar's grammar -----------------------------
+// A week strip, then ONE day as a grouped list: a section per time, a row
+// per field, and the App Store's GET pill as the action. The old view
+// stacked seven days of chips three containers deep; nothing lined up and
+// "Book" appeared forty times on one screen.
+let bookSelectedDate = null;   // ISO date the strip has selected
+const XMARK_CIRCLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm3.54 12.13a1 1 0 0 1-1.41 1.41L12 13.41l-2.13 2.13a1 1 0 0 1-1.41-1.41L10.59 12 8.46 9.87a1 1 0 0 1 1.41-1.41L12 10.59l2.13-2.13a1 1 0 0 1 1.41 1.41L13.41 12l2.13 2.13Z"/></svg>';
+const CHECK_SMALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m5.5 12.5 4.2 4.2L18.5 7.8"/></svg>';
+function bookDayCounts(field, dateStr, myTeamId){
+  const avail = field.availability.find(a => a.days.includes(parseISO(dateStr).getDay()));
+  if(!avail) return null;
+  let open = 0, mine = 0;
+  avail.times.forEach(time => avail.subfields.forEach(sub => {
+    const b = bookingsCache.find(x => x.field_id === field.id && x.date === dateStr && x.subfield === sub && x.time === time);
+    if(!b) open++; else if(myTeamId && b.team_id === myTeamId) mine++;
+  }));
+  return { open, mine };
+}
+function renderBookDayMobile(monday){
+  const field = FIELD_MAP[selectedField];
+  const myTeamId = myBookingTeamId();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [...Array(7)].map((_, i) => addDays(monday, i));
+  const isOpenDay = d => d >= SEASON_START && d <= SEASON_END && field.availability.some(a => a.days.includes(d.getDay()));
+  let sel = bookSelectedDate ? parseISO(bookSelectedDate) : null;
+  if(!sel || sel < monday || sel > days[6] || !isOpenDay(sel))
+    sel = days.find(d => isOpenDay(d) && d >= today) || days.find(isOpenDay) || null;
+  bookSelectedDate = sel ? fmtDateISO(sel) : null;
+
+  let html = '<div class="wk-strip" role="tablist" aria-label="Days this week">';
+  days.forEach(d => {
+    const iso = fmtDateISO(d);
+    const c = isOpenDay(d) ? bookDayCounts(field, iso, myTeamId) : null;
+    const on = iso === bookSelectedDate, past = d < today;
+    const dot = !c ? '' : c.mine ? 'mine' : (c.open && !past) ? 'open' : '';
+    const said = !c ? 'closed' : past ? 'past' : c.mine ? `${c.mine} yours` : c.open ? `${c.open} open` : 'full';
+    html += `<button type="button" role="tab" class="wk-day${on ? ' sel' : ''}${+d === +today ? ' today' : ''}${!c ? ' closed' : ''}"
+      aria-selected="${on}" aria-label="${DOW_FULL[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${said}"
+      ${c ? `data-bookday="${iso}"` : 'disabled'}><span class="wk-dow" aria-hidden="true">${'SMTWTFS'[d.getDay()]}</span>
+      <span class="wk-num" aria-hidden="true">${d.getDate()}</span><span class="wk-dot ${dot}" aria-hidden="true"></span></button>`;
+  });
+  html += '</div>';
+
+  if(!sel){
+    el.weekGrid.innerHTML = html + `<p class="bd-empty">${escSafe(field.name)} has no practice times this week.</p>`;
+    return;
+  }
+  const dateStr = bookSelectedDate, dow = sel.getDay(), isPast = sel < today;
+  const avail = field.availability.find(a => a.days.includes(dow));
+  html += `<div class="bd-head"><h3>${DOW_FULL[dow]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}</h3>${weatherBadge(dateStr)}</div>`;
+  avail.times.forEach(time => {
+    const when = formatSlotTime(time);
+    html += `<p class="ios-group-header">${escSafe(when)}</p><div class="ios-group bd-group">`;
+    avail.subfields.forEach(sub => {
+      const fid = escSafe(slotFlipId(selectedField, dateStr, sub, time));
+      const existing = bookingsCache.find(b => b.field_id === selectedField && b.date === dateStr && b.subfield === sub && b.time === time);
+      if(existing){
+        const isMine = existing.team_id === myTeamId;
+        const key = teamKeyFor(existing.team_id);
+        const teamText = key ? teamLabel(...key.split('|')) : 'Another team';
+        if(isMine){
+          html += `<div class="ios-row bd-row mine" data-flip-id="${fid}">
+            <span class="bd-sub">${escSafe(sub)}<small>${escSafe(teamText)}</small></span>
+            <span class="bd-yours">${CHECK_SMALL}Yours</span>
+            ${isPast ? '' : `<button type="button" class="bd-x" data-cancel="${existing.id}" aria-label="Cancel ${escSafe(sub)}, ${escSafe(when)}">${XMARK_CIRCLE}</button>`}
+          </div>`;
+        } else {
+          let wait = '';
+          if(!isPast && myTeamId){
+            const waiters = waitlistCache.filter(w => w.field_id === selectedField && w.date === dateStr && w.subfield === sub && w.time === time);
+            const mineW = waiters.find(w => w.team_id === myTeamId);
+            wait = mineW
+              ? `<button type="button" class="get-pill on" data-leavewait="${mineW.id}" aria-label="On the waitlist for ${escSafe(sub)}. Leave the waitlist">${CHECK_SMALL}Waitlist</button>`
+              : `<button type="button" class="get-pill quiet" data-joinwait='${JSON.stringify({fieldId:selectedField,date:dateStr,subfield:sub,time}).replace(/'/g,"&#39;")}' aria-label="Join the waitlist for ${escSafe(sub)}, ${escSafe(when)}">Waitlist</button>`;
+          }
+          html += `<div class="ios-row bd-row taken" data-flip-id="${fid}">
+            <span class="bd-sub">${escSafe(sub)}<small>${escSafe(teamText)}</small></span>${wait}</div>`;
+        }
+      } else if(isPast){
+        html += `<div class="ios-row bd-row past"><span class="bd-sub">${escSafe(sub)}<small>Not booked</small></span></div>`;
+      } else {
+        const payload = JSON.stringify({fieldId:selectedField, date:dateStr, subfield:sub, time}).replace(/'/g,"&#39;");
+        html += `<div class="ios-row bd-row open" data-flip-id="${fid}">
+          <span class="bd-sub">${escSafe(sub)}<small>Open</small></span>
+          <button type="button" class="get-pill book-slot" data-book='${payload}' aria-label="Book ${escSafe(sub)}, ${escSafe(when)}"><span class="plus">Book</span></button>
+        </div>`;
+      }
+    });
+    html += '</div>';
+  });
+  el.weekGrid.innerHTML = html;
+}
+el.weekGrid.addEventListener('click', e => {
+  const day = e.target.closest('[data-bookday]');
+  if(!day) return;
+  bookSelectedDate = day.dataset.bookday;
+  haptic('selection');
+  renderWeek();
+});
 
 function renderBookRange(rangeStart, rangeEnd, isMonthMode){
   const field = FIELD_MAP[selectedField];
@@ -5756,6 +5941,7 @@ el.weekGrid.addEventListener('click', async e => {
     document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
     positionModeThumb(el.bookModeToggle);
     currentWeekMonday = mondayOf(parseISO(jumpBtn.dataset.jumpdate));
+    bookSelectedDate = jumpBtn.dataset.jumpdate;
     haptic('selection');
     renderWeek();
     return;
@@ -5795,14 +5981,14 @@ el.weekGrid.addEventListener('click', async e => {
   if(bookBtn){
     const teamId = myBookingTeamId();
     if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
-    if(!armTwoTap(bookBtn, '<span class="plus">Tap again to book</span>')) return;
+    if(!armTwoTap(bookBtn, bookBtn.classList.contains('get-pill') ? '<span class="plus">Confirm</span>' : '<span class="plus">Tap again to book</span>')) return;
     const payload = JSON.parse(bookBtn.dataset.book);
     bookBtn.disabled = true;
     const { data: inserted, error } = await sb.from('bookings').insert({
       field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
       time: payload.time, team_id: teamId, booked_by: session.user.id,
     }).select().single();
-    let flipState = null, burstAt = null;
+    let flipState = null, burstAt = null, justBookedId = null;
     if(error){
       if(error.code === '23505') flash('Another coach just booked that time. Pick another slot.', 'warn');
       else if(error.code === '42501') flash('Your team can\'t book this slot yet. Earlier grades are still choosing.', 'warn');
@@ -5811,7 +5997,9 @@ el.weekGrid.addEventListener('click', async e => {
       flashBooked(payload, inserted?.id);
       // Capture the "+ Book" chip's geometry now; after the re-render, Flip
       // morphs it into its booked self instead of the chip just blinking.
-      if(window.Flip && motionOK() && bookBtn.isConnected) flipState = Flip.getState(bookBtn);
+      const onBoard = bookBtn.classList.contains('get-pill');
+      if(window.Flip && motionOK() && bookBtn.isConnected && !onBoard) flipState = Flip.getState(bookBtn);
+      else if(onBoard) justBookedId = slotFlipId(payload.fieldId, payload.date, payload.subfield, payload.time);
       const r = bookBtn.getBoundingClientRect();
       burstAt = { x: r.left + r.width / 2, y: r.top + r.height / 2, fieldId: payload.fieldId };
     }
@@ -5822,6 +6010,11 @@ el.weekGrid.addEventListener('click', async e => {
       const fresh = el.weekGrid.querySelector(`[data-flip-id="${id.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"]`);
       if(fresh) Flip.from(flipState, { targets: fresh, duration: .45, ease: 'power2.inOut', scale: true,
         onComplete: () => gsap.fromTo(fresh, { scale: .94 }, { scale: 1, duration: .55, ease: 'elastic.out(1, .5)', clearProps: 'transform' }) });
+    }
+    if(justBookedId){
+      // The row turns into yours where it stood: a gold wash that settles.
+      const row = [...el.weekGrid.querySelectorAll('[data-flip-id]')].find(n => n.dataset.flipId === justBookedId);
+      if(row){ row.classList.add('just-booked'); setTimeout(() => row.classList.remove('just-booked'), 1400); }
     }
     if(burstAt) landed(burstAt.x, burstAt.y, burstAt.fieldId);
   } else if(cancelBtn){

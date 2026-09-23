@@ -2082,6 +2082,32 @@
   /* The compact title is centred between equal insets (the left padding
      cleared a hamburger that's gone; the bar buttons are on the right). */
   @media (max-width: 560px) { .header-hero { padding: 0 112px; } }
+
+  /* ---- Month agenda: one grouped list, not cards in a card ------------- */
+  @media (max-width: 700px) {
+    .cal-agenda { background: none; border: none; box-shadow: none; padding: 0; margin-top: 24px; }
+    .cal-agenda-date { position: static; background: none; padding: 0 4px; margin-bottom: 8px; font-size: var(--ios-title3); font-weight: 700; color: var(--ink); }
+    .cal-agenda > .cal-item, .cal-agenda > .cal-swipe { margin: 0; border-radius: 0; }
+    .cal-agenda > .cal-item, .cal-agenda > .cal-swipe > .cal-item {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline;
+      min-height: var(--row-min); padding: 12px 16px 12px 30px; border: none; border-radius: 0;
+      background: linear-gradient(var(--c), var(--c)) 16px 12px / 4px calc(100% - 24px) no-repeat, var(--cell-bg); }
+    .cal-agenda .cal-item.mine { background: linear-gradient(var(--mine), var(--mine)) 16px 12px / 4px calc(100% - 24px) no-repeat, var(--mine-bg); }
+    .cal-agenda .cal-item::before { content: none !important; }
+    .cal-agenda > .cal-agenda-date + * { border-top-left-radius: var(--group-radius); border-top-right-radius: var(--group-radius); overflow: hidden; }
+    .cal-agenda > :last-child { border-bottom-left-radius: var(--group-radius); border-bottom-right-radius: var(--group-radius); overflow: hidden; }
+    .cal-agenda > .cal-item + .cal-item::after, .cal-agenda > .cal-item + .cal-swipe > .cal-item::after,
+    .cal-agenda > .cal-swipe + .cal-item::after, .cal-agenda > .cal-swipe + .cal-swipe > .cal-item::after {
+      content: ''; position: absolute; top: 0; left: 30px; right: 0; height: .5px; background: var(--sep); }
+    .cal-agenda .cal-item-cancel { width: 44px; height: 44px; margin: -12px -12px -12px 0; align-self: center; border: none; background: none;
+      color: var(--silver-deep); display: flex; align-items: center; justify-content: center; font-size: 0; }
+    .cal-agenda .cal-item-cancel svg { width: 22px; height: 22px; }
+    .cal-agenda .cal-time { font-size: var(--ios-sub); font-weight: 600; }
+    .cal-agenda .cal-team { font-size: var(--ios-body); font-weight: 600; }
+    .cal-agenda .cal-where { font-size: var(--ios-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cal-agenda > span, .cal-agenda .cal-item > span:nth-child(2) { min-width: 0; }
+    .cal-agenda .cal-empty { background: var(--cell-bg); border-radius: var(--group-radius); padding: 18px 20px; color: var(--muted); }
+  }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -5862,7 +5888,8 @@ function renderBookMonthGridMobile(monthFirst){
   const first = firstDayOfMonth(monthFirst);
   const last = lastDayOfMonth(monthFirst);
   let html = '<div class="book-month-grid">';
-  DOW_SHORT.forEach(d => html += `<div class="book-month-dow">${d}</div>`);
+  // One letter, as Calendar labels its week (and as the week strip does).
+  DOW_SHORT.forEach(d => html += `<div class="book-month-dow" aria-hidden="true">${d.slice(0,1)}</div>`);
   for(let i=0;i<first.getDay();i++) html += '<div class="book-month-cell pad"></div>';
   let cursor = new Date(first);
   while(cursor <= last){
@@ -6416,7 +6443,7 @@ function renderMonthCalendar(which, host){
     // You could only ever cancel a practice from the Book tab's week grid, via a
     // small x inside a chip — even though this agenda is where a coach actually
     // looks at their own schedule. Your own team's rows are cancellable here now.
-    const cancel = canCancel ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">&times;</button>` : '';
+    const cancel = canCancel ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">${XMARK_CIRCLE}</button>` : '';
     const row = `<div class="cal-item${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})"${canCancel ? ' data-swipe' : ''}><span class="cal-time">${escSafe(formatSlotTime(b.time))}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
     // Swipe-left-to-delete is what a phone user reaches for on a list row, but
     // it is invisible and unavailable to a mouse or a screen reader, so the x
@@ -6432,7 +6459,7 @@ function renderMonthCalendar(which, host){
       <button type="button" class="cal-nav" data-cal="next" data-ctx="${which}" ${addMonths(st.monthFirst, 1) > SEASON_END ? 'disabled' : ''} aria-label="Next month">&rsaquo;</button>
     </div>
     <div class="cal-filter">${chips}</div>
-    <div class="cal-weekdays">${DOW_SHORT.map(d => `<span>${d.slice(0,2)}</span>`).join('')}</div>
+    <div class="cal-weekdays">${DOW_SHORT.map(d => `<span aria-hidden="true">${d.slice(0,1)}</span>`).join('')}</div>
     <div class="cal-days">${cells}</div>
     <div class="cal-agenda">
       <div class="cal-agenda-date">${DOW_FULL[sel.getDay()]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}${weatherBadge(st.selected)}</div>

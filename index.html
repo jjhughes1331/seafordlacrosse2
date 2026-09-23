@@ -668,7 +668,7 @@
   .rows { display: grid; gap: 7px; }
   .row { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px 12px; box-shadow: var(--shadow-card); display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: start; }
   .row .date { font-weight: 600; font-size: var(--fs-sm); color: var(--ink); }
-  .row .date .dow { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .row .date .dow { display: block; font-size: .706rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
   .slots { display: flex; flex-wrap: wrap; gap: 10px; }
   .slot-bands { display: flex; flex-direction: column; gap: 14px; }
   .slot-band-label { display: block; font-size: var(--fs-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
@@ -1477,8 +1477,8 @@
   /* ---- Calendar v2: Apple-Calendar-style cells ---------------------- */
   .cal-events { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 0 3px; margin-top: 2px; min-height: 30px; }
   .cal-ev {
-    display: flex; align-items: center; gap: 3px; height: 13px; overflow: hidden;
-    font-size: 9.5px; font-weight: 600; line-height: 1; letter-spacing: -.1px;
+    display: flex; align-items: center; gap: 3px; height: 14px; overflow: hidden;
+    font-size: 11px; font-weight: 600; line-height: 1; letter-spacing: -.2px; /* Caption 2, the HIG floor (was 9.5px) */
     /* The hue is right for the bar but too pale for text on white; mixing it
        toward --ink darkens it in light mode and brightens it in dark. */
     color: color-mix(in srgb, var(--c) 62%, var(--ink));
@@ -1487,7 +1487,7 @@
   .cal-ev::before { content: ''; width: 2.5px; height: 10px; border-radius: 2px; background: var(--c); flex: none; }
   .cal-ev.mine { color: var(--ink); }
   .cal-ev.mine::before { background: var(--mine); width: 3px; }
-  .cal-more { font-size: 9px; font-weight: 600; color: var(--muted); padding-left: 5px; height: 11px; line-height: 11px; }
+  .cal-more { font-size: 11px; font-weight: 600; color: var(--muted); padding-left: 5px; height: 13px; line-height: 13px; }
   .cal-day.selected .cal-ev, .cal-day.selected .cal-more { opacity: .95; }
   .cal-item { position: relative; }
   .cal-item::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--c, transparent); }
@@ -1561,7 +1561,7 @@
   .book-month-daynum { font-size: var(--fs-md); font-weight: 400; letter-spacing: -.3px; }
   .book-month-cell.selected { box-shadow: none; background: var(--chip-bg); }
   .book-month-cell.selected .book-month-daynum { font-weight: 700; }
-  .book-month-badge { font-size: 10px; font-weight: 600; padding: 0; background: none !important; letter-spacing: -.1px; font-variant-numeric: tabular-nums; }
+  .book-month-badge { font-size: 11px; font-weight: 600; padding: 0; background: none !important; letter-spacing: -.2px; font-variant-numeric: tabular-nums; }
   .book-month-badge.open { color: var(--accent-fill); }
   .book-month-badge.full { color: var(--muted); } /* full is a fact, not an error */
   .book-month-badge.mine { color: var(--mine); }
@@ -2078,6 +2078,10 @@
   .auth-foot { font-size: var(--ios-foot); color: var(--muted); margin: 26px 12px 0; line-height: 1.4; }
   .auth-links { margin-top: 10px; }
   .auth-links a { color: var(--tint); text-decoration: none; }
+
+  /* The compact title is centred between equal insets (the left padding
+     cleared a hamburger that's gone; the bar buttons are on the right). */
+  @media (max-width: 560px) { .header-hero { padding: 0 112px; } }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2343,7 +2347,6 @@
     </div>
   </div>
 </div>
-<div id="pullRefreshIndicator" class="pull-refresh-indicator"><div class="spinner" id="pullRefreshSpinner"></div></div>
 <header>
   <div class="header-hero">
     <div class="header-text">
@@ -2755,6 +2758,9 @@ const DOW_FULL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","S
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SEASON_START = new Date(2027, 2, 1);
 const SEASON_END = new Date(2027, 5, 30);
+// Today, held inside the season: every calendar opens here. They all opened
+// on March, so in May a coach paged forward twice to find this week.
+const SEASON_TODAY = (() => { const t = new Date(); t.setHours(0,0,0,0); return t < SEASON_START ? new Date(SEASON_START) : t > SEASON_END ? new Date(SEASON_END) : t; })();
 
 // Alphabetical by display name, and names are consistently "Seaford <X>" /
 // full proper names throughout — no more mixing "Harbor" with "Seaford HS"
@@ -2828,9 +2834,9 @@ function defaultBookField(){
   return (last && FIELD_MAP[last]) ? last : null;
 }
 let selectedField = defaultBookField();
-let currentWeekMonday = mondayOf(SEASON_START);
+let currentWeekMonday = mondayOf(SEASON_TODAY);
 let bookViewMode = 'month'; // 'week' | 'month' | 'season'
-let currentMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
+let currentMonthFirst = new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1);
 
 // ============ ELEMENTS ============
 const el = {
@@ -3175,57 +3181,15 @@ document.getElementById('accountSheet').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAccountSheet(); });
 
-// ============ PULL-TO-REFRESH ============
-// Realtime already keeps bookings/waitlist/lock state live, so this is mostly
-// the expected native gesture rather than a functional necessity — but every
-// major mobile app supports it, and its absence reads as "just a website."
-(function(){
-  const indicator = document.getElementById('pullRefreshIndicator');
-  if(!indicator) return;
-  const THRESHOLD = 70;
-  let startY = null, pulling = false, refreshing = false;
-
-  document.addEventListener('touchstart', e => {
-    if(refreshing || window.scrollY > 0 || !myProfile) return;
-    startY = e.touches[0].clientY;
-    pulling = true;
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if(!pulling || startY == null) return;
-    const delta = e.touches[0].clientY - startY;
-    if(delta <= 0) return;
-    const dist = Math.min(delta * 0.45, 70);
-    indicator.style.transition = 'none';
-    indicator.style.transform = `translate(-50%, ${dist - 60}px)`;
-    indicator.style.opacity = String(Math.min(dist / 40, 1));
-    indicator.classList.toggle('ready', delta * 0.45 >= THRESHOLD);
-  }, { passive: true });
-
-  document.addEventListener('touchend', async () => {
-    if(!pulling) return;
-    pulling = false;
-    const wasReady = indicator.classList.contains('ready');
-    indicator.style.transition = '';
-    indicator.classList.remove('ready');
-    if(wasReady && !refreshing){
-      refreshing = true;
-      indicator.classList.add('refreshing');
-      indicator.style.transform = 'translate(-50%, 14px)';
-      indicator.style.opacity = '1';
-      haptic('light');
-      try { await Promise.all([refreshBookings(), refreshWaitlist(), refreshLockState()]); rerenderCurrentView(); } catch(err) {}
-      indicator.classList.remove('refreshing');
-      indicator.style.transform = '';
-      indicator.style.opacity = '';
-      refreshing = false;
-    } else {
-      indicator.style.transform = '';
-      indicator.style.opacity = '';
-    }
-    startY = null;
-  }, { passive: true });
-})();
+// ============ REFRESH ============
+// One refresh, whoever asks: the app's native UIRefreshControl calls it
+// (MainViewController), Safari's pull-to-refresh below calls it. There were
+// two JS versions racing, and one repainted Schedule whatever tab was open.
+window.appRefresh = async function(){
+  if(!myProfile) return;
+  await Promise.all([refreshBookings(), refreshWaitlist(), refreshLockState()]);
+  rerenderCurrentView();
+};
 
 // ============ THEME TOGGLE (light / dark / match system) ============
 (function(){
@@ -3684,6 +3648,8 @@ function positionModeThumb(container){
 // Pull to refresh. Every iPhone user tries it on a schedule; doing nothing
 // made live sync feel like luck. Only fires from a genuine top-of-page pull.
 (function(){
+  // In the app, iOS's own refresh control owns this gesture.
+  if(window.__IS_NATIVE_APP) return;
   let startY = null, pulling = false, fired = false;
   const el2 = () => document.getElementById('ptr');
   addEventListener('touchstart', e => {
@@ -3700,12 +3666,7 @@ function positionModeThumb(container){
     if(!pulling || !node || !node.classList.contains('on')){ startY = null; return; }
     fired = true; startY = null; pulling = false;
     haptic('light');
-    try {
-      await refreshBookings();
-      await refreshWaitlist();
-      await refreshLockState();
-      renderScheduleMode();
-    } catch(e){ /* refreshBookings already surfaces its own failure */ }
+    try { await window.appRefresh(); } catch(e){ /* refreshBookings already surfaces its own failure */ }
     node.classList.remove('on');
   }, { passive: true });
 })();
@@ -4637,7 +4598,9 @@ function switchView(view){
   // Only choreograph an entrance when the view actually changed. Re-entering
   // the same view (returning to the tab, a realtime re-render) must not
   // replay the slide — that reads as a glitch, not a transition.
-  if(activeContainer && view !== prevView){
+  // On a phone a tab appears at once, as iOS tab bars do: the slide and the
+  // card stagger took close to a second on every tap. Desktop keeps it.
+  if(activeContainer && view !== prevView && !isMobileViewport()){
     // Hide for one frame so the freshly rendered content doesn't flash before
     // the entrance runs; the renders below are synchronous, so by the time
     // the frame fires every card exists and can stagger in.
@@ -4991,7 +4954,9 @@ function renderScheduleMode(){
   } else {
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
-    if((myProfile.role === 'director' || myProfile.role === 'admin') && !bookAsGrade) bookAsGrade = GRADES[0];
+    // (Viewing the calendar used to set a director's team to Kindergarten,
+    // which then drove their hero, widgets, Lock Screen and Watch. A team is
+    // chosen only by choosing it, on Book.)
     renderScheduleCalendar();
   }
   requestAnimationFrame(positionAllModeThumbs);
@@ -6359,8 +6324,8 @@ el.weekGrid.addEventListener('click', async e => {
 // says which bookings belong to it; everything about how a month looks and
 // behaves lives here so the two views can never drift apart.
 const calState = {
-  schedule: { monthFirst: new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1), selected: null, field: 'all' },
-  league:   { monthFirst: new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1), selected: null, field: 'all' },
+  schedule: { monthFirst: new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1), selected: null, field: 'all' },
+  league:   { monthFirst: new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1), selected: null, field: 'all' },
 };
 function calSourceBookings(which){
   const base = which === 'league' ? leagueFilteredBookings() : bookingsCache;

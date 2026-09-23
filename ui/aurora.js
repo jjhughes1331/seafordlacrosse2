@@ -67,8 +67,9 @@
       col *= 1.0 - shade * 0.42;
 
       col = srgb(col);
-      // Film grain, re-seeded each frame so it shimmers rather than sits.
-      col += (hash(gl_FragCoord.xy + fract(t) * 91.0) - 0.5) * 0.035;
+      // Film grain, fixed: it only exists to stop the gradient banding. A
+      // re-seeded grain forced a fresh frame every refresh for no one.
+      col += (hash(gl_FragCoord.xy) - 0.5) * 0.035;
       gl_FragColor = vec4(col, 1.0);
     }`;
 
@@ -136,11 +137,20 @@
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
 
+    // The drift is slow (t * 0.045), so ~20fps is indistinguishable from 120
+    // and a sixth of the work; after 12s with no touch or scroll it holds its
+    // last frame until someone interacts. Low Power Mode (html.lpm, set by
+    // the app) gets one still frame, like Reduce Motion.
+    const FRAME_MS = 50, IDLE_MS = 12000;
+    let last = 0, idleAt = performance.now() + IDLE_MS;
+    const still = () => reduced || document.documentElement.classList.contains('lpm');
     function loop(now) {
-      draw(now);
-      if (!reduced && visible && !document.hidden) raf = requestAnimationFrame(loop);
+      if (now - last >= FRAME_MS || !last) { draw(now); last = now; }
+      if (!still() && visible && !document.hidden && now < idleAt) raf = requestAnimationFrame(loop);
     }
     function resume() { cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); }
+    const wake = () => { const was = performance.now() >= idleAt; idleAt = performance.now() + IDLE_MS; if (was && visible) resume(); };
+    ['touchstart', 'scroll', 'pointerdown'].forEach(ev => addEventListener(ev, wake, { passive: true }));
 
     try { init(); } catch (e) { fallback(); return { setColors(c){ colors = c; fallback(); }, destroy(){} }; }
 
@@ -152,9 +162,10 @@
     resume();
 
     return {
-      setColors(c) { colors = c; if (reduced) requestAnimationFrame(draw); },
+      setColors(c) { colors = c; if (still() || performance.now() >= idleAt) requestAnimationFrame(draw); },
       destroy() {
         alive = false; cancelAnimationFrame(raf); io.disconnect();
+        ['touchstart', 'scroll', 'pointerdown'].forEach(ev => removeEventListener(ev, wake));
         document.removeEventListener('visibilitychange', onVis);
         const ext = gl.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext();
       },

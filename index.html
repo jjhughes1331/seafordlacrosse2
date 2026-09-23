@@ -6754,6 +6754,9 @@ function findOpenSlots(){
   const today = new Date(); today.setHours(0,0,0,0);
   let d = today < SEASON_START ? new Date(SEASON_START) : new Date(today);
   const out = [];
+  // One lookup instead of scanning every booking for every candidate slot
+  // (a season is ~3,000 candidates x every booking, on each filter tap).
+  const taken = new Set(bookingsCache.map(b => b.field_id + '|' + b.date + '|' + b.subfield + '|' + b.time));
   while(d <= SEASON_END){
     const dow = d.getDay();
     if(finderDays.size === 0 || finderDays.has(dow)){
@@ -6764,8 +6767,7 @@ function findOpenSlots(){
         avail.times.forEach(time => {
           if(!finderTimeMatches(time)) return;
           avail.subfields.forEach(sub => {
-            const taken = bookingsCache.some(b => b.field_id===field.id && b.date===dateStr && b.subfield===sub && b.time===time);
-            if(!taken) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
+            if(!taken.has(field.id + '|' + dateStr + '|' + sub + '|' + time)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
           });
         });
       });

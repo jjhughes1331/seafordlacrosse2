@@ -1,7 +1,8 @@
 # seafordlacrosse2 — seafordlax.com
 
 Field-booking site for Seaford Lacrosse. **Coaches and directors only — not
-parents.** One static file, no build step, no framework.
+parents.** Static site, no build step, no framework: `index.html` plus a few
+component modules in `ui/`.
 
 > Not to be confused with JJ's *other* lacrosse project (Igloo / Snow Leopard —
 > Next.js on Netlify, Geist + Anton). Memory entries mentioning Netlify,
@@ -31,11 +32,16 @@ same commit that made it untrue. Superseded decisions go entirely — leaving
 grown past a screen, it wants its own file with one line pointing to it here.
 
 ## Structure
-- `index.html` — the entire site: markup, styles and script in one file (~5,200 lines)
+- `index.html` — markup, styles and app script (~6,500 lines)
+- `ui/*.js` — design v2 components, each self-contained and wired by event
+  delegation so load order never matters: `spring.js` (interruptible spring
+  solver), `field-menu.js` (field switcher), `aurora.js` (WebGL hero surface),
+  `ripple.js` (booking-landed moment). **`docs/DESIGN.md` is the design source
+  of truth** — principles, tokens, components, log
 - `sw.js`, `manifest.json` — PWA. The SW is **network-first** and skips Supabase, so it never serves stale data
 - `supabase/*.sql` — reference copies of applied schema/policy work
 - `supabase/functions/*.ts` — reference copies of `manage-user` and `invite-coach` (`send-push` and `team-ics` are read-only in the dashboard; both reviewed 2026-09-18)
-- `tools/render-audit.js` — see Verifying below
+- `tools/render-audit.js`, `tools/pixel-audit.js` — see Verifying below
 - `MOBILE_APP_HANDOFF.md` — Capacitor shell backend contract
 
 ## Deploy
@@ -87,6 +93,12 @@ sync ios` and a new build. The web keeps deploying instantly as always.
   system browser for external links, no service worker, no install nudge
 - Account deletion is an App Store requirement: menu > Delete my account,
   `manage-user` action `delete-me`
+- Native launch: `MainViewController` (set in **SceneDelegate**, not the
+  storyboard, which Capacitor 8 ignores) lays a Metal scene
+  (`LaunchShader.swift`) over the web view. Its clock starts in
+  `viewDidAppear`, or the opening strokes play during iOS's icon zoom unseen
+- `App.entitlements` carries `aps-environment`; without it OneSignal can never
+  get an APNs token and push fails silently
 - `privacy.html` / `support.html` must stay publicly reachable — App Review
   cannot sign in
 
@@ -99,17 +111,26 @@ in dark meant near-white).
 **Never put `backdrop-filter` on `header`**: it makes the header a containing
 block, and the mobile tab bar is a fixed child of it — the bar lands at the top
 of the screen. The blur is desktop-only for this reason.
+The toast is a HUD: fixed dark material in **both** themes. It used `--ink`,
+which is white in dark mode.
 
 ## Design system (decided, don't relitigate)
-- **One typeface: Manrope.** Hierarchy from weight and size
-- **Icons are custom and solid.** No Lucide, no stroked icons — mixing the two
-  vocabularies was a real bug that shipped twice
-- **Editorial palette**: green is an accent (~25 call sites), not the default
-  text colour. `--hover-edge` is neutral. Gold `--mine` means *your team* and
-  nothing else. Red `--danger` means error or destructive, never "busy"
-- **44px minimum** tap target. Small controls get a `::before` overlay
+Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
+- **SF (system font) for UI; Manrope only for the wordmark.** Two weights: 600
+  headings, 400 body. The type scale is `rem`, so Dynamic Type works
+- **Each field has a hue** (`--field-<id>`), used for dots, calendar marks, the
+  hero surface and the ripple. Text in a field hue is mixed toward `--ink`
+  (`color-mix`) or it fails contrast in light mode
+- **Green = interactive/selected. Gold `--mine` = your team. Red = destructive.**
+  Selected filters are *tinted*, never solid-filled
+- **Segmented controls:** grey track, light thumb. Colour is never the selection
+- **Motion goes through `ui/spring.js`**, never a CSS ease on anything touched
+- **Icons are custom and solid.** No stroked icon sets
+- **44pt minimum** tap target; small controls get a `::before` overlay
 - **One confirmation model**: `confirmAction()` sheet for anything destructive.
   `armTwoTap` survives only on booking a slot, which has Undo
+- Phones have **no footer**: Appearance, Privacy, Support live in the menu
+- The tab bar's shape, order and labels are JJ's — do not change them
 
 ## Verifying — do this instead of grepping
 Three separate times a source grep said "clean" and the running page disagreed:
@@ -118,8 +139,15 @@ overflowed once a real long email was in it. **Source is what we wrote;
 rendered output is what a coach sees.**
 
 - `?fixture=1` boots the whole signed-in app against in-memory data with a mock
-  Supabase client and **zero network calls**. Use it to reach any signed-in
-  surface without a login or real data
+  Supabase client and **zero network calls**. `&as=coach` / `&as=director`
+  switch role (default admin); `&shots=1` hides the banner for store screenshots
+- `tools/pixel-audit.js` — fetch and `eval` it on a phone-width fixture page.
+  Walks every tab, reports sub-44pt targets and text under WCAG contrast measured
+  against the real painted background. Run it in **both** themes
+- `../seaford-lax-app/tools/dev-sim.sh` builds a simulator app pointed at the
+  local server, and `tools/frames.swift` pulls frames from a `simctl
+  recordVideo` capture — the only way to audit a transition, since the Browser
+  pane is a hidden document where rAF never runs
 - `tools/render-audit.js` — paste into the console on `?fixture=1`. Checks
   emoji in rendered text, mixed icon vocabularies, tap targets, overflow, em
   dashes, gradients, fonts

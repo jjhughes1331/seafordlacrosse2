@@ -1552,6 +1552,20 @@
   #finderUsualNote { font-size: var(--fs-xs); color: var(--muted); }
   @media (max-width: 700px) { #openWeekBookingAs { display: none; } }
 
+  /* ---- Sticky hover on touch ------------------------------------------
+     iOS applies :hover on touch and keeps it until the next tap elsewhere,
+     so a day you scrolled past stayed highlighted. Touch-only devices get
+     the resting look back; real pointers keep their hover. */
+  @media (hover: none) {
+    .cal-day:hover:not(.pad):not(.out), .book-month-cell:hover, .fm-row:hover,
+    .hamburger-row:hover, .hamburger-menu button:hover { background: none; }
+    .fchip:hover, .daytoggle:hover:not(:disabled), .cal-chip:hover { border-color: transparent; color: var(--ink); }
+    .mtab:hover, .gtab:hover { color: color-mix(in srgb, var(--ink) 70%, transparent); }
+    .weeknav button:hover:not(:disabled) { opacity: 1; }
+    select:hover, .grade-select:hover { border-color: transparent; }
+    #hamburgerBtn:hover { background: var(--chip-bg); }
+  }
+
   /* ---- Next Practice hero (ui/aurora.js) ---------------------------- */
   .next-card.hero {
     position: relative; overflow: hidden; isolation: isolate; border: none; color: #fff;
@@ -3001,9 +3015,11 @@ function positionModeThumb(container){
 (function(){
   const big = () => document.getElementById('largeTitle');
   const header = document.querySelector('header');
+  // Hand off once the title is mostly under the bar, not only when it has
+  // vanished: a half-covered title with an empty bar above it reads as broken.
   const io = new IntersectionObserver(entries => {
-    entries.forEach(e => header.classList.toggle('title-hidden', e.isIntersecting));
-  }, { rootMargin: '-64px 0px 0px 0px', threshold: 0 });
+    entries.forEach(e => header.classList.toggle('title-hidden', e.intersectionRatio > 0.55));
+  }, { rootMargin: '-64px 0px 0px 0px', threshold: [0, 0.55, 1] });
   addEventListener('DOMContentLoaded', () => { const b = big(); if(b) io.observe(b); });
 })();
 
@@ -3813,7 +3829,12 @@ function placeTeamPicker(view){
   }
 }
 function switchView(view){
-  if(view !== currentView) haptic('light');
+  if(view !== currentView){
+    haptic('light');
+    // A tab opens at its top. Carrying the last tab's scroll over left the new
+    // tab's title half under the bar.
+    window.scrollTo(0, 0);
+  }
   setHeaderTitle(view);
   requestAnimationFrame(() => requestAnimationFrame(positionAllModeThumbs));
   const prevView = currentView;

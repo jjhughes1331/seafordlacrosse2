@@ -2108,6 +2108,20 @@
     .cal-agenda > span, .cal-agenda .cal-item > span:nth-child(2) { min-width: 0; }
     .cal-agenda .cal-empty { background: var(--cell-bg); border-radius: var(--group-radius); padding: 18px 20px; color: var(--muted); }
   }
+
+  /* ---- League on a phone: Schedule's grammar ---------------------------- */
+  @media (max-width: 700px) {
+    #leagueModeToggle { display: none !important; }
+    .league-filters { display: flex; align-items: center; gap: 10px; margin: 8px 16px 4px; }
+    .league-filters #leagueGenderToggle { flex: 0 0 auto; width: auto !important; margin: 0; }
+    .league-filters #leagueGenderToggle .mtab { flex: 0 0 auto; padding: 4px 12px; }
+    .league-filters .league-team-pick { flex: 1; min-width: 0; margin: 0; padding: 0; max-width: none; }
+    .league-filters .grade-select { min-height: 36px; width: 100%; }
+  }
+
+  @media (max-width: 700px) {
+    #adminPaneToggle, #peoplePaneToggle { margin: 12px 16px; }   /* not flush to the screen edge */
+  }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2558,14 +2572,16 @@
 
 <!-- ============ LEAGUE OVERVIEW (directors and admin) ============ -->
 <div id="viewLeague" style="display:none">
+  <div class="league-filters">
   <div class="mode-toggle" id="leagueGenderToggle">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-gender="all">All</button>
-    <button class="mtab" data-gender="girls">Girls Only</button>
-    <button class="mtab" data-gender="boys">Boys Only</button>
+    <button class="mtab" data-gender="girls">Girls</button>
+    <button class="mtab" data-gender="boys">Boys</button>
   </div>
   <div class="grade-grid league-team-pick">
     <select class="grade-select" id="leagueTeamSelect" aria-label="Team"></select>
+  </div>
   </div>
   <div class="mode-toggle" id="leagueModeToggle">
     <span class="mode-toggle-thumb"></span>
@@ -4952,13 +4968,20 @@ function syncScheduleToggle(){
 function syncBarButtons(){
   const b = document.getElementById('scheduleViewBtn');
   if(!b) return;
-  b.style.display = (myProfile && currentView === 'schedule') ? 'flex' : 'none';
-  b.classList.toggle('to-calendar', scheduleMode === 'list');
-  b.setAttribute('aria-label', scheduleMode === 'list' ? 'Show as calendar' : 'Show as list');
+  const league = currentView === 'league';
+  const listing = league ? leagueViewMode === 'list' : scheduleMode === 'list';
+  b.style.display = (myProfile && (currentView === 'schedule' || league)) ? 'flex' : 'none';
+  b.classList.toggle('to-calendar', listing);
+  b.setAttribute('aria-label', listing ? 'Show as calendar' : 'Show as list');
 }
 document.getElementById('scheduleViewBtn').addEventListener('click', () => {
-  scheduleMode = scheduleMode === 'list' ? 'calendar' : 'list';
   haptic('selection');
+  if(currentView === 'league'){
+    // League keeps its own mode; the bar button just presses the other half.
+    document.querySelector(`#leagueModeToggle .mtab[data-mode="${leagueViewMode === 'list' ? 'month' : 'list'}"]`)?.click();
+    return;
+  }
+  scheduleMode = scheduleMode === 'list' ? 'calendar' : 'list';
   syncScheduleToggle();
   renderScheduleMode();
 });
@@ -5616,6 +5639,7 @@ el.leagueModeToggle.addEventListener('click', e => {
   leagueViewMode = btn.dataset.mode;
   document.querySelectorAll('#leagueModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
   positionModeThumb(el.leagueModeToggle);
+  syncBarButtons();
   renderLeague();
 });
 el.leaguePrevMonth.addEventListener('click', () => {

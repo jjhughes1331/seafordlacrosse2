@@ -5761,6 +5761,12 @@ function fieldDirectionsUrl(f){
 function fieldNoteHTML(f){
   if(!f) return '';
   const q = fieldMapQuery(f);
+  // On an iPhone the map is Apple Maps, one tap away; an embedded Google map
+  // inside the app read as a web page.
+  if(/iPhone|iPod/.test(navigator.userAgent) || window.__IS_NATIVE_APP){
+    return `${f.note ? `<p class="field-note-text">${escSafe(f.note)}</p>` : ''}
+    <a class="field-map-toggle" href="${fieldDirectionsUrl(f)}" target="_blank" rel="noopener"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Directions</a>`;
+  }
   return `${f.note ? `<p class="field-note-text">${escSafe(f.note)}</p>` : ''}
     <button class="field-map-toggle" data-mapfor="${f.id}" type="button"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Map</button>
     <div class="field-map-box" id="mapbox-${f.id}" style="display:none">
@@ -6887,7 +6893,12 @@ function renderOpenWeekMobile(all, shown, usual){
   }
   const byDay = {};
   shown.forEach(sl => { (byDay[sl.dateStr] = byDay[sl.dateStr] || []).push(sl); });
-  let html = usual ? `<p class="finder-note">Showing your team’s usual days and time.</p>` : '';
+  // Validate before the tap: when the ladder hasn't reached this team, say so
+  // up front and don't offer Book (it used to fail after the tap).
+  const teamId = myBookingTeamId(), team = teamId ? teamsById[teamId] : null;
+  const locked = !!(priorityBookingEnabled && team && !isTierUnlocked(team.grade));
+  let html = locked ? `<p class="finder-note">Not ${escSafe(teamLabel(team.gender, team.grade))}’s turn yet. Book opens when earlier grades finish choosing.</p>`
+    : usual ? `<p class="finder-note">Showing your team’s usual days and time.</p>` : '';
   Object.keys(byDay).sort().forEach(dateStr => {
     const slots = byDay[dateStr].sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.fieldName.localeCompare(b.fieldName) || a.sub.localeCompare(b.sub));
     html += `<p class="ios-group-header fw-day"><span>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</span><span>${slots.length} open</span></p><div class="ios-group">`;
@@ -6897,7 +6908,7 @@ function renderOpenWeekMobile(all, shown, usual){
       html += `<div class="ios-row bd-row">
         <span class="fw-dot" style="--c:var(--field-${sl.fieldId})" aria-hidden="true"></span>
         <span class="bd-sub">${escSafe(when)}<small>${escSafe((f && (f.short || f.name)) || sl.fieldName)} · ${escSafe(sl.sub)}</small></span>
-        <button type="button" class="get-pill book-slot" data-book='${payload}' aria-label="Book ${escSafe(sl.fieldName)} ${escSafe(sl.sub)}, ${dowOfISO(dateStr)} ${fmtDateLong(dateStr)}, ${escSafe(when)}"><span class="plus">Book</span></button>
+        ${locked ? `<span class="get-pill quiet" aria-disabled="true">Not Yet</span>` : `<button type="button" class="get-pill book-slot" data-book='${payload}' aria-label="Book ${escSafe(sl.fieldName)} ${escSafe(sl.sub)}, ${dowOfISO(dateStr)} ${fmtDateLong(dateStr)}, ${escSafe(when)}"><span class="plus">Book</span></button>`}
       </div>`;
     });
     html += '</div>';

@@ -9,7 +9,10 @@
 // the caller's own role — the same scoping the invite flow uses:
 //   - ADMIN may act on any director or coach.
 //   - DIRECTOR may act only on coaches whose team is in their own gender.
-//   - Nobody may act on themselves (that's how you lock yourself out).
+//   - Nobody may act on themselves (that's how you lock yourself out),
+//     except delete-me and naming yourself, which ANY signed-in user may do.
+//     (Until 2026-09-22 the director/admin gate ran first, so a coach could
+//     neither delete their own account nor save their name.)
 //
 // REQUEST BODY:
 //   { "action": "reset-password", "userId": "<uuid>", "password": "<8+ chars>" }
@@ -60,9 +63,11 @@ Deno.serve(async (req) => {
 
   const { data: caller, error: callerErr } = await admin
     .from("profiles").select("role, gender").eq("id", callerId).single();
-  if (callerErr || !caller || (caller.role !== "director" && caller.role !== "admin")) {
-    return json({ ok: false, error: "Only directors and admins can manage users" }, 403);
-  }
+  if (callerErr || !caller) return json({ ok: false, error: "Could not find your account" }, 403);
+  // Deleting your own account (App Store 5.1.1(v)) and naming yourself are
+  // for everyone. Anything that touches another person needs a manager.
+  const isManager = caller.role === "director" || caller.role === "admin";
+  const notManager = () => json({ ok: false, error: "Only directors and admins can manage users" }, 403);
 
   let body: { action?: string; userId?: string; password?: string; firstName?: string; lastName?: string };
   try { body = await req.json(); } catch { return json({ ok: false, error: "Invalid JSON body" }, 400); }
@@ -88,6 +93,7 @@ Deno.serve(async (req) => {
   }
 
   if (action === "last-seen") {
+    if (!isManager) return notManager();
     // auth.users.last_sign_in_at is maintained by Supabase itself, so there is
     // no column to add and nothing for a client to fake. It lives in the auth
     // schema, which only the service role can read - hence this detour.
@@ -105,6 +111,7 @@ Deno.serve(async (req) => {
   if (userId === callerId && action !== "set-name") {
     return json({ ok: false, error: "You can't do that to your own account" }, 403);
   }
+  if (!isManager && userId !== callerId) return notManager();
 
   const { data: target, error: targetErr } = await admin
     .from("profiles").select("id, email, role, gender, team_id").eq("id", userId).single();
@@ -112,7 +119,7 @@ Deno.serve(async (req) => {
 
   // Authorize against the target, mirroring who may invite whom.
   if (userId === callerId) {
-    // naming yourself: already established you're a director or admin
+    // naming yourself: always allowed (the only self-action that gets here)
   } else if (caller.role === "director") {
     if (target.role !== "coach") {
       return json({ ok: false, error: "Directors can only manage coaches" }, 403);

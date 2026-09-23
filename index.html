@@ -4501,11 +4501,7 @@ function openNativeRoute(r){
   } else if(r.view === 'practice'){
     const b = bookingsCache.find(x => x.id === r.id);
     switchView('schedule');
-    if(b){
-      calState.schedule.selected = b.date;
-      calState.schedule.monthFirst = firstDayOfMonth(parseISO(b.date));
-      renderSchedule();
-    }
+    if(b) setTimeout(() => jumpToScheduleDay(b.date), 350); // after the view settles
   } else {
     switchView('schedule');
   }
@@ -4574,13 +4570,17 @@ function mix(a, b, k){
   const A = p(a), B = p(b);
   return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2,'0')).join('');
 }
+// "See the day", and a widget or Live Activity tap: the Schedule, on that day.
+function jumpToScheduleDay(dateISO){
+  calState.schedule.selected = dateISO;
+  calState.schedule.monthFirst = firstDayOfMonth(parseISO(dateISO));
+  renderSchedule();
+  document.getElementById('scheduleCalendar')?.scrollIntoView({ behavior: motionOK() ? 'smooth' : 'auto', block: 'start' });
+}
 document.addEventListener('click', e => {
   const j = e.target.closest('[data-nextjump]');
   if(!j) return;
-  calState.schedule.selected = j.dataset.nextjump;
-  calState.schedule.monthFirst = firstDayOfMonth(parseISO(j.dataset.nextjump));
-  renderSchedule();
-  document.getElementById('scheduleCalendar')?.scrollIntoView({ behavior: motionOK() ? 'smooth' : 'auto', block: 'start' });
+  jumpToScheduleDay(j.dataset.nextjump);
 });
 function renderSchedule(){
   renderNextPractice();

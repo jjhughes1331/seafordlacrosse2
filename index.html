@@ -1819,7 +1819,7 @@
   .acct-meta { font-size: var(--ios-sub); color: var(--muted); margin-top: 2px; }
   .acct-about { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0 12px;
     color: var(--muted); font-size: var(--ios-foot); }
-  .acct-about img { height: 44px; width: auto; opacity: .9; }
+  .acct-about img { height: 44px; width: auto; aspect-ratio: auto; border-radius: 0; background: none; opacity: .9; } /* not the share-card image rule */
 
   /* ---- Segmented controls: iOS proportions on a phone ---------------- */
   @media (max-width: 700px) {
@@ -2010,6 +2010,24 @@
       background: linear-gradient(color-mix(in srgb, var(--chalk) 0%, transparent), color-mix(in srgb, var(--chalk) 88%, transparent) 62%); }
     body:not(:has(#viewTabs[style*="flex"])) .edge-bottom { display: none; }
   }
+
+  /* ---- Confirmation: iOS action sheet ---------------------------------- */
+  .as-sheet { background: none !important; border: none !important; box-shadow: none !important; padding: 0 8px calc(8px + var(--safe-bottom)) !important;
+    display: flex; flex-direction: column; gap: 8px; width: min(430px, 100%); }
+  .as-sheet::before { display: none !important; }
+  .as-group { background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8);
+    border-radius: 26px; overflow: hidden; box-shadow: inset 0 0 0 .5px var(--glass-edge); }
+  :root:not([data-theme="dark"]) .as-group { background: rgba(250,250,252,.86); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .as-group { background: rgba(44,44,46,.86); } }
+  .as-head { padding: 16px 20px 14px; text-align: center; border-bottom: .5px solid var(--sep); }
+  .as-head h3 { font-size: var(--ios-foot); font-weight: 600; color: var(--muted); margin: 0 0 3px; }
+  .as-head p { font-size: var(--ios-foot); color: var(--muted); line-height: 1.35; margin: 0; }
+  .as-btn { display: block; width: 100%; min-height: 57px; border: none; background: none; font: inherit;
+    font-size: 1.25rem; color: var(--tint); cursor: pointer; }
+  .as-btn:active { background: var(--chip-bg); }
+  .as-destructive { color: var(--danger); }
+  .as-cancel { font-weight: 600; color: var(--tint); }
+  @media (min-width: 701px) { .as-sheet { padding: 0 !important; width: 340px; } .as-group { border-radius: 16px; } .as-btn { min-height: 48px; font-size: var(--ios-body); } }
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2244,13 +2262,14 @@
      and a way out. -->
 <div class="share-modal" id="confirmModal" style="display:none">
   <div class="share-backdrop" data-confirm-close></div>
-  <div class="share-sheet" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-    <h3 id="confirmTitle" style="margin:0 0 8px"></h3>
-    <p class="hint" id="confirmBody"></p>
-    <div class="share-actions">
-      <button class="btn-primary" id="confirmGoBtn" type="button"></button>
-      <button class="allbtn" type="button" data-confirm-close>Cancel</button>
+  <!-- iOS's action sheet: the question small and grey, the destructive verb
+       in red, Cancel set apart and bold. -->
+  <div class="share-sheet as-sheet" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+    <div class="as-group">
+      <div class="as-head"><h3 id="confirmTitle"></h3><p id="confirmBody"></p></div>
+      <button class="as-btn as-destructive" id="confirmGoBtn" type="button"></button>
     </div>
+    <div class="as-group"><button class="as-btn as-cancel" type="button" data-confirm-close>Cancel</button></div>
   </div>
 </div>
 <!-- Share card: a generated PNG of the next 7 days' practices, built for the

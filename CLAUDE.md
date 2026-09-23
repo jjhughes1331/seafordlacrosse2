@@ -113,6 +113,13 @@ sync ios` and a new build. The web keeps deploying instantly as always.
   up 2026-09-22 and holds the file. Until then only Web was active there
 - `privacy.html` / `support.html` must stay publicly reachable — App Review
   cannot sign in
+- **1.1 native features** (widgets, Live Activity, calendar sync, Siri, Watch):
+  `window.Native.setContext/clearContext/settings/setSetting/onRoute` talk to
+  the app's `SeafordBridge` plugin and no-op everywhere else. The app is told
+  *what to show* and never gets a login; it refreshes from the `team-ics`
+  feed. The sign-in screen always calls `clearContext`, so an expired session
+  can't leave practices on a Lock Screen. Design and status:
+  `../seaford-lax-app/docs/NATIVE.md`
 
 ## Dark mode
 Neutral iOS greys, not green-tinted ones: true black page, `#1C1C1E` and
@@ -160,7 +167,8 @@ rendered output is what a coach sees.**
   Supabase client and **zero network calls**. `&as=coach` / `&as=director`
   switch role (default admin; `&as=assistant` too); `&shots=1` hides the banner
   for store screenshots. `invite-coach`/`manage-user` are called with fetch,
-  so fixture mode stands them in with the same rules
+  so fixture mode stands them in with the same rules. `&now=soon` / `&now=live`
+  add a practice today for the fixture coach (Live Activity, widget states)
 - `tools/pixel-audit.js` — fetch and `eval` it on a phone-width fixture page.
   Walks every tab, reports sub-44pt targets and text under WCAG contrast measured
   against the real painted background. Run it in **both** themes

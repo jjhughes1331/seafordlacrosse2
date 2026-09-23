@@ -74,6 +74,32 @@ different project** — drive the dashboard in the browser instead.
 - Changing a field's hours in `FIELDS` also requires updating `field_slots`, or
   new bookings get rejected
 
+## iOS app (App Store)
+The Capacitor shell lives in `../seaford-lax-app` (branch `app-store`). It
+**bundles this site into the binary** — Apple rejects apps that only load a
+website — so a web change reaches the app only after `./sync-web.sh && npx cap
+sync ios` and a new build. The web keeps deploying instantly as always.
+- App Apple ID 6814956251, bundle `com.seafordlax.app`, team 66YQ74WLDA
+- `tools/asc.py` there pushes listing text, screenshots and review details
+  through Apple's API. App Privacy answers have **no API** — website only
+- `window.__IS_NATIVE_APP` gates native behaviour in this file: Taptic haptics,
+  the iOS share sheet, native OneSignal (the web SDK is not loaded there), the
+  system browser for external links, no service worker, no install nudge
+- Account deletion is an App Store requirement: menu > Delete my account,
+  `manage-user` action `delete-me`
+- `privacy.html` / `support.html` must stay publicly reachable — App Review
+  cannot sign in
+
+## Dark mode
+Neutral iOS greys, not green-tinted ones: true black page, `#1C1C1E` and
+`#2C2C2E` surfaces. Dark fills use a **bright** accent with dark text
+(`--on-accent`), because white on a green dark enough for 4.5:1 looks muddy.
+`--text-strong` is the strong-text token (it used to be `--turf-deep`, which
+in dark meant near-white).
+**Never put `backdrop-filter` on `header`**: it makes the header a containing
+block, and the mobile tab bar is a fixed child of it — the bar lands at the top
+of the screen. The blur is desktop-only for this reason.
+
 ## Design system (decided, don't relitigate)
 - **One typeface: Manrope.** Hierarchy from weight and size
 - **Icons are custom and solid.** No Lucide, no stroked icons — mixing the two

@@ -122,6 +122,13 @@ sync ios` and a new build. The web keeps deploying instantly as always.
   up 2026-09-22 and holds the file. Until then only Web was active there
 - `privacy.html` / `support.html` must stay publicly reachable — App Review
   cannot sign in
+- **Face ID sign-in is Password AutoFill**: `.well-known/apple-app-site-association`
+  (webcredentials for `66YQ74WLDA.com.seafordlax.app`) + the app's
+  `webcredentials:seafordlax.com` entitlement let iOS offer the saved
+  seafordlax.com password on the sign-in form and fill it with Face ID. It
+  depends on the form's `autocomplete="username"` / `current-password` and on
+  `.nojekyll` (Jekyll would drop the dot-folder). Apple reads the file through
+  its CDN: `curl https://app-site-association.cdn-apple.com/a/v1/seafordlax.com`
 - **1.1 native features** (widgets, Live Activity, calendar sync, Siri, Watch):
   `window.Native.setContext/clearContext/settings/setSetting/onRoute` talk to
   the app's `SeafordBridge` plugin and no-op everywhere else. The app is told

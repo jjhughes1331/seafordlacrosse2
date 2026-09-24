@@ -163,7 +163,12 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
   16px. `--ios-body` is `1rem`; see DESIGN.md v3. Nothing under 11pt
 - **Book on a phone** is a week strip plus one day as a grouped list with GET
   pills (Book -> Confirm via `armTwoTap`). Desktop keeps the week agenda
-- The tab bar's shape, order and labels are JJ's — do not change them
+- The tab bar's shape, order and labels are JJ's — do not change them. The
+  order is **Book, Find a Time, Calendar, My Team** (JJ, 2026-09-23: the order
+  a coach works in). First launch opens on Book, then the last tab is restored
+- **Calendar tab** = the month (Taken / Open / Mine, and a Fields sheet with
+  any combination of fields); the list is its bar button. The Next Practice
+  hero is on My Team, the setup checklist on Book
 - **Book never preselects a field** (JJ, 2026-09-22): only a starred favourite
   or the last field chosen; otherwise the menu reads "Choose a field", because a
   silent default hid that four other fields exist

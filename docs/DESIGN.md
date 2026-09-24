@@ -98,6 +98,17 @@ scratchpad; the rules it produced are below.
 7. **The app works offline**: scripts are vendored (`vendor/`), boot reads
    the session from the device, and a cached schedule draws before the
    network answers.
+8. **Tabs run in the order a coach works** (JJ, 2026-09-23): Book, Find a
+   Time, Calendar, My Team. The first launch opens on Book; after that the
+   app reopens on the tab you left (`seaford-last-view`), as Apple's tab-bar
+   apps do. The setup checklist lives on Book, the Next Practice hero on My
+   Team.
+9. **Calendar is iPhone Calendar's month**: weeks edge to edge under a
+   hairline, today filled with the tint, practices as labels tinted in their
+   field's colour. **Taken / Open / Mine** is a segmented control (Open is
+   outlined, like an unconfirmed event, and each open time has a Book pill
+   that lands on that time in Book). **Fields** is Calendar's "Calendars"
+   sheet: any combination of fields on or off. Both are per device.
 
 ## Log
 - 2026-09-23 — v3 shipped to branch `design-ada` in parts 1-12: account
@@ -107,3 +118,8 @@ scratchpad; the rules it produced are below.
   grouped list, League in Schedule's grammar, and the audit's fixes (type
   scale, touch hygiene, VoiceOver live toast, clean sign-out, colour
   meaning, calendars open on today, one refresh path, offline boot).
+- 2026-09-23 — v3.1 after JJ used build 12: tabs reordered to Book, Find a
+  Time, Calendar, My Team; the app lands on Book and then restores the last
+  tab; Calendar opens on the month on phones (it opened on a 16,000px list)
+  with Taken / Open / Mine and a Fields sheet; the day list stacks start over
+  end time in a fixed column so every title aligns.

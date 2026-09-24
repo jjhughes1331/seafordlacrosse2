@@ -2145,6 +2145,82 @@
   .install-nudge .allbtn { border: none; background: none; color: var(--tint); font-size: var(--ios-body); font-weight: 400; padding: 8px 4px; min-height: 44px; }
 
   a.field-map-toggle { text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; min-height: 44px; }
+  /* ---- Calendar tab: the month as iPhone's Calendar draws it (v3.1) -----
+     JJ, 2026-09-23: "a monthly calendar ... per field, just like the
+     calendar on their iPhones". Weeks run edge to edge with a hairline above
+     each, the date sits at the top of its day, today is filled with the
+     tint, and practices are labels tinted in their field's colour. Which
+     fields show is Calendar's own "Calendars" sheet, here called Fields. */
+  :root { --on-field: #fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --on-field: rgba(0,0,0,.82); } }
+  :root[data-theme="dark"] { --on-field: rgba(0,0,0,.82); }
+
+  .cal-fields-btn { gap: 10px; }
+  .cf-dots { display: inline-flex; align-items: center; padding-left: 4px; }
+  .cf-dots:empty { display: none; }
+  .cf-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); margin-left: -4px; box-shadow: 0 0 0 2px var(--chip-bg); }
+  .sheet-bar .sheet-lead { justify-self: start; font-weight: 400; }
+  .cf-list .cf-row { justify-content: flex-start; gap: 14px; }
+  .cf-list .cf-row + .cf-row::before { left: 58px; }
+  .cf-check { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center;
+    box-shadow: inset 0 0 0 2px var(--c); color: var(--on-field); transition: background-color .15s var(--ease); }
+  .cf-row.on .cf-check { background: var(--c); box-shadow: none; }
+  .cf-check svg { width: 15px; height: 15px; opacity: 0; transform: scale(.4); transition: opacity .12s, transform .3s cubic-bezier(.3,1.6,.5,1); }
+  .cf-row.on .cf-check svg { opacity: 1; transform: none; }
+  .cf-text { display: flex; flex-direction: column; min-width: 0; }
+  .cf-text small { font-size: var(--ios-foot); color: var(--muted); margin-top: 1px; }
+
+  /* Taken / Open / Mine beside Fields, one row. */
+  .cal-filter { align-items: center; gap: 8px; overflow: visible; }
+  .cal-filter .cal-show { margin: 0; flex: none; }
+  .cal-filter .cal-fields-btn { margin: 0; min-width: 0; flex: 0 1 auto; }
+  .cal-fields-btn .fm-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Open slots: outlined in the field's colour, as Calendar draws an event
+     nobody has accepted yet. */
+  .cal-ev.open::before { background: none; box-shadow: inset 0 0 0 1.25px var(--c); width: 5px; }
+  .cal-item.open .get-pill { align-self: center; }
+  .cal-day.we:not(.selected):not(.today) .cal-num { color: var(--muted); }
+  .cal-time .t-start, .cal-time .t-end { display: block; }
+  .cal-time .t-end { color: var(--muted); font-weight: 400; margin-top: 1px; }
+  .cal-item { align-items: start; }
+  /* Book is the landing tab now; its own gutter already insets these. */
+  #viewBook > .welcome-card, #viewBook > .install-nudge { margin: 4px 0 16px; }
+
+  @media (max-width: 700px) {
+    .cal { padding: 0; }
+    .cal-toolbar, .cal-filter { padding-left: 16px; padding-right: 16px; }
+    .cal-filter { margin-left: 0; margin-right: 0; -webkit-mask-image: none; mask-image: none; }
+    .cal-agenda { margin-left: 16px; margin-right: 16px; }
+    .cal-filter .cal-show { flex: 1 1 auto; }
+    .cal-filter .cal-show .mtab { padding-left: 4px; padding-right: 4px; }
+    .cal-ev.open { background: none; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 75%, transparent); }
+    .cal-agenda > .cal-item.open {
+      background: linear-gradient(var(--cell-bg), var(--cell-bg)) 17.25px 13.25px / 1.5px calc(100% - 26.5px) no-repeat,
+        linear-gradient(var(--c), var(--c)) 16px 12px / 4px calc(100% - 24px) no-repeat, var(--cell-bg); }
+    .cal-weekdays span { font-size: var(--ios-cap); font-weight: 400; letter-spacing: 0; text-transform: none; padding-bottom: 6px; }
+    .cal-days { row-gap: 0; }
+    .cal-day { min-height: 86px; padding: 5px 0 6px; gap: 3px; justify-content: flex-start; border-radius: 0;
+      border-top: .5px solid var(--sep); }
+    .cal-day:hover:not(.pad):not(.out) { background: none; }
+    .cal-num { width: 28px; height: 28px; font-size: var(--ios-callout); font-weight: 400; }
+    .cal-day.today .cal-num { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
+    .cal-day.selected .cal-num { font-weight: 600; }
+    .cal-day.today.selected .cal-num { color: var(--on-accent); }
+    .cal-sel-ring { top: 5px; width: 28px; height: 28px; margin-left: -14px; }
+    .cal-sel-ring.today { background: var(--accent-fill); }
+    .cal-events { padding: 0 2px; gap: 2px; min-height: 0; margin-top: 0; }
+    .cal-ev { height: 15px; padding: 0 3px; border-radius: 4px; justify-content: flex-start;
+      background: color-mix(in srgb, var(--c) 17%, transparent); color: color-mix(in srgb, var(--c) 48%, var(--ink)); }
+    .cal-ev::before { display: none; }
+    .cal-ev.mine { background: color-mix(in srgb, var(--mine) 32%, transparent); color: var(--ink); }
+    .cal-more { padding-left: 3px; height: 14px; line-height: 14px; }
+    .cal-fill { display: none; }
+    .cal-agenda > .cal-item, .cal-agenda > .cal-swipe > .cal-item { grid-template-columns: 4.6em 1fr auto; align-items: center; }
+    .cal-agenda .cal-time { font-weight: 400; }
+    .cal-day.wet { background: linear-gradient(180deg, rgba(90,130,160,.12), transparent 60%); }
+    #viewMyTeam > .next-card.hero + .toolbar { margin-top: 16px; }
+  }
+
 </style>
 <!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
      In the App Store build push runs through the native SDK (APNs) instead,
@@ -2370,6 +2446,19 @@
     <div class="sheet-scroll" id="accountBody"></div>
   </div>
 </div>
+<!-- Fields: Calendar's "Calendars" sheet. Each field is a calendar with its
+     own colour; tick any combination on or off. -->
+<div class="share-modal" id="fieldsSheet" style="display:none">
+  <div class="share-backdrop" data-fields-close></div>
+  <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="fieldsSheetTitle">
+    <div class="sheet-bar">
+      <button type="button" class="sheet-done sheet-lead" id="fieldsAllBtn">Hide All</button>
+      <h3 id="fieldsSheetTitle" tabindex="-1">Fields</h3>
+      <button type="button" class="sheet-done" data-fields-close>Done</button>
+    </div>
+    <div class="sheet-scroll" id="fieldsBody"></div>
+  </div>
+</div>
 <!-- Calendar sheet: sync (a feed the phone re-checks itself) or a one-time file -->
 <div class="share-modal" id="calSheet" style="display:none">
   <div class="share-backdrop" data-cal-close></div>
@@ -2427,9 +2516,11 @@
   </div>
   <nav class="view-tabs" id="viewTabs" style="display:none">
     <span class="view-tabs-thumb" id="viewTabsThumb"></span>
-    <button class="view-tab active" data-view="schedule" data-short="Calendar">Calendar</button>
-    <button class="view-tab" data-view="book" data-short="Book">Book A Practice Time</button>
+    <!-- JJ, 2026-09-23: the order a coach works in. Book and Find a Time
+         are how they get practices; Calendar and My Team are how they check. -->
+    <button class="view-tab active" data-view="book" data-short="Book">Book A Practice Time</button>
     <button class="view-tab" data-view="openweek" data-short="Find a Time">Find an Open Time</button>
+    <button class="view-tab" data-view="schedule" data-short="Calendar">Calendar</button>
     <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
     <button class="view-tab" data-view="league" id="leagueTab" data-short="League" style="display:none">League Overview</button>
     <button class="view-tab" data-view="admin" id="adminTab" data-short="Admin" style="display:none">Admin</button>
@@ -2464,7 +2555,7 @@
 </div>
 
 <div class="large-title" id="largeTitle" style="display:none">
-  <div class="lt-text"><h2 id="largeTitleText">Schedule</h2><p class="lt-sub"><span id="largeTitleSub"></span><span class="synced-label"></span></p></div>
+  <div class="lt-text"><h2 id="largeTitleText">Book</h2><p class="lt-sub"><span id="largeTitleSub"></span><span class="synced-label"></span></p></div>
   <picture class="lt-crest"><source srcset="seaford-lacrosse-badge-dark.png" media="(prefers-color-scheme: dark)"><img src="seaford-lacrosse-badge.png" alt="" id="largeTitleCrest"></picture>
 </div>
 
@@ -2486,9 +2577,6 @@
 <!-- ============ SCHEDULE VIEW ============ -->
 <div id="viewSchedule" style="display:none">
 
-  <div class="next-card" id="nextPracticeCard" style="display:none"></div>
-  <div class="welcome-card" id="welcomeCard" style="display:none"></div>
-  <div class="install-nudge" id="installNudge" style="display:none"></div>
   <div class="mode-toggle" id="scheduleModeToggle">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-mode="calendar">Month</button>
@@ -2516,6 +2604,9 @@
 
 <!-- ============ BOOK VIEW ============ -->
 <div id="viewBook" class="booking" style="display:none">
+  <!-- Book is where a coach lands first, so the setup checklist lives here. -->
+  <div class="welcome-card" id="welcomeCard" style="display:none"></div>
+  <div class="install-nudge" id="installNudge" style="display:none"></div>
   <div id="pickTeamPrompt" class="locked-team-banner" style="display:none">Choose the team you are booking for, and the open fields appear here.</div>
   <div id="priorityLockedBanner" class="priority-locked-banner" style="display:none"></div>
   <div id="priorityFinishedRow" class="priority-finished-row" style="display:none"></div>
@@ -2584,6 +2675,9 @@
 
 <!-- ============ MY TEAM'S PRACTICES (coaches only) ============ -->
 <div id="viewMyTeam" style="display:none">
+  <!-- The next practice is the headline of your team's practices. It sat on
+       Calendar, where it pushed the month off the first screen. -->
+  <div class="next-card" id="nextPracticeCard" style="display:none"></div>
   <div class="toolbar">
     <div class="now-showing" id="myTeamHeading"></div>
     <button class="allbtn" id="myTeamExportIcsBtn" data-short="Calendar">Add to Calendar</button>
@@ -2887,7 +2981,8 @@ let scheduleGrade = null;        // filter for schedule view, null = all
 let scheduleGradeTouched = false; // has the user actually opened the picker and chosen something (even "All teams")? Distinguishes that from "hasn't touched it yet", since both leave scheduleGrade null.
 // Phones open on the list: a month of dots answers nothing a coach came for.
 // Wider screens have room for the grid, so they keep it.
-let scheduleMode = (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) ? 'list' : 'calendar';
+const LAST_VIEW_KEY = 'seaford-last-view'; // hoisted: switchView reads it (TDZ)
+let scheduleMode = 'calendar'; // Calendar opens on the month everywhere; the list is the bar button
 // Favorite field — per-device convenience (localStorage), not synced. Coaches
 // book the same 1-2 fields all season, so pre-selecting it saves a tap every visit.
 function getFavoriteField(){ try { return localStorage.getItem('seaford-fav-field'); } catch(e){ return null; } }
@@ -3398,7 +3493,7 @@ const motionOK = () => !window.matchMedia('(prefers-reduced-motion: reduce)').ma
 const hasGSAP = () => !!window.gsap;
 if(window.gsap && window.Flip){ try { gsap.registerPlugin(Flip); } catch(e){} }
 const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const VIEW_ORDER = ['schedule','book','openweek','myteam','league','admin'];
+const VIEW_ORDER = ['book','openweek','schedule','myteam','league','admin'];
 // Stable identity for a booking slot across re-renders, so Flip can morph the
 // "+ Book" chip into the booked chip that replaces it.
 const slotFlipId = (fieldId, dateStr, sub, time) => `${fieldId}|${dateStr}|${sub}|${time}`;
@@ -3618,7 +3713,12 @@ document.addEventListener('click', async e => {
     else if(a === 'push'){
       await window.Native.pushRequestPermission(); renderWelcome();
     }
-    else if(a === 'book'){ switchView('book'); }
+    else if(a === 'book'){
+      // On Book already: open the field menu, where a field is both chosen
+      // and starred, rather than doing nothing.
+      if(currentView !== 'book') switchView('book');
+      else document.querySelector('#fieldChips [data-field-menu]')?.click();
+    }
     return;
   }
   const i = e.target.closest('[data-install]');
@@ -4158,7 +4258,22 @@ async function loadProfileAndStartInner(){
   noteVisit();
   renderChangesSinceLastVisit();
   syncScheduleToggle();
-  switchView('schedule');
+  switchView(startView());
+}
+// Where the app opens. The first time, on Book: getting practices is the job
+// a coach arrives with (JJ, 2026-09-23). After that it reopens on the tab they
+// left, as Apple's own tab-bar apps do. A tab they can no longer see (an
+// assistant has no Book) falls back instead of opening on nothing.
+function viewAvailable(v){
+  if(v === 'book' || v === 'openweek') return canBook();
+  if(v === 'myteam') return onATeam();
+  if(v === 'league' || v === 'admin') return myProfile.role === 'director' || myProfile.role === 'admin';
+  return v === 'schedule';
+}
+function startView(){
+  let v = null; try { v = localStorage.getItem(LAST_VIEW_KEY); } catch(e){}
+  if(v && viewAvailable(v)) return v;
+  return canBook() ? 'book' : onATeam() ? 'myteam' : 'schedule';
 }
 
 function teardown(){
@@ -4508,7 +4623,7 @@ function renderLockBanner(){
 
 function rerenderCurrentView(){
   if(currentView === 'schedule') renderScheduleMode();
-  else if(currentView === 'book') renderWeek();
+  else if(currentView === 'book'){ renderWelcome(); renderWeek(); }
   else if(currentView === 'openweek') renderOpenWeek();
   else if(currentView === 'myteam') renderMyTeam();
   else if(currentView === 'league') renderLeague();
@@ -4604,7 +4719,7 @@ function positionViewTabsThumb(view){
   }
 }
 
-const VIEW_TITLES = { schedule: 'Schedule', book: 'Book', openweek: 'Find a Time',
+const VIEW_TITLES = { schedule: 'Calendar', book: 'Book', openweek: 'Find a Time',
                       myteam: 'My Team', league: 'League', admin: 'Admin' };
 function setHeaderTitle(view){
   const t = document.getElementById('headerTitle');
@@ -4654,6 +4769,7 @@ function switchView(view){
   const prevView = currentView;
   const viewDir = VIEW_ORDER.indexOf(view) >= VIEW_ORDER.indexOf(prevView) ? 1 : -1;
   currentView = view;
+  try { localStorage.setItem(LAST_VIEW_KEY, view); } catch(e){}
   syncBarButtons();
   document.querySelectorAll('.view-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.view === view);
@@ -4689,6 +4805,7 @@ function switchView(view){
   if(view === 'schedule'){
     renderScheduleMode();
   } else if(view === 'book'){
+    renderWelcome();
     if(myProfile.role === 'coach'){
       el.teamPicker.style.display = 'none';
       el.lockedTeamBanner.style.display = 'block';
@@ -5019,7 +5136,6 @@ document.getElementById('scheduleViewBtn').addEventListener('click', () => {
   renderScheduleMode();
 });
 function renderScheduleMode(){
-  renderWelcome();
   el.scheduleByTeam.style.display = scheduleMode === 'list' ? 'block' : 'none';
   el.scheduleByField.style.display = scheduleMode === 'calendar' ? 'block' : 'none';
 
@@ -5218,6 +5334,7 @@ function mix(a, b, k){
 // field, so this switches to the month with the day selected; before, it set
 // the day on a hidden calendar and scrolled to nothing.
 function jumpToScheduleDay(dateISO){
+  if(currentView !== 'schedule') switchView('schedule');
   calState.schedule.selected = dateISO;
   calState.schedule.monthFirst = firstDayOfMonth(parseISO(dateISO));
   if(scheduleMode !== 'calendar'){ scheduleMode = 'calendar'; syncScheduleToggle(); }
@@ -5238,7 +5355,6 @@ document.addEventListener('click', e => {
   jumpToScheduleDay(j.dataset.nextjump);
 });
 function renderSchedule(){
-  renderNextPractice();
   setHeaderTitle(currentView);
   const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
   const myTeamKey = onATeam() ? teamKeyFor(myProfile.team_id) : null;
@@ -5273,6 +5389,7 @@ function renderSchedule(){
 
 // ============ MY TEAM'S PRACTICES (coaches) ============
 function renderMyTeam(){
+  renderNextPractice();
   const teamId = myProfile.team_id;
   const key = teamKeyFor(teamId);
   const label = key ? teamLabel(...key.split('|')) : '';
@@ -5851,16 +5968,6 @@ function selectBookField(id){
 // one does; ui/field-menu.js owns everything about how it looks and moves.
 document.addEventListener('DOMContentLoaded', () => {
   if(!window.FieldMenu) return;
-  ['schedule', 'league'].forEach(which => FieldMenu.register(which, {
-    items: () => fieldMenuItems(true),
-    selected: () => calState[which].field,
-    onSelect: id => {
-      calState[which].field = id;
-      if(which === 'league') renderLeague(); else renderScheduleCalendar();
-    },
-    favorite: getFavoriteField,
-    onFavorite: toggleFavoriteField,
-  }));
   FieldMenu.register('book', {
     items: () => fieldMenuItems(false),
     selected: () => selectedField,
@@ -6418,14 +6525,67 @@ el.weekGrid.addEventListener('click', async e => {
 // One component, two callers. Each caller owns a little state object and
 // says which bookings belong to it; everything about how a month looks and
 // behaves lives here so the two views can never drift apart.
+// Which fields a month shows works like Calendar's calendars (JJ,
+// 2026-09-23): each field keeps its colour and is switched on or off in the
+// Fields sheet, any combination. Stored as the fields hidden, so a field
+// added later shows by default. A per-device view setting.
+function loadHiddenFields(which){
+  try { return new Set(JSON.parse(localStorage.getItem('seaford-cal-hidden-' + which) || '[]').filter(id => FIELD_MAP[id])); }
+  catch(e){ return new Set(); }
+}
+function saveHiddenFields(which){
+  try { localStorage.setItem('seaford-cal-hidden-' + which, JSON.stringify([...calState[which].hidden])); } catch(e){}
+}
+// Taken, Open or Mine (JJ, 2026-09-23: "toggle with open fields, taken
+// times"). Taken is what a calendar shows; Open is the same month read the
+// other way, what is still free; Mine is your team alone. Per device.
+function loadCalShow(which){ try { return localStorage.getItem('seaford-cal-show-' + which) || 'taken'; } catch(e){ return 'taken'; } }
+function saveCalShow(which){ try { localStorage.setItem('seaford-cal-show-' + which, calState[which].show); } catch(e){} }
 const calState = {
-  schedule: { monthFirst: new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1), selected: null, field: 'all' },
-  league:   { monthFirst: new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1), selected: null, field: 'all' },
+  schedule: { monthFirst: new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1), selected: null, hidden: loadHiddenFields('schedule'), show: loadCalShow('schedule') },
+  league:   { monthFirst: new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1), selected: null, hidden: loadHiddenFields('league'), show: loadCalShow('league') },
 };
+const CAL_SHOW_LABEL = { taken: 'Taken', open: 'Open', mine: 'Mine' };
+// Open is only for someone who can book; Mine only for someone on a team.
+function calShowModes(which){
+  const m = ['taken'];
+  if(canBook()) m.push('open');
+  if(which === 'schedule' && onATeam()) m.push('mine');
+  return m;
+}
+function calShow(which){
+  const st = calState[which];
+  return calShowModes(which).includes(st.show) ? st.show : 'taken';
+}
+// Every open slot on a day across the fields shown, one entry per field and
+// time with the sub-fields still free, earliest first.
+function calOpenAt(fields, dateStr, taken){
+  const d = parseISO(dateStr), today = new Date(); today.setHours(0,0,0,0);
+  if(d < today || d < SEASON_START || d > SEASON_END) return [];
+  const out = [];
+  fields.forEach(f => {
+    const avail = f.availability.find(a => a.days.includes(d.getDay()));
+    if(!avail) return;
+    avail.times.forEach(time => {
+      const subs = avail.subfields.filter(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time));
+      if(subs.length) out.push({ field: f, time, subs });
+    });
+  });
+  return out.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time));
+}
+function calFieldsShown(which){
+  const h = calState[which].hidden;
+  return FIELDS.filter(f => !h.has(f.id));
+}
 function calSourceBookings(which){
-  const base = which === 'league' ? leagueFilteredBookings() : bookingsCache;
-  const f = calState[which].field;
-  return f === 'all' ? base : base.filter(b => b.field_id === f);
+  let base = which === 'league' ? leagueFilteredBookings() : bookingsCache;
+  const h = calState[which].hidden;
+  if(h.size) base = base.filter(b => !h.has(b.field_id));
+  if(calShow(which) === 'mine'){
+    const t = myBookingTeamId();
+    base = t ? base.filter(b => b.team_id === t) : [];
+  }
+  return base;
 }
 function calDefaultSelected(which){
   // Apple always has a day selected. Prefer today when it's on screen,
@@ -6446,8 +6606,7 @@ function calDefaultSelected(which){
 // How many slots this day could hold across the fields currently in view —
 // the denominator for the cell's fullness bar.
 function calDayCapacity(which, dateObj){
-  const f = calState[which].field;
-  const fields = f === 'all' ? FIELDS : FIELDS.filter(x => x.id === f);
+  const fields = calFieldsShown(which);
   let n = 0;
   fields.forEach(fl => {
     const avail = fl.availability.find(a => a.days.includes(dateObj.getDay()));
@@ -6465,7 +6624,16 @@ function renderMonthCalendar(which, host){
   const byDate = {};
   bookings.forEach(b => { (byDate[b.date] = byDate[b.date] || []).push(b); });
 
-  const chips = fieldMenuTrigger(which, st.field);
+  const show = calShow(which);
+  const shownFields = calFieldsShown(which);
+  // Open is worked out against every booking, whatever else is filtered.
+  const taken = show === 'open' ? new Set(bookingsCache.map(b => b.field_id + '|' + b.date + '|' + b.subfield + '|' + b.time)) : null;
+  const modes = calShowModes(which);
+  const seg = modes.length > 1 ? `<div class="mode-toggle cal-show" role="group" aria-label="Show">
+      <span class="mode-toggle-thumb"></span>
+      ${modes.map(m => `<button type="button" class="mtab${m === show ? ' active' : ''}" data-calshow="${m}" data-ctx="${which}" aria-pressed="${m === show}">${CAL_SHOW_LABEL[m]}</button>`).join('')}
+    </div>` : '';
+  const chips = seg + fieldsSheetTrigger(which);
 
   let cells = '';
   for(let i = 0; i < first.getDay(); i++) cells += '<div class="cal-day pad"></div>';
@@ -6481,8 +6649,14 @@ function renderMonthCalendar(which, host){
       if(am !== bm) return am ? -1 : 1;
       return slotStartMinutes(a.time) - slotStartMinutes(b.time);
     });
-    const SHOW = 2;
-    const evs = ordered.slice(0, SHOW).map(b => {
+    const SHOW = 3;
+    // Open slots are drawn as outlines, the way Calendar draws an event that
+    // is not yet confirmed: the same colour, not yet anybody's.
+    const openHere = show === 'open' && inSeason ? calOpenAt(shownFields, dateStr, taken) : [];
+    const evs = show === 'open'
+      ? openHere.slice(0, SHOW).map(g => `<span class="cal-ev open" style="--c:var(--field-${g.field.id})">${escSafe(slotStartShort(g.time))}</span>`).join('')
+        + (openHere.length > SHOW ? `<span class="cal-more">+${openHere.length - SHOW}</span>` : '')
+      : ordered.slice(0, SHOW).map(b => {
       const isMine = myTeamId && b.team_id === myTeamId;
       return `<span class="cal-ev${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})">${escSafe(slotStartShort(b.time))}</span>`;
     }).join('') + (ordered.length > SHOW ? `<span class="cal-more">+${ordered.length - SHOW}</span>` : '');
@@ -6490,11 +6664,12 @@ function renderMonthCalendar(which, host){
     const wet = weatherCache[dateStr] && weatherCache[dateStr].precip >= 50;
     const cap = inSeason ? calDayCapacity(which, cursor) : 0;
     const pct = cap ? Math.min(100, Math.round(day.length / cap * 100)) : 0;
-    const fill = (cap && pct >= 50) ? `<span class="cal-fill${pct >= 80 ? ' hot' : ''}" title="${day.length} of ${cap} slots booked"><i style="width:${pct}%"></i></span>` : '';
+    const fill = (show === 'taken' && cap && pct >= 50) ? `<span class="cal-fill${pct >= 80 ? ' hot' : ''}" title="${day.length} of ${cap} slots booked"><i style="width:${pct}%"></i></span>` : '';
     // data-flip-id lets GSAP Flip recognise this disc as the same object after
     // the grid is rebuilt, so it slides from the old day to the new one.
     const ring = dateStr === st.selected ? `<span class="cal-sel-ring${dateStr === todayISO ? ' today' : ''}" data-flip-id="calring-${which}"></span>` : '';
-    const cls = ['cal-day', inSeason ? '' : 'out', dateStr === todayISO ? 'today' : '', dateStr === st.selected ? 'selected' : '', wet ? 'wet' : ''].filter(Boolean).join(' ');
+    const weekend = cursor.getDay() === 0 || cursor.getDay() === 6;
+    const cls = ['cal-day', inSeason ? '' : 'out', weekend ? 'we' : '', dateStr === todayISO ? 'today' : '', dateStr === st.selected ? 'selected' : '', wet ? 'wet' : ''].filter(Boolean).join(' ');
     cells += `<button type="button" class="${cls}" ${inSeason ? `data-cal="day" data-ctx="${which}" data-val="${dateStr}"` : 'disabled'} ${wet ? `title="${weatherCache[dateStr].precip}% chance of rain"` : ''}>${ring}<span class="cal-num">${cursor.getDate()}</span><span class="cal-events">${dots}</span></button>`;
     cursor = addDays(cursor, 1);
   }
@@ -6512,12 +6687,17 @@ function renderMonthCalendar(which, host){
     // small x inside a chip — even though this agenda is where a coach actually
     // looks at their own schedule. Your own team's rows are cancellable here now.
     const cancel = canCancel ? `<button type="button" class="cal-item-cancel" data-cancel="${escSafe(b.id)}" aria-label="Cancel this practice">${XMARK_CIRCLE}</button>` : '';
-    const row = `<div class="cal-item${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})"${canCancel ? ' data-swipe' : ''}><span class="cal-time">${escSafe(formatSlotTime(b.time))}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
+    const row = `<div class="cal-item${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})"${canCancel ? ' data-swipe' : ''}><span class="cal-time">${slotTimeStack(b.time)}</span><span><span class="cal-team">${escSafe(team)}</span><div class="cal-where">${escSafe(field)}${b.subfield ? ' &middot; ' + escSafe(b.subfield) : ''}</div></span>${cancel}</div>`;
     // Swipe-left-to-delete is what a phone user reaches for on a list row, but
     // it is invisible and unavailable to a mouse or a screen reader, so the x
     // stays as the discoverable, accessible path. Same action, two routes.
     return canCancel ? `<div class="cal-swipe"><button type="button" class="cal-swipe-del" data-cancel="${escSafe(b.id)}" tabindex="-1">Cancel</button>${row}</div>` : row;
-  }).join('') : `<p class="cal-empty">Nothing booked${st.field === 'all' ? '' : ' at ' + escSafe(FIELD_MAP[st.field].name)} on this day.</p>`;
+  }).join('') : `<p class="cal-empty">${calEmptyText(which)}</p>`;
+  const openList = show !== 'open' ? '' : (() => {
+    const groups = calOpenAt(shownFields, st.selected, taken);
+    if(!groups.length) return `<p class="cal-empty">${calEmptyText(which)}</p>`;
+    return groups.map(g => `<div class="cal-item open" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.subs.join(', '))} open</div></span><button type="button" class="get-pill" data-bookat="${g.field.id}|${st.selected}|${escSafe(g.time)}" aria-label="Book ${escSafe(g.field.name)}, ${escSafe(formatSlotTime(g.time))}">Book</button></div>`).join('');
+  })();
 
   host.innerHTML = `<div class="cal">
     <div class="cal-toolbar">
@@ -6531,10 +6711,154 @@ function renderMonthCalendar(which, host){
     <div class="cal-days">${cells}</div>
     <div class="cal-agenda">
       <div class="cal-agenda-date">${DOW_FULL[sel.getDay()]}, ${MONTHS[sel.getMonth()]} ${sel.getDate()}${weatherBadge(st.selected)}</div>
-      ${agenda}
+      ${show === 'open' ? openList : agenda}
     </div>
   </div>`;
+  const tg = host.querySelector('.cal-show');
+  if(tg) setThumbNow(tg);
 }
+// Put a segmented control's thumb under its active segment without sliding:
+// the month re-renders on every tap, and a thumb that slid in from the left
+// each time would read as a change that never happened.
+function setThumbNow(container){
+  const thumb = container.querySelector('.mode-toggle-thumb'), a = container.querySelector('.mtab.active');
+  if(!thumb || !a || !a.offsetWidth) return;
+  if(hasGSAP()) gsap.set(thumb, { x: a.offsetLeft - 3, width: a.offsetWidth });
+  else { thumb.style.width = a.offsetWidth + 'px'; thumb.style.transform = `translateX(${a.offsetLeft - 3}px)`; }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-calshow]');
+  if(!b) return;
+  const which = b.dataset.ctx, st = calState[which];
+  if(calShow(which) === b.dataset.calshow) return;
+  const host = which === 'league' ? el.leagueMonthGrid : el.scheduleCalendar;
+  // The control is rebuilt with the month; carry the thumb across so it
+  // slides from the old segment to the new one.
+  const old = host.querySelector('.cal-show .mode-toggle-thumb');
+  const from = old && hasGSAP() && motionOK() ? { x: gsap.getProperty(old, 'x'), width: old.offsetWidth } : null;
+  st.show = b.dataset.calshow;
+  saveCalShow(which);
+  haptic('selection');
+  if(which === 'league') renderLeague(); else renderScheduleCalendar();
+  const tg = host.querySelector('.cal-show');
+  if(tg && from){ gsap.set(tg.querySelector('.mode-toggle-thumb'), from); positionModeThumb(tg); }
+});
+function calEmptyText(which){
+  const shown = calFieldsShown(which), show = calShow(which), st = calState[which];
+  if(!shown.length) return 'Every field is hidden. Tap Fields to show them.';
+  if(show === 'mine') return 'Your team has nothing booked on this day.';
+  if(show === 'open'){
+    const today = new Date(); today.setHours(0,0,0,0);
+    if(st.selected && parseISO(st.selected) < today) return 'This day has passed.';
+    return shown.length === 1 ? `Nothing open at ${escSafe(shown[0].name)} on this day.` : 'Nothing open on this day.';
+  }
+  if(shown.length === 1) return `Nothing booked at ${escSafe(shown[0].name)} on this day.`;
+  return shown.length < FIELDS.length ? 'Nothing booked on the fields shown.' : 'Nothing booked on this day.';
+}
+// Book, on that field, on that day: the week strip with the day selected.
+// With a time, the page settles on that time's slots.
+function openBookAt(fieldId, dateISO, time){
+  switchView('book');
+  if(selectedField !== fieldId) selectBookField(fieldId);
+  bookViewMode = 'week';
+  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'week'));
+  currentWeekMonday = mondayOf(parseISO(dateISO));
+  bookSelectedDate = dateISO;
+  renderWeek();
+  requestAnimationFrame(() => {
+    positionModeThumb(el.bookModeToggle);
+    if(!time) return;
+    const when = formatSlotTime(time);
+    const head = [...el.weekGrid.querySelectorAll('.ios-group-header')].find(h => h.textContent.trim() === when);
+    if(!head) return;
+    const bar = document.querySelector('header')?.getBoundingClientRect().height || 0;
+    window.scrollTo({ top: head.getBoundingClientRect().top + window.scrollY - bar - 16, behavior: motionOK() ? 'smooth' : 'auto' });
+  });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-bookat]');
+  if(!b) return;
+  const [fieldId, dateISO, time] = b.dataset.bookat.split('|');
+  haptic('selection');
+  openBookAt(fieldId, dateISO, time);
+});
+
+// ---- The Fields sheet: Calendar's "Calendars", one row per field ----
+const CF_CHECK = '<svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m6 12.5 4 4 8-9"/></svg>';
+function fieldsSheetTrigger(which){
+  const shown = calFieldsShown(which);
+  const label = shown.length === FIELDS.length ? 'All Fields'
+    : shown.length === 1 ? shown[0].name
+    : shown.length ? `${shown.length} Fields` : 'No Fields';
+  const dots = shown.map(f => `<i style="--c:var(--field-${f.id})"></i>`).join('');
+  return `<button type="button" class="fm-trigger cal-fields-btn" data-fields-sheet="${which}" aria-haspopup="dialog" aria-label="Fields, ${escSafe(label)}"><span class="cf-dots" aria-hidden="true">${dots}</span><span class="fm-label">${escSafe(label)}</span></button>`;
+}
+let fieldsSheetFor = null, fieldsSheetByKeyboard = false;
+function renderFieldsSheet(){
+  const which = fieldsSheetFor;
+  if(!which) return;
+  const h = calState[which].hidden;
+  document.getElementById('fieldsAllBtn').textContent = h.size ? 'Show All' : 'Hide All';
+  document.getElementById('fieldsBody').innerHTML = `<div class="ios-group cf-list">${FIELDS.map(f => {
+    const on = !h.has(f.id);
+    return `<button type="button" class="ios-row cf-row${on ? ' on' : ''}" role="checkbox" aria-checked="${on}" data-field-toggle="${f.id}" style="--c:var(--field-${f.id})">
+      <span class="cf-check" aria-hidden="true">${CF_CHECK}</span>
+      <span class="cf-text">${escSafe(f.name)}<small>${escSafe(fieldDetail(f))}</small></span>
+    </button>`;
+  }).join('')}</div>`;
+}
+function openFieldsSheet(which, viaKeyboard){
+  fieldsSheetFor = which;
+  fieldsSheetByKeyboard = !!viaKeyboard;
+  renderFieldsSheet();
+  const m = document.getElementById('fieldsSheet');
+  m.style.display = 'flex';
+  haptic('light');
+  if(window.Spring && !Spring.reduced()){
+    const sheet = m.querySelector('.share-sheet');
+    Spring.set(sheet, { y: sheet.offsetHeight * .6, opacity: 1 });
+    Spring.to(sheet, { y: 0 }, { preset: 'gentle' }).then(() => { sheet.style.transform = ''; });
+  }
+  setTimeout(() => document.getElementById('fieldsSheetTitle')?.focus?.(), 50);
+}
+function closeFieldsSheet(){
+  const m = document.getElementById('fieldsSheet');
+  if(!m || m.style.display === 'none') return;
+  m.style.display = 'none';
+  const which = fieldsSheetFor;
+  fieldsSheetFor = null;
+  if(fieldsSheetByKeyboard) document.querySelector(`[data-fields-sheet="${which}"]`)?.focus?.();
+}
+function fieldsChanged(){
+  const which = fieldsSheetFor;
+  saveHiddenFields(which);
+  renderFieldsSheet();
+  // The month behind the sheet follows each tap, as Calendar's does.
+  if(which === 'league') renderLeague(); else renderScheduleCalendar();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-fields-sheet]');
+  if(t){ openFieldsSheet(t.dataset.fieldsSheet, e.detail === 0); return; }
+  if(!fieldsSheetFor) return;
+  const row = e.target.closest('[data-field-toggle]');
+  if(row){
+    const h = calState[fieldsSheetFor].hidden, id = row.dataset.fieldToggle;
+    if(h.has(id)) h.delete(id); else h.add(id);
+    haptic('selection');
+    fieldsChanged();
+    if(e.detail === 0) document.querySelector(`[data-field-toggle="${id}"]`)?.focus?.();
+    return;
+  }
+  if(e.target.closest('#fieldsAllBtn')){
+    const h = calState[fieldsSheetFor].hidden;
+    if(h.size) h.clear(); else FIELDS.forEach(f => h.add(f.id));
+    haptic('selection');
+    fieldsChanged();
+    return;
+  }
+  if(e.target.closest('[data-fields-close]')) closeFieldsSheet();
+});
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeFieldsSheet(); });
 // Swipe a row left to reveal Cancel. Deliberately does not delete on release:
 // a full-swipe-to-delete has no undo here, and this routes into the same
 // confirmation sheet as every other destructive action.
@@ -6612,7 +6936,6 @@ document.addEventListener('click', e => {
   let dir = 0;
 
   if(action === 'day') st.selected = btn.dataset.val;
-  else if(action === 'field') st.field = btn.dataset.val;
   else if(action === 'prev') { st.monthFirst = addMonths(st.monthFirst, -1); st.selected = null; dir = -1; }
   else if(action === 'next') { st.monthFirst = addMonths(st.monthFirst, 1); st.selected = null; dir = 1; }
   else if(action === 'today'){
@@ -6726,6 +7049,14 @@ function formatSlotTime(range){
   const ma = a.match(per), mb = b.match(per);
   const start = (ma && mb && ma[1].toUpperCase() === mb[1].toUpperCase()) ? a.replace(per, '') : a;
   return `${start}\u2013${b}`;
+}
+// Calendar's day list: the start over the end, in a column of fixed width, so
+// every title starts at the same x however long the times are.
+function slotTimeStack(range){
+  const t = parseTimeRangeTo24h(range);
+  if(!t) return escSafe(range);
+  const at = (h, m) => TIME_FMT.format(new Date(2000, 0, 1, h, m));
+  return `<span class="t-start">${escSafe(at(t.startHour24, t.startMin))}</span><span class="t-end">${escSafe(at(t.endHour24, t.endMin))}</span>`;
 }
 function slotStartMinutes(time){
   const t = parseTimeRangeTo24h(time);

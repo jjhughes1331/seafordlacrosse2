@@ -2927,8 +2927,10 @@ let SEASON_END = new Date(2027, 5, 30);
 let SEASON_TODAY = (() => { const t = new Date(); t.setHours(0,0,0,0); return t < SEASON_START ? new Date(SEASON_START) : t > SEASON_END ? new Date(SEASON_END) : t; })();
 
 // The field list comes from the database at boot (loadCatalog); until then,
-// and whenever that read fails, it is the list in lib/field-catalog.js.
-let FIELDS = FIELDS_FALLBACK;
+// and whenever that read fails, it is the list in lib/field-catalog.js. If
+// that file itself didn't load, start empty rather than stop this whole
+// script; loadCatalog fetches it again.
+let FIELDS = window.FIELDS_FALLBACK || [];
 let FIELD_MAP = Object.fromEntries(FIELDS.map(f => [f.id, f]));
 
 // ============ STATE ============
@@ -4127,6 +4129,13 @@ function showSetPasswordScreen(){
 // The field list and season dates, from the database (lib/field-catalog.js).
 // Any failure, or an empty list, keeps what the page started with.
 async function loadCatalog(){
+  if(!window.buildFieldCatalog){
+    try { await loadScript('lib/field-catalog.js'); } catch(err){ console.warn('field catalog: file did not load', err); }
+    if(!FIELDS.length && window.FIELDS_FALLBACK){
+      FIELDS = FIELDS_FALLBACK;
+      FIELD_MAP = Object.fromEntries(FIELDS.map(x => [x.id, x]));
+    }
+  }
   try {
     const [f, s, a] = await Promise.all([
       sb.from('fields').select('id, name, short_name, note, sort'),

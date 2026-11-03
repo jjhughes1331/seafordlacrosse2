@@ -1,0 +1,798 @@
+{
+ "fields": [
+  {
+   "id": "cedarcreek",
+   "name": "Cedar Creek",
+   "short_name": null,
+   "note": "East Field, Tuesday and Thursday only. Half field only (shared with soccer and Wantagh Lax).",
+   "sort": 1
+  },
+  {
+   "id": "harbor",
+   "name": "Seaford Harbor",
+   "short_name": null,
+   "note": "Field 1 inside track, Field 2 outside track.",
+   "sort": 2
+  },
+  {
+   "id": "seafordhs",
+   "name": "Seaford HS",
+   "short_name": null,
+   "note": "Turf field. School games have priority weeknights.",
+   "sort": 3
+  },
+  {
+   "id": "sms",
+   "name": "Seaford MS",
+   "short_name": null,
+   "note": "Grass field. School teams have priority; permit starts at 5 PM.",
+   "sort": 4
+  },
+  {
+   "id": "seamans",
+   "name": "Seamans Neck Park",
+   "short_name": "Seamans Neck",
+   "note": "Field A closest to parking, B mid field, C far end.",
+   "sort": 5
+  }
+ ],
+ "slots": [
+  {
+   "field_id": "cedarcreek",
+   "subfield": "1/2 Field",
+   "time": "4:30-5:30 PM",
+   "days": [
+    2,
+    4
+   ]
+  },
+  {
+   "field_id": "cedarcreek",
+   "subfield": "1/2 Field",
+   "time": "5:30-6:30 PM",
+   "days": [
+    2,
+    4
+   ]
+  },
+  {
+   "field_id": "cedarcreek",
+   "subfield": "1/2 Field",
+   "time": "6:30-8:00 PM",
+   "days": [
+    2,
+    4
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "1:00-2:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "10:00-11:00 AM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "11:00-12:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "12:00-1:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "2:00-3:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "3:00-4:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "4:00-5:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "4:30-5:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "5:00-6:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "5:30-6:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "6:00-7:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "6:30-7:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "7:00-8:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "7:30-8:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 1",
+   "time": "9:00-10:00 AM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "1:00-2:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "10:00-11:00 AM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "11:00-12:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "12:00-1:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "2:00-3:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "3:00-4:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "4:00-5:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "4:30-5:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "5:00-6:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "5:30-6:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "6:00-7:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "6:30-7:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "7:00-8:00 PM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "7:30-8:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "harbor",
+   "subfield": "Field 2",
+   "time": "9:00-10:00 AM",
+   "days": [
+    0,
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "1:00-2:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "2:00-3:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "3:00-4:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "4:00-5:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "5:00-6:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "6:00-7:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field A (North)",
+   "time": "7:15-9:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "1:00-2:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "2:00-3:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "3:00-4:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "4:00-5:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "5:00-6:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "6:00-7:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seafordhs",
+   "subfield": "Half Field B (South)",
+   "time": "7:15-9:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field A",
+   "time": "5:00-6:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field A",
+   "time": "6:30-8:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field A",
+   "time": "8:00-10:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field B",
+   "time": "5:00-6:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field B",
+   "time": "6:30-8:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field B",
+   "time": "8:00-10:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field C",
+   "time": "5:00-6:30 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field C",
+   "time": "6:30-8:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Field C",
+   "time": "8:00-10:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field A",
+   "time": "1:00-2:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field A",
+   "time": "2:00-3:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field A",
+   "time": "3:00-4:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field A",
+   "time": "4:00-5:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field A",
+   "time": "5:00-6:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field B",
+   "time": "1:00-2:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field B",
+   "time": "2:00-3:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field B",
+   "time": "3:00-4:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field B",
+   "time": "4:00-5:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "seamans",
+   "subfield": "Half Field B",
+   "time": "5:00-6:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "1:00-2:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "2:00-3:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "3:00-4:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "4:00-5:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "5:00-6:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "6:00-7:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field A",
+   "time": "7:30-9:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "1:00-2:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "2:00-3:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "3:00-4:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "4:00-5:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "5:00-6:00 PM",
+   "days": [
+    6
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "6:00-7:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "field_id": "sms",
+   "subfield": "Half Field B",
+   "time": "7:30-9:00 PM",
+   "days": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  }
+ ]
+}

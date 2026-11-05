@@ -206,6 +206,7 @@
       updateUser: async () => ({ data: { user: session.user }, error: null }),
     },
     from,
+    rpc: (name, p = {}) => rpc(name, p),
     channel: () => ({ on(){ return this; }, subscribe(){ return this; } }),
     removeChannel: () => {},
   };
@@ -235,6 +236,71 @@
     else M.push({ team_id, profile_id, role, assigned_by: who.id, created_at: new Date().toISOString() });
     syncProfile(profile_id); if(old) syncProfile(old.profile_id);
     return null;
+  }
+
+  // The five team functions (teams_assignments_2026_11_04.sql) with the same
+  // rules and the same refusal text: an admin or the program's director
+  // manages; one head per team; at most 3 assistants; a team with bookings
+  // can't be removed; removing a team unassigns everyone on it.
+  async function rpc(name, p){
+    await new Promise(r => setTimeout(r, 200));
+    seedBookings();
+    const fail = (message, code) => ({ data: null, error: { message, code } });
+    const ok = (data = null) => ({ data, error: null });
+    const manages = team => who.role === 'admin' || (who.role === 'director' && !!team && who.gender === team.gender);
+    const team = teams.find(t => t.id === p.p_team);
+    const clean = v => (v == null ? '' : String(v).trim()) || null;
+    const taken = (gender, grade, name, except) => teams.some(t => t !== except && t.gender === gender && t.grade === grade
+      && (t.name || '').toLowerCase() === (name || '').toLowerCase());
+    if(name === 'create_team'){
+      if(!(who.role === 'admin' || (who.role === 'director' && who.gender === p.p_gender)))
+        return fail("Only an admin or this program's director can add teams", '42501');
+      if(!['girls', 'boys'].includes(p.p_gender)) return fail('Program must be girls or boys', '22023');
+      if(!GRADES_F.includes(p.p_grade)) return fail('Unknown grade: ' + p.p_grade, '22023');
+      const nm = clean(p.p_name);
+      if(taken(p.p_gender, p.p_grade, nm))
+        return fail("There's already a " + (p.p_gender === 'girls' ? 'Girls' : 'Boys') + ' ' + p.p_grade + ' team'
+          + (nm ? ' called ' + nm : ' without a name') + '. Give the new one a different name (Green, White...).', '23505');
+      const row = { id: crypto.randomUUID(), gender: p.p_gender, grade: p.p_grade, name: nm, league_name: clean(p.p_league_name), priority_finished_at: null };
+      teams.push(row);
+      return ok(row.id);
+    }
+    if(name === 'rename_team'){
+      if(!manages(team)) return fail("Only an admin or this program's director can rename teams", '42501');
+      const nm = clean(p.p_name);
+      if(taken(team.gender, team.grade, nm, team)) return fail('Another team in that grade already has that name', '23505');
+      team.name = nm; team.league_name = clean(p.p_league_name);
+      return ok();
+    }
+    if(name === 'delete_team'){
+      if(!manages(team)) return fail("Only an admin or this program's director can remove teams", '42501');
+      if(bookings.some(b => b.team_id === team.id))
+        return fail('This team still has bookings. Clear them first (Admin > Clear Bookings).', '23503');
+      const gone = store.team_members.filter(m => m.team_id === team.id).map(m => m.profile_id);
+      store.team_members = store.team_members.filter(m => m.team_id !== team.id);
+      teams.splice(teams.indexOf(team), 1);
+      gone.forEach(syncProfile);
+      return ok();
+    }
+    if(name === 'assign_team_member'){
+      if(!['head', 'assistant'].includes(p.p_role)) return fail('Role must be head or assistant', '22023');
+      if(!team) return fail('That team no longer exists', 'P0002');
+      if(!manages(team)) return fail("Only an admin or this program's director can assign coaches", '42501');
+      const target = store.profiles.find(x => x.id === p.p_profile);
+      if(!target) return fail('That person no longer has an account', 'P0002');
+      if(target.role === 'admin') return fail("Admins aren't assigned to teams", '22023');
+      const old = p.p_role === 'head' ? store.team_members.find(m => m.team_id === team.id && m.role === 'head' && m.profile_id !== target.id) : null;
+      const refusal = writeMember(team.id, target.id, p.p_role);
+      if(refusal) return fail(refusal, '23514');
+      return ok({ replaced: old ? old.profile_id : null });
+    }
+    if(name === 'unassign_team_member'){
+      if(!manages(team)) return fail("Only an admin or this program's director can change a team's coaches", '42501');
+      store.team_members = store.team_members.filter(m => !(m.team_id === p.p_team && m.profile_id === p.p_profile));
+      syncProfile(p.p_profile);
+      return ok();
+    }
+    return fail('Unknown function ' + name, '42883');
   }
 
   // invite-coach and manage-user are called with fetch, not the client, so
@@ -2207,6 +2273,25 @@
   .cf-text { display: flex; flex-direction: column; min-width: 0; }
   .cf-text small { font-size: var(--ios-foot); color: var(--muted); margin-top: 1px; }
 
+  /* Admin > Teams: the list, the team sheet, the person picker. */
+  .teams-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0 4px 14px; }
+  .teams-bar .hint { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+  .teams-bar .allbtn { flex: none; margin-left: 0; color: var(--tint); }
+  #teamsList .ios-group-header, #teamBody .ios-group-header { margin-top: 4px; }
+  .ios-row.ios-action { justify-content: flex-start; color: var(--tint); }
+  .ios-row.ios-action:disabled, .row-btn:disabled { opacity: .5; cursor: default; }
+  .ios-row .row-muted { color: var(--muted); }
+  .row-btn { flex: none; min-height: 44px; min-width: 44px; padding: 0 4px; border: none; background: none; font: inherit;
+    font-size: var(--ios-body); color: var(--danger); cursor: pointer; }
+  .ios-group-footer.err { color: var(--danger); }
+  #teamBody .ios-field > span { width: 112px; }
+  #addTeamBody .ios-field > span { width: 88px; }
+  #teamBody .ios-field input, #addTeamBody .ios-field input { min-height: 44px; }
+  .person-search { display: block; width: 100%; min-height: 44px; margin: 0 0 14px; padding: 10px 14px; border: none;
+    border-radius: 10px; background: var(--cell-bg); color: var(--ink); font: inherit; font-size: 16px; }
+  .person-search::placeholder { color: var(--muted); }
+  .person-search:focus { outline: 2px solid var(--accent-fill); outline-offset: -2px; }
+
   /* Taken / Open / Mine beside Fields, one row. */
   .cal-filter { align-items: center; gap: 8px; overflow: visible; }
   .cal-filter .cal-show { margin: 0; flex: none; }
@@ -2510,6 +2595,45 @@
     <div class="as-group"><button class="as-btn as-cancel" type="button" data-cal-close>Cancel</button></div>
   </div>
 </div>
+<!-- Admin > Teams: one team's page, Add Team, and the person picker that sits
+     over the team page. All three come before the confirmation sheet so a
+     confirm always lands on top. -->
+<div class="share-modal" id="teamSheet" style="display:none">
+  <div class="share-backdrop" data-tsheet-close></div>
+  <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="teamSheetTitle">
+    <div class="sheet-bar">
+      <span></span>
+      <h3 id="teamSheetTitle" tabindex="-1">Team</h3>
+      <button type="button" class="sheet-done" data-tsheet-close>Done</button>
+    </div>
+    <div class="sheet-scroll" id="teamBody"></div>
+  </div>
+</div>
+<div class="share-modal" id="addTeamSheet" style="display:none">
+  <div class="share-backdrop" data-tsheet-close></div>
+  <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="addTeamSheetTitle">
+    <div class="sheet-bar">
+      <button type="button" class="sheet-done sheet-lead" data-tsheet-close>Cancel</button>
+      <h3 id="addTeamSheetTitle" tabindex="-1">Add Team</h3>
+      <button type="button" class="sheet-done" id="addTeamGoBtn">Add</button>
+    </div>
+    <div class="sheet-scroll" id="addTeamBody"></div>
+  </div>
+</div>
+<div class="share-modal" id="personSheet" style="display:none">
+  <div class="share-backdrop" data-tsheet-close></div>
+  <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="personSheetTitle">
+    <div class="sheet-bar">
+      <button type="button" class="sheet-done sheet-lead" data-tsheet-close>Cancel</button>
+      <h3 id="personSheetTitle" tabindex="-1">Head Coach</h3>
+      <span></span>
+    </div>
+    <div class="sheet-scroll">
+      <input type="search" class="person-search" id="personSearch" placeholder="Search name, email or team" aria-label="Search people" autocomplete="off">
+      <div id="personList"></div>
+    </div>
+  </div>
+</div>
 <!-- One confirmation sheet for every destructive action. The app previously had
      three models at once: a custom "tap again to confirm", the browser's native
      confirm() dialog, and in one case the literal string "!" as its prompt. This
@@ -2769,6 +2893,7 @@
   <div class="mode-toggle" id="adminPaneToggle" style="margin:0 0 18px">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-pane="people">People</button>
+    <button class="mtab" data-pane="teams">Teams</button>
     <button class="mtab" data-pane="booking">Booking</button>
     <button class="mtab" data-pane="danger">Danger</button>
     <button class="mtab" data-pane="reports">Reports</button>
@@ -2861,6 +2986,14 @@
 
   
   </div></div>
+  <div class="admin-pane" data-adminpane="teams" hidden>
+    <p class="admin-section-label">Teams</p>
+    <div class="teams-bar">
+      <p class="hint" id="teamsHint"></p>
+      <button type="button" class="allbtn" id="addTeamBtn">Add Team</button>
+    </div>
+    <div id="teamsList"></div>
+  </div>
   <div class="admin-pane" data-adminpane="booking" hidden>
 <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
   <div class="admin-card" id="scheduleLockCard">
@@ -4759,6 +4892,7 @@ function rerenderCurrentView(){
   else if(currentView === 'openweek') renderOpenWeek();
   else if(currentView === 'myteam') renderMyTeam();
   else if(currentView === 'league') renderLeague();
+  else if(currentView === 'admin'){ renderTeamsList(); if(teamSheetId) renderTeamSheet(); if(userListRows.length) renderUserList(); }
 }
 
 function setupRealtime(){
@@ -4977,7 +5111,8 @@ function switchView(view){
       // director: pick which of their gender's teams to book for
       el.lockedTeamBanner.style.display = 'none';
       el.teamPicker.style.display = '';
-      el.pickerHeading.textContent = `Book for which ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} team?`;
+      el.pickerHeading.textContent = directorAwayTeams().length ? 'Book for which team?'
+        : `Book for which ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} team?`;
       document.querySelectorAll('.gtab').forEach(g => g.style.display = 'none'); // gender fixed for director
       buildGradeGrid(true);
       applyBookTeamGate();
@@ -5024,6 +5159,12 @@ function sameTeamIn(gender, teamId){
   return (same.find(t => (t.name || '') === (old.name || '')) || same[0])?.id || null;
 }
 
+// A director books for their own program, and (can_book_team) for any team
+// they head in the other one. Admins pick anything.
+function directorAwayTeams(){
+  return myProfile && myProfile.role === 'director'
+    ? teamsInOrder(headTeams().filter(t => t.gender !== myProfile.gender)) : [];
+}
 function buildGradeGrid(forBooking){
   // A head coach of two or more teams picks among those, full names, and
   // always has one picked.
@@ -5043,7 +5184,10 @@ function buildGradeGrid(forBooking){
   const placeholderText = forBooking ? 'Select team' : 'All teams';
   let html = `<option value="__placeholder__" disabled ${showPlaceholder ? 'selected' : ''}>${placeholderText}</option>`;
   if(!forBooking) html += `<option value="">All teams</option>`;
-  html += teamOptionsHTML(teamsOfProgram(gender), false);
+  const away = forBooking && myProfile.role === 'director' ? directorAwayTeams() : [];
+  // With teams from both programs in the menu, every entry names its program.
+  html += away.length ? teamOptionsHTML(teamsOfProgram(gender), true) + teamOptionsHTML(away, true)
+    : teamOptionsHTML(teamsOfProgram(gender), false);
   el.gradeGrid.innerHTML = html;
   el.gradeGrid.value = showPlaceholder ? '__placeholder__' : (active || '');
 }
@@ -7459,6 +7603,7 @@ document.getElementById('adminPaneToggle').addEventListener('click', e => {
   // it the moment the pane comes back.
   if(btn.dataset.pane === 'people') positionModeThumb(document.getElementById('peoplePaneToggle'));
   if(btn.dataset.pane === 'reports') loadActivity();
+  if(btn.dataset.pane === 'teams') openTeamsPane();
   haptic('selection');
 });
 el.finderDays.addEventListener('click', e => {
@@ -7545,7 +7690,7 @@ function renderAdmin(){
   });
   if(myProfile.role === 'admin'){
     el.adminHeading.textContent = 'Invite a director or coach';
-    el.adminHint.textContent = 'As admin you can invite directors (either gender), or head coaches and view-only assistant coaches (any team).';
+    el.adminHint.textContent = 'As admin you can invite directors (either gender), or head coaches and view-only assistant coaches (any team). A team has one head coach and up to 3 assistants: inviting a head coach to a team that has one makes the new person the head, and the current head comes off the team.';
     el.inviteRoleField.style.display = 'block';
     el.inviteRoleSelect.value = 'coach';
     syncInviteFormFields();
@@ -7555,7 +7700,7 @@ function renderAdmin(){
   } else {
     const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
     el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
-    el.adminHint.textContent = `You can only invite coaches for ${genderLabel} teams. Each team can have more than one coach. Assistant coaches can see the schedule but can't book.`;
+    el.adminHint.textContent = `You can only invite coaches for ${genderLabel} teams. A team has one head coach and up to 3 assistants. Inviting a head coach to a team that already has one makes the new person the head, and the current head comes off the team. Assistant coaches can see the schedule but can't book.`;
     el.inviteRoleField.style.display = 'block';
     if(el.inviteRoleSelect.value === 'director') el.inviteRoleSelect.value = 'coach';
     syncInviteFormFields();
@@ -7566,6 +7711,7 @@ function renderAdmin(){
     el.userListHead.innerHTML = '<tr><th>Name</th><th>Team</th><th>Coach email</th><th>Last seen</th><th></th></tr>';
   }
   loadUserList();
+  renderTeamsList(); loadTeamPeople();
   const isAdminSettings = myProfile.role === 'admin';
   const bookingControlsLabel = document.getElementById('bookingControlsLabel');
   const scheduleLockCard = document.getElementById('scheduleLockCard');
@@ -7941,6 +8087,333 @@ el.inviteBtn.addEventListener('click', async () => {
 // the list is small enough that it never needs to.
 let userListRows = [];
 let lastSeenById = {};
+// ============ ADMIN > TEAMS ============
+// Admins see every team; a director sees their own program's (the database
+// limits a director's team changes to their program). Every change is an RPC
+// (create_team, rename_team, delete_team, assign_team_member,
+// unassign_team_member): the database decides what is allowed and its own
+// refusal text is shown as written.
+let teamPeople = [], teamPeopleError = '', teamPeopleLoaded = false;
+let teamSheetId = null, teamStatus = {}, teamBusy = false, teamDraft = null;
+let pickRole = null;       // 'head' | 'assistant' while the person picker is up
+let addTeamStatus = '', addTeamBusy = false;
+const MAX_TEAM_ASSISTANTS = 3;
+
+// A person's full name, else their email (a nameless account still has to be pickable).
+function whoName(p){
+  if(!p) return '';
+  return [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
+}
+function personRoleLabel(p){ return p.role === 'director' ? 'Director' : p.role === 'assistant' ? 'Assistant' : 'Head coach'; }
+// The database's own words; only a dead connection gets ours.
+function rpcText(error){
+  const msg = String((error && error.message) || error || '').trim();
+  if(!navigator.onLine || /failed to fetch|networkerror|load failed/i.test(msg)) return "You're offline. Try again when you have signal.";
+  return msg || 'That did not go through. Try again in a moment.';
+}
+function manageableTeams(){
+  return myProfile.role === 'admin' ? teamsInOrder(teams) : teamsOfProgram(myProfile.gender);
+}
+function headIdOf(teamId){ return (teamMembers.find(m => m.team_id === teamId && m.role === 'head') || {}).profile_id || null; }
+function assistantIdsOf(teamId){ return teamMembers.filter(m => m.team_id === teamId && m.role === 'assistant').map(m => m.profile_id); }
+function teamPerson(id){ return teamPeople.find(p => p.id === id) || null; }
+function teamPersonName(id){ const p = teamPerson(id); return p ? whoName(p) : (teamPeopleLoaded ? 'Unknown person' : 'Loading…'); }
+const $tid = id => document.getElementById(id);
+
+async function loadTeamPeople(){
+  if(!myProfile || !['admin', 'director'].includes(myProfile.role)) return;
+  const { data, error } = await sb.from('profiles').select('id, email, role, gender, team_id, first_name, last_name')
+    .in('role', ['director', 'coach', 'assistant']);
+  if(error){ teamPeopleError = "Couldn't load the coaches. " + rpcText(error); }
+  else {
+    teamPeople = (data || []).slice().sort((a, b) => whoName(a).localeCompare(whoName(b), undefined, { sensitivity: 'base', numeric: true }));
+    teamPeopleError = '';
+  }
+  teamPeopleLoaded = true;
+  renderTeamsList();
+  if(teamSheetId) renderTeamSheet();
+  if(pickRole) renderPersonList();
+}
+function openTeamsPane(){
+  renderTeamsList();
+  loadTeamPeople();
+}
+
+function renderTeamsList(){
+  const box = $tid('teamsList');
+  if(!box || !myProfile || !['admin', 'director'].includes(myProfile.role)) return;
+  $tid('teamsHint').textContent = myProfile.role === 'admin'
+    ? 'Every team and its head coach. Tap a team to assign coaches, rename it or remove it.'
+    : `Your ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} teams and their head coaches. Tap a team to assign coaches, rename it or remove it.`;
+  const list = manageableTeams();
+  let html = teamPeopleError ? `<p class="status err" role="alert" style="margin:0 4px 12px">${escSafe(teamPeopleError)}</p>` : '';
+  if(!list.length) html += '<p class="hint" style="margin:0 4px">No teams yet.</p>';
+  (myProfile.role === 'admin' ? ['girls', 'boys'] : [myProfile.gender]).forEach(g => {
+    const rows = list.filter(t => t.gender === g);
+    if(!rows.length) return;
+    html += `<p class="ios-group-header">${g === 'girls' ? 'Girls' : 'Boys'}</p><div class="ios-group">` + rows.map(t => {
+      const hid = headIdOf(t.id);
+      const head = hid ? (teamPerson(hid) ? whoName(teamPerson(hid)) : (teamPeopleLoaded ? 'Head coach assigned' : 'Loading…')) : 'No head coach';
+      return `<button type="button" class="ios-row" data-team-open="${escSafe(t.id)}"><span class="cf-text">${escSafe(teamShortLabel(t))}<small>${escSafe(head)}</small></span>${CHEVRON_SVG}</button>`;
+    }).join('') + '</div>';
+  });
+  box.innerHTML = html;
+}
+
+// ---- Sheets (same open/close the Fields and Account sheets use) ----
+function openTSheet(id){
+  const m = $tid(id);
+  m.style.display = 'flex';
+  haptic('light');
+  if(window.Spring && !Spring.reduced()){
+    const sheet = m.querySelector('.share-sheet');
+    Spring.set(sheet, { y: sheet.offsetHeight * .6, opacity: 1 });
+    Spring.to(sheet, { y: 0 }, { preset: 'gentle' }).then(() => { sheet.style.transform = ''; });
+  }
+  setTimeout(() => m.querySelector('h3')?.focus?.(), 50);
+}
+function closeTSheet(id){
+  const m = $tid(id);
+  if(!m || m.style.display === 'none') return;
+  m.style.display = 'none';
+  if(id === 'teamSheet'){ teamSheetId = null; teamStatus = {}; teamDraft = null; teamBusy = false; }
+  if(id === 'personSheet') pickRole = null;
+  if(id === 'addTeamSheet') addTeamStatus = '';
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-tsheet-close]');
+  if(c) closeTSheet(c.closest('.share-modal').id);
+});
+// Capture phase, so it runs before the confirm sheet's own Escape closes it:
+// one Escape closes one thing.
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape' || $tid('confirmModal').style.display === 'flex') return;
+  for(const id of ['personSheet', 'addTeamSheet', 'teamSheet']){
+    if($tid(id).style.display !== 'none'){ closeTSheet(id); return; }
+  }
+}, true);
+
+// ---- The team's page ----
+function openTeamSheet(teamId){
+  const t = teamsById[teamId];
+  if(!t) return;
+  teamSheetId = teamId; teamStatus = {}; teamBusy = false;
+  teamDraft = { name: t.name || '', league: t.league_name || '' };
+  renderTeamSheet();
+  openTSheet('teamSheet');
+  loadTeamPeople();
+}
+function renderTeamSheet(){
+  const t = teamsById[teamSheetId];
+  if(!t){ if(teamSheetId) closeTSheet('teamSheet'); return; }
+  const body = $tid('teamBody');
+  // Keep the cursor if a refresh lands while someone is typing a name.
+  const act = document.activeElement;
+  const keep = act && body.contains(act) && act.id ? { id: act.id, at: act.selectionStart } : null;
+  $tid('teamSheetTitle').textContent = teamLabelOf(t);
+  const hid = headIdOf(t.id), aids = assistantIdsOf(t.id);
+  const dis = teamBusy ? ' disabled' : '';
+  const note = (key, extra) => {
+    const txt = [extra, teamStatus[key]].filter(Boolean).join(' ');
+    return `<p class="ios-group-footer err" role="alert">${escSafe(txt)}</p>`;
+  };
+  const peopleNote = !teamPeople.length ? teamPeopleError : '';
+  body.innerHTML =
+    `<p class="ios-group-header">Head Coach</p>
+     <div class="ios-group">
+       <div class="ios-row"><span class="${hid ? '' : 'row-muted'}">${escSafe(hid ? teamPersonName(hid) : 'No head coach')}</span></div>
+       <button type="button" class="ios-row ios-action" data-team-pick="head"${dis}>${hid ? 'Change Head Coach' : 'Choose Head Coach'}</button>
+     </div>${note('head', peopleNote)}
+     <p class="ios-group-header">Assistants (${aids.length} of ${MAX_TEAM_ASSISTANTS})</p>
+     <div class="ios-group">
+       ${aids.map(id => `<div class="ios-row"><span>${escSafe(teamPersonName(id))}</span><button type="button" class="row-btn" data-team-unassign="${escSafe(id)}" aria-label="Remove ${escSafe(teamPersonName(id))}"${dis}>Remove</button></div>`).join('')}
+       <button type="button" class="ios-row ios-action" data-team-pick="assistant"${dis}>Add Assistant</button>
+     </div>${note('assistant')}
+     <p class="ios-group-header">Name</p>
+     <div class="ios-group">
+       <label class="ios-row ios-field"><span>Name</span><input type="text" id="teamNameInput" placeholder="Green, White…" autocomplete="off" value="${escSafe(teamDraft.name)}"></label>
+       <label class="ios-row ios-field"><span>League Name</span><input type="text" id="teamLeagueInput" placeholder="Optional" autocomplete="off" value="${escSafe(teamDraft.league)}"></label>
+       <button type="button" class="ios-row ios-action" data-team-save${dis}>Save</button>
+     </div>
+     <p class="ios-group-footer" style="${teamStatus.name ? 'margin-bottom:6px' : ''}">The name splits a grade, like Green or White. League Name is how the league schedule spells this team, when it is not simply &ldquo;Seaford 2 Green&rdquo;.</p>${note('name')}
+     <div class="ios-group">
+       <button type="button" class="ios-row ios-destructive" data-team-remove${dis}>Remove Team</button>
+     </div>${note('remove')}`;
+  if(keep){ const n = $tid(keep.id); if(n){ n.focus(); try { n.setSelectionRange(keep.at, keep.at); } catch(e){} } }
+}
+document.addEventListener('input', e => {
+  if(!teamDraft) return;
+  if(e.target.id === 'teamNameInput') teamDraft.name = e.target.value;
+  else if(e.target.id === 'teamLeagueInput') teamDraft.league = e.target.value;
+});
+
+// Runs one RPC for the open team, shows the database's text under the right
+// group if it refuses, and otherwise re-reads teams and memberships.
+async function teamRun(key, call){
+  teamBusy = true; teamStatus = {}; renderTeamSheet();
+  let res;
+  try { res = await call(); } catch(err){ res = { error: err }; }
+  teamBusy = false;
+  if(res.error){
+    teamStatus[key] = rpcText(res.error);
+    haptic('error');
+    renderTeamSheet();
+    return false;
+  }
+  await teamsChanged();
+  return true;
+}
+async function teamsChanged(){
+  await Promise.all([loadTeams(), loadMembers()]);
+  renderTeamsList();
+  if(teamSheetId) renderTeamSheet();
+  if(userListRows.length) loadUserList();
+  if(currentView === 'book' || currentView === 'openweek') switchView(currentView);
+}
+async function teamAssign(personId, role){
+  const t = teamsById[teamSheetId]; if(!t) return;
+  const ok = await teamRun(role === 'head' ? 'head' : 'assistant',
+    () => sb.rpc('assign_team_member', { p_team: t.id, p_profile: personId, p_role: role }));
+  if(ok) haptic('success');
+}
+async function pickPerson(personId){
+  const role = pickRole, t = teamsById[teamSheetId];
+  closeTSheet('personSheet');
+  if(!t || !personId) return;
+  const person = teamPerson(personId);
+  if(role === 'head'){
+    const oldId = headIdOf(t.id);
+    if(oldId && oldId !== personId){
+      const old = teamPerson(oldId);
+      const first = old && old.first_name ? old.first_name : (old ? whoName(old) : 'the current head coach');
+      const ok = await confirmAction({
+        title: `Replace ${first} as head coach?`,
+        body: `${person ? whoName(person) : 'They'} becomes head coach of ${teamLabelOf(t)}. ${first} comes off the team.`,
+        verb: 'Replace',
+      });
+      if(!ok) return;
+    }
+  }
+  teamAssign(personId, role);
+}
+document.addEventListener('click', async e => {
+  const open = e.target.closest('[data-team-open]');
+  if(open){ openTeamSheet(open.dataset.teamOpen); return; }
+  if(e.target.closest('#addTeamBtn')){ openAddTeam(); return; }
+  if(!teamSheetId) return;
+  const t = teamsById[teamSheetId]; if(!t) return;
+  const pick = e.target.closest('[data-team-pick]');
+  if(pick){ openPersonPicker(pick.dataset.teamPick); return; }
+  const un = e.target.closest('[data-team-unassign]');
+  if(un){
+    const id = un.dataset.teamUnassign, name = teamPersonName(id);
+    const ok = await confirmAction({ title: `Remove ${name}?`, body: `${name} comes off ${teamLabelOf(t)} as an assistant.`, verb: 'Remove' });
+    if(!ok) return;
+    if(await teamRun('assistant', () => sb.rpc('unassign_team_member', { p_team: t.id, p_profile: id }))) haptic('success');
+    return;
+  }
+  if(e.target.closest('[data-team-save]')){
+    const name = (teamDraft.name || '').trim() || null, league = (teamDraft.league || '').trim() || null;
+    if(await teamRun('name', () => sb.rpc('rename_team', { p_team: t.id, p_name: name, p_league_name: league }))){
+      const fresh = teamsById[t.id];
+      if(fresh) teamDraft = { name: fresh.name || '', league: fresh.league_name || '' };
+      renderTeamSheet(); flash('Saved.', 'ok');
+    }
+    return;
+  }
+  if(e.target.closest('[data-team-remove]')){
+    const label = teamLabelOf(t);
+    const ok = await confirmAction({ title: `Remove ${label}?`, body: 'Its coaches come off the team. This can\'t be undone.', verb: 'Remove Team' });
+    if(!ok) return;
+    const closing = t.id;
+    if(await teamRun('remove', () => sb.rpc('delete_team', { p_team: closing }))){
+      closeTSheet('teamSheet'); flash(`Removed ${label}.`, 'ok');
+    }
+  }
+});
+
+// ---- Person picker: directors, coaches and assistants, searchable ----
+function openPersonPicker(role){
+  pickRole = role;
+  $tid('personSheetTitle').textContent = role === 'head' ? 'Head Coach' : 'Add Assistant';
+  $tid('personSearch').value = '';
+  renderPersonList();
+  openTSheet('personSheet');
+  loadTeamPeople();
+}
+function personLine(p){
+  const parts = memberTeamParts(p);
+  const teamsText = p.role === 'director'
+    ? [`All ${p.gender === 'girls' ? 'Girls' : 'Boys'} teams`, ...parts.filter(m => m.role === 'head').map(m => `${teamLabelOf(m.team)} (Head)`)].join(', ')
+    : parts.length ? parts.map(m => `${teamLabelOf(m.team)} (${m.role === 'head' ? 'Head' : 'Assistant'})`).join(', ') : 'No team';
+  return p.role === 'director' ? `Director · ${teamsText}` : teamsText;
+}
+function renderPersonList(){
+  const box = $tid('personList');
+  const t = teamsById[teamSheetId];
+  if(!t){ box.innerHTML = ''; return; }
+  const hid = headIdOf(t.id), aids = assistantIdsOf(t.id);
+  const q = $tid('personSearch').value.trim().toLowerCase();
+  const pool = teamPeople.filter(p => pickRole === 'head' ? p.id !== hid : (p.id !== hid && !aids.includes(p.id)));
+  const rows = pool.filter(p => !q || [whoName(p), p.email, personLine(p)].join(' ').toLowerCase().includes(q));
+  if(!rows.length){
+    box.innerHTML = `<p class="hint" style="margin:0 4px" role="status">${escSafe(
+      teamPeopleError || (!teamPeopleLoaded ? 'Loading…' : q ? `Nobody matches “${$tid('personSearch').value.trim()}”.` : 'No one else to add.'))}</p>`;
+    return;
+  }
+  box.innerHTML = `<div class="ios-group">${rows.map(p =>
+    `<button type="button" class="ios-row" data-person="${escSafe(p.id)}"><span class="cf-text">${escSafe(whoName(p))}<small>${escSafe(personLine(p))}</small></span></button>`).join('')}</div>`;
+}
+$tid('personSearch').addEventListener('input', renderPersonList);
+$tid('personList').addEventListener('click', e => {
+  const b = e.target.closest('[data-person]');
+  if(b){ haptic('selection'); pickPerson(b.dataset.person); }
+});
+
+// ---- Add Team ----
+function openAddTeam(){
+  addTeamStatus = ''; addTeamBusy = false;
+  const isAdmin = myProfile.role === 'admin';
+  $tid('addTeamBody').innerHTML =
+    `<div class="ios-group">
+       ${isAdmin
+         ? `<label class="ios-row ios-select-row"><span>Program</span><span class="ios-value"><span id="addTeamProgramText">Girls</span>${CHEVRON_SVG}</span>
+              <select id="addTeamProgram" aria-label="Program"><option value="girls">Girls</option><option value="boys">Boys</option></select></label>`
+         : `<div class="ios-row"><span>Program</span><span class="ios-value">${myProfile.gender === 'girls' ? 'Girls' : 'Boys'}</span></div>`}
+       <label class="ios-row ios-select-row"><span>Grade</span><span class="ios-value"><span id="addTeamGradeText">${escSafe(GRADES[0])}</span>${CHEVRON_SVG}</span>
+         <select id="addTeamGrade" aria-label="Grade">${GRADES.map(g => `<option value="${escSafe(g)}">${escSafe(g)}</option>`).join('')}</select></label>
+       <label class="ios-row ios-field"><span>Name</span><input type="text" id="addTeamName" placeholder="Optional" autocomplete="off" enterkeyhint="done"></label>
+     </div>
+     <p class="ios-group-footer">Name it to split a grade, like Green or White.</p>
+     <p class="ios-group-footer err" id="addTeamStatus" role="alert"></p>`;
+  $tid('addTeamGoBtn').disabled = false; $tid('addTeamGoBtn').textContent = 'Add';
+  openTSheet('addTeamSheet');
+}
+$tid('addTeamBody').addEventListener('change', e => {
+  if(e.target.id === 'addTeamProgram') $tid('addTeamProgramText').textContent = e.target.value === 'girls' ? 'Girls' : 'Boys';
+  if(e.target.id === 'addTeamGrade') $tid('addTeamGradeText').textContent = e.target.value;
+});
+$tid('addTeamBody').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.id === 'addTeamName'){ e.preventDefault(); $tid('addTeamGoBtn').click(); }
+});
+$tid('addTeamGoBtn').addEventListener('click', async () => {
+  if(addTeamBusy) return;
+  const gender = myProfile.role === 'admin' ? $tid('addTeamProgram').value : myProfile.gender;
+  const grade = $tid('addTeamGrade').value;
+  const name = $tid('addTeamName').value.trim() || null;
+  addTeamBusy = true; $tid('addTeamGoBtn').disabled = true; $tid('addTeamGoBtn').textContent = 'Adding…';
+  $tid('addTeamStatus').textContent = '';
+  let res;
+  try { res = await sb.rpc('create_team', { p_gender: gender, p_grade: grade, p_name: name, p_league_name: null }); }
+  catch(err){ res = { error: err }; }
+  addTeamBusy = false; $tid('addTeamGoBtn').disabled = false; $tid('addTeamGoBtn').textContent = 'Add';
+  if(res.error){ $tid('addTeamStatus').textContent = rpcText(res.error); haptic('error'); return; }
+  closeTSheet('addTeamSheet');
+  await teamsChanged();
+  haptic('success');
+  flash(`Added ${teamLabel(gender, grade, name)}.`, 'ok');
+});
+
 // ============ ACTIVITY LOG ============
 // The rows come from triggers, so this only has to read and present them.
 let activityRows = [];
@@ -8048,10 +8521,22 @@ function lastSeenText(id){
 function userRoleLabel(u){
   return u.role === 'director' ? 'Director' : u.role === 'assistant' ? 'Assistant' : 'Head coach';
 }
+// A person's teams come from their memberships, each with the part they play:
+// "Girls 6th Grade (Head), Girls 2nd Grade Green (Assistant)". A director
+// covers their whole program and may head a team in the other one. Until
+// team_members has loaded, the one team on the profile stands in.
+function memberTeamParts(u){
+  let mine = teamMembers.filter(m => m.profile_id === u.id && teamsById[m.team_id]);
+  if(!mine.length && !membersLoaded && u.team_id && teamsById[u.team_id] && u.role !== 'director')
+    mine = [{ team_id: u.team_id, role: u.role === 'assistant' ? 'assistant' : 'head' }];
+  return mine.map(m => ({ team: teamsById[m.team_id], role: m.role }))
+    .sort((a, b) => (a.role === 'head' ? 0 : 1) - (b.role === 'head' ? 0 : 1)
+      || gradeRank(b.team.grade) - gradeRank(a.team.grade) || teamLabelOf(a.team).localeCompare(teamLabelOf(b.team)));
+}
 function userRowTeamText(u){
-  return u.role === 'director'
-    ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
-    : teamsById[u.team_id] ? teamLabelById(u.team_id) : teamLabel(u.gender, '(unknown)');
+  const parts = memberTeamParts(u).map(m => `${teamLabelOf(m.team)} (${m.role === 'head' ? 'Head' : 'Assistant'})`);
+  if(u.role === 'director') return [`All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`, ...parts.filter(t => t.endsWith('(Head)'))].join(', ');
+  return parts.length ? parts.join(', ') : 'No team';
 }
 function renderUserList(){
   const colspan = myProfile.role === 'admin' ? 6 : 5;
@@ -8070,8 +8555,7 @@ function renderUserList(){
     }).join('');
   } else {
     el.coachListBody.innerHTML = rows.map(c => {
-      const grade = (teamShortLabel(teamsById[c.team_id]) || '(unknown)') + (c.role === 'assistant' ? ' · Assistant' : '');
-      return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td><td class="seen-cell">${escSafe(lastSeenText(c.id))}</td>${manageCell(c, colspan)}`;
+      return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(userRowTeamText(c))}</td><td class="email-cell">${escSafe(c.email)}</td><td class="seen-cell">${escSafe(lastSeenText(c.id))}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
 }

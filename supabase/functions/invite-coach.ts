@@ -1,7 +1,9 @@
 // Supabase Edge Function: invite-coach
 //
 // Reference copy of the deployed function, pulled from the dashboard
-// 2026-09-18 so the source no longer lives only there.
+// 2026-09-18 so the source no longer lives only there. Head coaches lost the
+// right to add assistants on 2026-11-05: only admins and directors assign
+// coaches now (teams_assignments_2026_11_04.sql).
 //
 // Despite the name (kept so the deployed URL doesn't change), this now
 // handles every account-creation flow (public sign-up is OFF; this is the
@@ -10,10 +12,9 @@
 //     (any team).
 //   - A DIRECTOR can invite a COACH or ASSISTANT, but only onto a team in
 //     their own gender.
-//   - A HEAD COACH can invite ASSISTANT coaches onto their own team only, by
-//     email only (no passwords), at most MAX_ASSISTANTS per team. Assistants
-//     are view-only; the database refuses their writes (see
-//     supabase/assistant_role_2026_09_22.sql).
+//   - Head coaches and assistants cannot invite anyone (JJ, 2026-11-04: only
+//     admins and directors assign coaches). A team holds at most
+//     MAX_ASSISTANTS assistants; the database enforces it too.
 //   - Either can, instead of sending an email invite, set a PASSWORD directly
 //     and create the account outright — for when email isn't reliable or the
 //     person isn't reachable by email at all. The caller is shown the
@@ -29,7 +30,6 @@
 //   Inviting a coach:    { "email": "...", "inviteRole": "coach", "teamId": "<uuid>" }
 //   Inviting a director: { "email": "...", "inviteRole": "director", "gender": "boys"|"girls" }
 //   Adding an assistant: { "email": "...", "inviteRole": "assistant", "teamId": "<uuid>" }
-//                        (a head coach's own team is used whatever teamId says)
 //   Optional on any:     "firstName", "lastName"
 //   Add "password": "<8+ chars>" to any of the above to create the account
 //   directly with that password instead of emailing an invite link.
@@ -38,7 +38,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// JJ, 2026-09-22: a head coach may add up to 3. Directors and admins aren't capped.
+// JJ, 2026-11-04: up to 3 assistants per team, whoever assigns them.
 const MAX_ASSISTANTS = 3;
 
 const CORS_HEADERS = {
@@ -94,10 +94,9 @@ Deno.serve(async (req) => {
     .eq("id", callerId)
     .single();
 
-  if (profileErr || !callerProfile || !["director", "admin", "coach"].includes(callerProfile.role)) {
-    return json({ ok: false, error: "Only directors, admins and head coaches can send invites" }, 403);
+  if (profileErr || !callerProfile || !["director", "admin"].includes(callerProfile.role)) {
+    return json({ ok: false, error: "Only directors and admins can invite coaches. Ask your director." }, 403);
   }
-  const isHeadCoach = callerProfile.role === "coach";
 
   let body: {
     email?: string; inviteRole?: string; teamId?: string; gender?: string; password?: string;
@@ -118,14 +117,6 @@ Deno.serve(async (req) => {
   if (password !== null && password.length < 8) {
     return json({ ok: false, error: "password must be at least 8 characters" }, 400);
   }
-  if (isHeadCoach && inviteRole !== "assistant") {
-    return json({ ok: false, error: "Head coaches can only add assistant coaches" }, 403);
-  }
-  if (isHeadCoach && password !== null) {
-    // A head coach never chooses someone else's password: the invite email lets
-    // the assistant set their own.
-    return json({ ok: false, error: "Assistant coaches are invited by email" }, 403);
-  }
   const clean = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 40) : "");
   const firstName = clean(body.firstName);
   const lastName = clean(body.lastName);
@@ -142,8 +133,7 @@ Deno.serve(async (req) => {
     }
     newProfile = { role: "director", gender, team_id: null };
   } else {
-    // A head coach adds to their own team, whatever the request says.
-    const teamId = isHeadCoach ? callerProfile.team_id : body.teamId;
+    const teamId = body.teamId;
     if (!teamId) {
       return json({ ok: false, error: "teamId is required to invite a coach" }, 400);
     }
@@ -158,12 +148,12 @@ Deno.serve(async (req) => {
     if (callerProfile.role === "director" && team.gender !== callerProfile.gender) {
       return json({ ok: false, error: "You can only invite coaches for " + callerProfile.gender + " teams" }, 403);
     }
-    if (isHeadCoach) {
-      const { count } = await admin.from("profiles")
-        .select("id", { count: "exact", head: true })
+    if (inviteRole === "assistant") {
+      const { count } = await admin.from("team_members")
+        .select("profile_id", { count: "exact", head: true })
         .eq("role", "assistant").eq("team_id", team.id);
       if ((count ?? 0) >= MAX_ASSISTANTS) {
-        return json({ ok: false, error: `Your team already has ${MAX_ASSISTANTS} assistant coaches. Remove one to add another.` }, 409);
+        return json({ ok: false, error: "That team already has " + MAX_ASSISTANTS + " assistant coaches. Remove one to add another." }, 409);
       }
     }
     newProfile = { role: inviteRole, gender: team.gender, team_id: team.id };

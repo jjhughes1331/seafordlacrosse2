@@ -78,10 +78,11 @@ different project** — drive the dashboard in the browser instead.
 - **Roles:** admin, director, coach (a *head* coach, who books), assistant
   (JJ, 2026-09-22: view-only, one team). Every write policy names the roles
   that may write, so assistants are refused by RLS, not by hidden buttons.
-  A head coach invites up to 3 assistants to their own team, by email only,
-  and may remove them; removing a head coach removes the assistants they
-  invited (`profiles.invited_by`). Proof that runs against live and keeps
-  nothing: `supabase/tests/assistant_rls_proof.sql`
+  Since 2026-11-05 only admins and directors invite or assign coaches
+  (`invite-coach` refuses everyone else); a team has one head and up to 3
+  assistants in `team_members`, and one login can hold several teams
+  (`teams_assignments_2026_11_04.sql`). Proof that runs against live and
+  keeps nothing: `supabase/tests/teams_alerts_games_proof.sql`
 - `manage-user`'s delete-me and set-name-on-yourself are open to **every**
   role. Its director/admin gate once ran first, so coaches couldn't delete
   their account (an App Store requirement) or save their name

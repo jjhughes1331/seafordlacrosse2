@@ -3646,7 +3646,7 @@ function resetAlertSettings(){
 resetAlertSettings();
 // League schedule upload state (Admin > Teams). Declared up here so teardown can reset it.
 let ls;
-function resetLeague(){ ls = { last: null, lastError: '', lastLoaded: false, reading: false, sheet: null, unmatched: [], problem: '', importing: false, result: null }; }
+function resetLeague(){ ls = { lastSeason: null, last: null, lastError: '', lastLoaded: false, reading: false, sheet: null, unmatched: [], problem: '', importing: false, result: null }; }
 resetLeague();
 const nfMine = me => !!myProfile && myProfile.id === me;
 // Not $tid: that const is declared further down the file (TDZ at load).
@@ -4266,7 +4266,7 @@ document.addEventListener('click', async e => {
 });
 
 // ============ HELPERS ============
-function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escSafe(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function fmtDateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
@@ -5054,10 +5054,13 @@ async function refreshWaitlist(){
 // If a slot my team is waitlisted for is no longer booked, flash it once per session.
 function checkWaitlistOpenings(){
   if(!myProfile || !waitlistCache.length) return;
-  const myTeamId = myBookingTeamId ? myBookingTeamId() : null;
-  if(!myTeamId) return;
+  // Every team this person books for (a coach can head two), plus the one picked on Book.
+  const mine = new Set(headTeams().map(t => t.id));
+  const picked = myBookingTeamId ? myBookingTeamId() : null;
+  if(picked) mine.add(picked);
+  if(!mine.size) return;
   waitlistCache.forEach(w => {
-    if(w.team_id !== myTeamId || waitlistNotified.has(w.id)) return;
+    if(!mine.has(w.team_id) || waitlistNotified.has(w.id)) return;
     const stillBooked = bookingsCache.some(b => b.field_id===w.field_id && b.date===w.date && b.subfield===w.subfield && b.time===w.time);
     if(!stillBooked){
       waitlistNotified.add(w.id);
@@ -5306,7 +5309,10 @@ function setupRealtime(){
     // books for and sees on My Team, while the app is open.
     .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, async () => {
       await loadMembers();
-      switchView(currentView);
+      // Only these tabs depend on which teams this person books for or sees.
+      // switchView on Admin would rerun renderAdmin() and reset the invite form.
+      if(['book', 'openweek', 'myteam'].includes(currentView)) switchView(currentView);
+      else rerenderCurrentView();
       syncNativeContext();
     })
     .subscribe();
@@ -8521,7 +8527,7 @@ async function loadTeamPeople(){
 function openTeamsPane(){
   renderTeamsList();
   loadTeamPeople();
-  renderLeague();
+  renderLeagueUpload();
   loadLastImport();
 }
 
@@ -8561,6 +8567,7 @@ async function loadLastImport(){
     if(gone()) return;
     if(latest.error) throw latest.error;
     const row = (latest.data || [])[0];
+    ls.lastSeason = row ? row.season : null;
     if(!row){ ls.last = null; ls.lastError = ''; }
     else {
       const [n, who] = await Promise.all([
@@ -8575,9 +8582,9 @@ async function loadLastImport(){
   } catch(err){ if(!gone()){ ls.last = null; ls.lastError = "Couldn't read the last upload. " + rpcText(err); } }
   if(gone()) return;
   ls.lastLoaded = true;
-  renderLeague();
+  renderLeagueUpload();
 }
-function renderLeague(){
+function renderLeagueUpload(){
   const box = $tid('leagueSched');
   if(!box || !myProfile || !['admin', 'director'].includes(myProfile.role)) return;
   const busy = ls.reading || ls.importing;
@@ -8627,7 +8634,7 @@ function renderLeague(){
 }
 async function leagueRead(file){
   ls.problem = ''; ls.result = null; ls.sheet = null; ls.unmatched = []; ls.reading = true;
-  renderLeague();
+  renderLeagueUpload();
   try {
     if(file.size > 25000000) throw new Error('That file is too large to be the league schedule.');
     const sheet = await LeagueSheet.read(await file.arrayBuffer());
@@ -8637,24 +8644,33 @@ async function leagueRead(file){
     ls.problem = (err && err.why) ? err.why : (err && err.message) || "Couldn't read that file.";
   }
   ls.reading = false;
-  renderLeague();
+  renderLeagueUpload();
 }
 async function leagueImport(){
   const s = ls.sheet; if(!s || ls.importing) return;
-  ls.importing = true; ls.problem = ''; renderLeague();
+  // import_games replaces the whole season, so ask first when this season was uploaded before.
+  if(ls.lastSeason != null && String(ls.lastSeason) === String(s.season)){
+    const ok = await confirmAction({
+      title: `Replace the ${s.season} season?`,
+      body: `The ${s.season} season\u2019s current games are replaced by the ${lgPlural(s.games.length, 'game', 'games')} in this file.`,
+      verb: 'Replace',
+    });
+    if(!ok || !ls || ls.sheet !== s) return;
+  }
+  ls.importing = true; ls.problem = ''; renderLeagueUpload();
   let res;
   try { res = await sb.rpc('import_games', { p_season: s.season, p_rows: s.games }); } catch(err){ res = { error: err }; }
   if(!ls) return;
   ls.importing = false;
   if(res.error){ ls.problem = rpcText(res.error); haptic('error'); }
   else { ls.result = res.data; ls.sheet = null; ls.unmatched = []; haptic('success'); }
-  renderLeague();
+  renderLeagueUpload();
   loadLastImport();
 }
 document.addEventListener('click', e => {
   if(e.target.closest('#leagueUploadBtn')){ $tid('leagueFile').click(); return; }
   if(e.target.closest('#leagueImportBtn')){ leagueImport(); return; }
-  if(e.target.closest('#leagueCancelBtn')){ ls.sheet = null; ls.unmatched = []; ls.problem = ''; renderLeague(); }
+  if(e.target.closest('#leagueCancelBtn')){ ls.sheet = null; ls.unmatched = []; ls.problem = ''; renderLeagueUpload(); }
 });
 $tid('leagueFile').addEventListener('change', e => {
   const f = e.target.files && e.target.files[0];

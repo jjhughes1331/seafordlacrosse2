@@ -32,6 +32,7 @@
      launch never got past the skeleton. Also pins @2, which floated. -->
 <script src="vendor/supabase-2.117.1.js"></script>
 <script src="lib/field-catalog.js"></script>
+<script src="lib/league-sheet.js"></script>
 <!-- ============ FIXTURE MODE (?fixture=1) ============
      Every signed-in surface in this app was previously unverifiable without a
      human typing a password, which meant UI bugs only surfaced against live
@@ -134,6 +135,7 @@
   const store = {
     teams, profiles, bookings, team_members,
     notification_prefs: [], notification_teams: [],
+    games: [],
     waitlist: [],
     app_settings: [{ id: true, schedule_locked: false, priority_booking_enabled: false, priority_forced_ranks: [], locked_by: null }],
   };
@@ -144,6 +146,7 @@
 
   function from(table){
     let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false, conflict = 'id';
+    let orderBy = null, lim = null, wantCount = false, headOnly = false;
     const rows = () => (store[table] = store[table] || []);
     async function exec(){
       seedBookings();
@@ -154,7 +157,12 @@
         return { data: null, error: { code: '42501', message: 'permission denied for table notification_teams' } };
       const hit = rows().filter(r => match(r, filters) && (!own || r.profile_id === who.id));
       let data;
-      if(op === 'select') data = hit.map(r => ({ ...r }));
+      if(op === 'select'){
+        data = hit.map(r => ({ ...r }));
+        if(orderBy) data.sort((a, b) => (a[orderBy[0]] > b[orderBy[0]] ? 1 : a[orderBy[0]] < b[orderBy[0]] ? -1 : 0) * (orderBy[1] ? 1 : -1));
+        if(lim != null) data = data.slice(0, lim);
+        if(wantCount || headOnly) return { data: headOnly ? null : data, count: hit.length, error: null };
+      }
       else if(op === 'upsert'){
         const keys = conflict.split(',').map(k => k.trim());
         data = [];
@@ -187,7 +195,7 @@
       return { data, error: null };
     }
     const api = {
-      select(){ if(op === 'select') op = 'select'; return api; },
+      select(cols, o){ if(op === 'select'){ wantCount = !!(o && o.count); headOnly = !!(o && o.head); } return api; },
       insert(d){ op = 'insert'; payload = d; return api; },
       upsert(d, o){ op = 'upsert'; payload = d; conflict = (o && o.onConflict) || 'id'; return api; },
       update(d){ op = 'update'; payload = d; return api; },
@@ -195,7 +203,7 @@
       eq(k, v){ filters.push([k, 'eq', v]); return api; },
       neq(k, v){ filters.push([k, 'neq', v]); return api; },
       in(k, v){ filters.push([k, 'in', v]); return api; },
-      order(){ return api; }, limit(){ return api; }, like(){ return api; },
+      order(col, o){ orderBy = [col, !(o && o.ascending === false)]; return api; }, limit(n){ lim = n; return api; }, like(){ return api; },
       single(){ wantSingle = true; return api; },
       maybeSingle(){ wantSingle = true; maybe = true; return api; },
       then(res, rej){ return exec().then(res, rej); },
@@ -342,6 +350,50 @@
       ids.forEach(team_id => store.notification_teams.push({ profile_id: who.id, team_id }));
       row.teams_chosen = true;
       return ok(ids);
+    }
+    if(name === 'import_games'){
+      // games_2026_11_04.sql: directors and admins only; BYE and exact
+      // duplicate rows skipped; the season is replaced outright; each game
+      // is matched to a Seaford team (league_name wins).
+      if(!['admin', 'director'].includes(who.role)) return fail('Only directors and admins can upload the league schedule', '42501');
+      if(!Array.isArray(p.p_rows)) return fail('Expected a list of games', '22023');
+      const rows = p.p_rows.map(r => ({
+        game_number: r.game_number == null ? null : parseInt(r.game_number, 10), game_date: r.date || null,
+        start_time: r.time || null, field_label: (r.field || '').trim() || null, town: (r.town || '').trim() || null,
+        home: String(r.home || '').trim(), away: String(r.away || '').trim(),
+        gender: (r.gender || '').trim().toLowerCase() || null,
+        grade: (g => g == null ? null : /^(k|kindergarten)$/i.test(g.trim()) ? 'Kindergarten'
+          : /^[1-6](st|nd|rd|th)/.test(g.trim()) ? g.trim().match(/^[1-6](?:st|nd|rd|th)/)[0] + ' Grade' : g.trim())(r.grade),
+        division: (r.division || '').trim() || null, note: (r.note || '').trim() || null }));
+      const bye = x => ['BYE', 'N/A', ''].includes(x.toUpperCase());
+      const byes = rows.filter(r => bye(r.home) || bye(r.away)).length;
+      const kept = rows.filter(r => !(bye(r.home) || bye(r.away) || r.game_number == null || r.game_date == null));
+      if(kept.some(r => r.gender !== 'girls' && r.gender !== 'boys')) return fail('Every game needs Girls or Boys', '22023');
+      const uniq = new Map(); kept.forEach(r => uniq.set(JSON.stringify(r), r));
+      const removed = store.games.filter(g => g.season === p.p_season).length;
+      store.games = store.games.filter(g => g.season !== p.p_season);
+      const matchTeam = (nm, gender) => {
+        const want = nm.trim().toLowerCase(), squash = nm.trim().replace(/\s+/g, ' ').toLowerCase();
+        const byLeague = teams.find(t => t.gender === gender && t.league_name && t.league_name.trim().toLowerCase() === want);
+        return byLeague || teams.find(t => t.gender === gender && !t.league_name
+          && ('seaford ' + (t.grade === 'Kindergarten' ? 'k' : t.grade[0]) + (t.name ? ' ' + t.name : '')).toLowerCase() === squash) || null;
+      };
+      [...uniq.values()].forEach(r => {
+        const isHome = /^seaford/i.test(r.home), lf = (r.field_label || '').toLowerCase();
+        const team = matchTeam(isHome ? r.home : r.away, r.gender);
+        store.games.push({ id: crypto.randomUUID(), season: p.p_season, game_number: r.game_number, game_date: r.game_date,
+          start_time: r.start_time ? r.start_time + ':00' : null, field_label: r.field_label,
+          field_id: ['shs', 'seaford hs', 'seaford high school'].includes(lf) ? 'seafordhs' : lf.startsWith('cedar creek') ? 'cedarcreek' : null,
+          town: r.town, home: r.home, away: r.away, gender: r.gender, grade: r.grade, division: r.division, note: r.note,
+          is_home: isHome, seaford_team_id: team ? team.id : null, imported_at: new Date().toISOString(), imported_by: who.id });
+      });
+      const season = store.games.filter(g => g.season === p.p_season);
+      const clock12 = t => { const [h, m] = t.split(':'); return ((+h % 12) || 12) + ':' + m + (+h < 12 ? ' AM' : ' PM'); };
+      return ok({ imported: season.length, removed, byes,
+        unmatched: [...new Set(season.filter(g => !g.seaford_team_id).map(g => /^seaford/i.test(g.home) ? g.home : g.away))].sort(),
+        odd_times: season.filter(g => g.start_time && (g.start_time < '07:00' || g.start_time > '20:00'))
+          .sort((a, b) => (a.game_date + a.game_number).localeCompare(b.game_date + b.game_number))
+          .map(g => ({ game: g.gender[0].toUpperCase() + g.gender.slice(1) + ' ' + g.game_number, date: g.game_date, time: clock12(g.start_time), teams: g.home + ' v ' + g.away })) });
     }
     return fail('Unknown function ' + name, '42883');
   }
@@ -3057,6 +3109,9 @@
       <button type="button" class="allbtn" id="addTeamBtn">Add Team</button>
     </div>
     <div id="teamsList"></div>
+    <p class="admin-section-label" id="leagueLabel" style="margin-top:32px">League Schedule</p>
+    <div id="leagueSched"></div>
+    <input type="file" id="leagueFile" accept=".xlsx" hidden>
   </div>
   <div class="admin-pane" data-adminpane="booking" hidden>
 <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
@@ -3589,6 +3644,10 @@ function resetAlertSettings(){
     alertsError: '', teamsError: '', savingTeams: false, pending: 0, chain: Promise.resolve(), pushWatch: null };
 }
 resetAlertSettings();
+// League schedule upload state (Admin > Teams). Declared up here so teardown can reset it.
+let ls;
+function resetLeague(){ ls = { last: null, lastError: '', lastLoaded: false, reading: false, sheet: null, unmatched: [], problem: '', importing: false, result: null }; }
+resetLeague();
 const nfMine = me => !!myProfile && myProfile.id === me;
 // Not $tid: that const is declared further down the file (TDZ at load).
 const nfEl = id => document.getElementById(id);
@@ -4876,7 +4935,7 @@ function teardown(){
   document.getElementById('accountBtn').style.display = 'none';
   document.getElementById('scheduleViewBtn').style.display = 'none';
   closeAccountSheet();
-  closeNotifSheet(); resetAlertSettings();
+  closeNotifSheet(); resetAlertSettings(); resetLeague();
   // Role tabs belong to the person who signed in; the next person on this
   // device must not inherit an Admin or League tab.
   [el.adminTab, el.myTeamTab, el.leagueTab].forEach(t => { t.style.display = 'none'; });
@@ -8462,7 +8521,146 @@ async function loadTeamPeople(){
 function openTeamsPane(){
   renderTeamsList();
   loadTeamPeople();
+  renderLeague();
+  loadLastImport();
 }
+
+// ---- League schedule (admins and directors; import_games) ----
+// The .xlsx is read in the browser (lib/league-sheet.js), previewed, and only
+// then saved: import_games replaces the season. The database's refusal text
+// is shown as it is.
+const LG_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], LG_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const lgPlural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+// "Sun, Mar 29" from "2026-03-29"
+function lgDay(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || ''); if(!m) return iso || '';
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  return LG_DAYS[d.getUTCDay()] + ', ' + LG_MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate();
+}
+// "9:00 AM" from "HH:mm" or "HH:mm:ss"; "Time TBA" when missing
+function lgTime(t){
+  const m = /^(\d{2}):(\d{2})/.exec(t || ''); if(!m) return 'Time TBA';
+  return ((+m[1] % 12) || 12) + ':' + m[2] + (+m[1] < 12 ? ' AM' : ' PM');
+}
+// "Boys 4th Grade" -> "Boys 4th"; "94 games for 2026, uploaded Nov 4 by Riley"
+function lgOddLine(g){
+  const who = [g.gender ? g.gender[0].toUpperCase() + g.gender.slice(1) : '', (g.grade || '').replace(' Grade', '')].filter(Boolean).join(' ');
+  return [who, lgDay(g.date), lgTime(g.time), g.home + ' v ' + g.away].filter(Boolean).join(' \u00b7 ');
+}
+function lgImportLine(season, count, at, by){
+  let line = lgPlural(count, 'game', 'games') + ' for ' + season;
+  const when = new Date(String(at || '').replace(/\.\d+/, ''));
+  if(!isNaN(when)) line += ', uploaded ' + new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(when);
+  return by ? line + ' by ' + by : line;
+}
+async function loadLastImport(){
+  if(!myProfile || !['admin', 'director'].includes(myProfile.role)) return;
+  const gone = () => !myProfile || !ls;
+  try {
+    const latest = await sb.from('games').select('season, imported_at, imported_by').order('imported_at', { ascending: false }).limit(1);
+    if(gone()) return;
+    if(latest.error) throw latest.error;
+    const row = (latest.data || [])[0];
+    if(!row){ ls.last = null; ls.lastError = ''; }
+    else {
+      const [n, who] = await Promise.all([
+        sb.from('games').select('id', { head: true, count: 'exact' }).eq('season', row.season),
+        row.imported_by ? sb.from('profiles').select('first_name, last_name, email').eq('id', row.imported_by).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+      if(gone()) return;
+      const p = who.data;
+      ls.last = lgImportLine(row.season, n.count || 0, row.imported_at, p ? (p.first_name || p.last_name || p.email) : '');
+      ls.lastError = '';
+    }
+  } catch(err){ if(!gone()){ ls.last = null; ls.lastError = "Couldn't read the last upload. " + rpcText(err); } }
+  if(gone()) return;
+  ls.lastLoaded = true;
+  renderLeague();
+}
+function renderLeague(){
+  const box = $tid('leagueSched');
+  if(!box || !myProfile || !['admin', 'director'].includes(myProfile.role)) return;
+  const busy = ls.reading || ls.importing;
+  let html = '<p class="ios-group-header">Last Upload</p><div class="ios-group"><div class="ios-row" style="cursor:default">'
+    + (!ls.lastLoaded ? '<span class="row-muted">Loading…</span>'
+      : ls.lastError ? `<span style="color:var(--danger)">${escSafe(ls.lastError)}</span>`
+      : ls.last ? `<span>${escSafe(ls.last)}</span>` : '<span class="row-muted">The league schedule hasn\u2019t been uploaded yet.</span>')
+    + '</div></div>';
+  html += `<div class="ios-group"><button type="button" class="ios-row ios-action" id="leagueUploadBtn"${busy ? ' disabled' : ''}>${ls.reading ? 'Reading file…' : 'Upload Spreadsheet'}</button></div>`;
+  html += ls.problem ? `<p class="ios-group-footer err" role="alert">${escSafe(ls.problem)}</p>`
+    : '<p class="ios-group-footer">Choose the league\u2019s Excel (.xlsx) schedule. You\u2019ll see what it holds before anything is saved. Importing replaces that season\u2019s games.</p>';
+  const s = ls.sheet;
+  if(s){
+    const girls = s.games.filter(g => g.gender === 'girls').length, boys = s.games.filter(g => g.gender === 'boys').length;
+    const row = (a, b) => `<div class="ios-row" style="cursor:default"><span>${escSafe(a)}</span><span class="row-muted">${escSafe(b)}</span></div>`;
+    const parts = [lgPlural(s.games.length, 'game', 'games') + ' for ' + s.season, s.homeCount + ' at home'];
+    if(s.byes > 0) parts.push(lgPlural(s.byes, 'bye', 'byes') + ' skipped');
+    html += `<p class="ios-group-header">Found in the File</p><div class="ios-group"><div class="ios-row" style="cursor:default"><span style="font-weight:600">${escSafe(parts.join(' \u00b7 '))}</span></div>`
+      + row('Girls', girls) + row('Boys', boys) + '</div>';
+    if(s.skippedText) html += `<p class="ios-group-footer" style="color:var(--warn,var(--muted))">${escSafe(s.skippedText)}</p>`;
+    if(ls.unmatched.length){
+      html += '<p class="ios-group-header">Team Names Not Matched</p><div class="ios-group">'
+        + ls.unmatched.map(n => `<div class="ios-row" style="cursor:default"><span>${escSafe(n)}</span></div>`).join('') + '</div>'
+        + '<p class="ios-group-footer">Set the team\u2019s League Name (tap the team above), then upload again. These games still import, without a team.</p>';
+    }
+    if(s.oddTimes.length){
+      html += '<p class="ios-group-header">Times to Check</p><div class="ios-group">'
+        + s.oddTimes.map(g => `<div class="ios-row" style="cursor:default"><span style="font-size:var(--ios-foot)">${escSafe(lgOddLine(g))}</span></div>`).join('') + '</div>'
+        + '<p class="ios-group-footer">These games start before 7 AM or after 8 PM.</p>';
+    }
+    html += `<button type="button" class="btn-primary" id="leagueImportBtn" style="width:calc(100% - 32px);margin:6px 16px 0"${busy || !s.games.length ? ' disabled' : ''}>${ls.importing ? 'Importing…' : 'Import ' + lgPlural(s.games.length, 'Game', 'Games')}</button>`
+      + `<button type="button" class="allbtn" id="leagueCancelBtn" style="width:calc(100% - 32px);margin:10px 16px 0"${busy ? ' disabled' : ''}>Cancel</button>`;
+  }
+  const r = ls.result;
+  if(r){
+    html += `<p class="ios-group-header">Imported</p><div class="ios-group"><div class="ios-row" style="cursor:default"><span>${escSafe(lgPlural(r.imported, 'game', 'games') + ' imported')}</span></div>`
+      + (r.removed > 0 ? `<div class="ios-row" style="cursor:default"><span class="row-muted">${escSafe(lgPlural(r.removed, 'earlier game', 'earlier games') + ' replaced')}</span></div>` : '') + '</div>';
+    if((r.odd_times || []).length)
+      html += '<p class="ios-group-header">Times to Check</p><div class="ios-group">' + r.odd_times.map(o =>
+        `<div class="ios-row" style="cursor:default"><span style="font-size:var(--ios-foot)">${escSafe([o.game, lgDay(o.date), o.time, o.teams].join(' \u00b7 '))}</span></div>`).join('') + '</div>';
+    if((r.unmatched || []).length)
+      html += '<p class="ios-group-header">Team Names Not Matched</p><div class="ios-group">' + r.unmatched.map(n =>
+        `<div class="ios-row" style="cursor:default"><span>${escSafe(n)}</span></div>`).join('') + '</div>'
+        + '<p class="ios-group-footer">Set the team\u2019s League Name (tap the team above), then upload again.</p>';
+  }
+  box.innerHTML = html;
+}
+async function leagueRead(file){
+  ls.problem = ''; ls.result = null; ls.sheet = null; ls.unmatched = []; ls.reading = true;
+  renderLeague();
+  try {
+    if(file.size > 25000000) throw new Error('That file is too large to be the league schedule.');
+    const sheet = await LeagueSheet.read(await file.arrayBuffer());
+    ls.sheet = sheet;
+    ls.unmatched = LeagueSheet.unmatched(sheet.games, teams);
+  } catch(err){
+    ls.problem = (err && err.why) ? err.why : (err && err.message) || "Couldn't read that file.";
+  }
+  ls.reading = false;
+  renderLeague();
+}
+async function leagueImport(){
+  const s = ls.sheet; if(!s || ls.importing) return;
+  ls.importing = true; ls.problem = ''; renderLeague();
+  let res;
+  try { res = await sb.rpc('import_games', { p_season: s.season, p_rows: s.games }); } catch(err){ res = { error: err }; }
+  if(!ls) return;
+  ls.importing = false;
+  if(res.error){ ls.problem = rpcText(res.error); haptic('error'); }
+  else { ls.result = res.data; ls.sheet = null; ls.unmatched = []; haptic('success'); }
+  renderLeague();
+  loadLastImport();
+}
+document.addEventListener('click', e => {
+  if(e.target.closest('#leagueUploadBtn')){ $tid('leagueFile').click(); return; }
+  if(e.target.closest('#leagueImportBtn')){ leagueImport(); return; }
+  if(e.target.closest('#leagueCancelBtn')){ ls.sheet = null; ls.unmatched = []; ls.problem = ''; renderLeague(); }
+});
+$tid('leagueFile').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';           // choosing the same file again must fire change
+  if(f) leagueRead(f);
+});
 
 function renderTeamsList(){
   const box = $tid('teamsList');

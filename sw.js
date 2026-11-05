@@ -14,7 +14,7 @@ const CACHE_NAME = 'seaford-lax-shell-v4';
 const SHELL_FILES = ['./', './index.html', './manifest.json', './offline.html',
   './vendor/supabase-2.117.1.js', './vendor/gsap-3.12.5.min.js', './vendor/Flip-3.12.5.min.js',
   './ui/spring.js', './ui/field-menu.js', './ui/aurora.js', './ui/ripple.js', './ui/sheet.js',
-  './lib/field-catalog.js'];
+  './lib/field-catalog.js', './lib/league-sheet.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(

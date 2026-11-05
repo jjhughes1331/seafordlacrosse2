@@ -43,6 +43,7 @@ grown past a screen, it wants its own file with one line pointing to it here.
   CDN**: the app bundles this page and must draw with no network. To upgrade,
   replace the file and update the `<script>` tag and `sw.js` SHELL_FILES
   (`sync-web.sh` in the app repo copies `vendor/`)
+- `lib/*.js` — `field-catalog.js`, and `league-sheet.js`: the .xlsx reader for Admin > Teams > League Schedule. No third-party code; a **port of the app's `LeagueSheet.swift`/`XLSX.swift`**, so change both together (same workbook, same rows; checked identical on the two 2026 workbooks, which give 94 games, 47 at home). Both are in `sw.js` SHELL_FILES
 - `sw.js`, `manifest.json` — PWA. The SW is **network-first** and skips Supabase, so it never serves stale data
 - `supabase/*.sql` — reference copies of applied schema/policy work
 - `supabase/functions/*.ts` — reference copies of `manage-user` and `invite-coach` (`send-push` and `team-ics` are read-only in the dashboard; both reviewed 2026-09-18)
@@ -107,6 +108,7 @@ different project** — drive the dashboard in the browser instead.
   refusal text. Inviting a *head coach* to a team that already has one
   replaces the head (trigger `profiles_assign_from_invite`), and a director
   who heads a team in the other program books for it too (`can_book_team`)
+- **League schedule** upload (Admin > Teams) previews in the browser, then calls `import_games(season, rows)`, which **replaces the whole season** (game numbers repeat across grades). Season = year of the first game. The database lists any non-matching name from a game with no Seaford side as "unmatched" too; the preview only lists Seaford names. Directors of either program may upload
 - **Notifications** (account sheet > Notifications) saves each switch at once
   to `notification_prefs` (upsert on profile_id, never `teams_chosen`; no row
   = SQL defaults) and team picks through `set_notification_teams`, which

@@ -95,6 +95,12 @@ different project** — drive the dashboard in the browser instead.
   auto-advances via `priority_forced_ranks`
 - Changing a field's hours in `FIELDS` also requires updating `field_slots`, or
   new bookings get rejected
+- **A grade can hold two teams** ("Girls 2nd Grade Green" / "White",
+  `teams.name`). Find a team by id, never by gender + grade, and name it with
+  `teamLabelOf`/`teamLabelById`. A person's teams come from `team_members`,
+  not `profiles.team_id`: a coach books only for teams they head and can
+  assist on others. Book and My Team remember the chosen team per device
+  (`seaford-book-team`, `seaford-my-team`)
 
 ## iOS app (App Store)
 The Capacitor shell lives in `../seaford-lax-app` (branch `app-store`). It
@@ -192,7 +198,9 @@ rendered output is what a coach sees.**
 
 - `?fixture=1` boots the whole signed-in app against in-memory data with a mock
   Supabase client and **zero network calls**. `&as=coach` / `&as=director`
-  switch role (default admin; `&as=assistant` too); `&shots=1` hides the banner
+  switch role (default admin; `&as=assistant` too: assistant only). The
+  fixture coach heads Girls 6th and assists on the split Girls 2nd Grade
+  Green; `&shots=1` hides the banner
   for store screenshots. `invite-coach`/`manage-user` are called with fetch,
   so fixture mode stands them in with the same rules. `&now=soon` / `&now=live`
   add a practice today for the fixture coach (Live Activity, widget states)

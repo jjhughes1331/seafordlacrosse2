@@ -50,11 +50,13 @@
   const ADMIN_ID = uuid(1);
   const GRADES_F = ["Kindergarten","1st Grade","2nd Grade","3rd Grade","4th Grade","5th Grade","6th Grade"];
 
+  // Girls 2nd Grade is split (Green and White), as a director would split it.
   const teams = [];
   let n = 100;
   ['girls','boys'].forEach(g => GRADES_F.forEach(grade =>
-    teams.push({ id: uuid(++n), gender: g, grade, priority_finished_at: null })));
-  const teamId = (g, grade) => teams.find(t => t.gender === g && t.grade === grade).id;
+    (g === 'girls' && grade === '2nd Grade' ? ['Green', 'White'] : [null]).forEach(name =>
+      teams.push({ id: uuid(++n), gender: g, grade, name, league_name: null, priority_finished_at: null }))));
+  const teamId = (g, grade, name = null) => teams.find(t => t.gender === g && t.grade === grade && (t.name || null) === name).id;
 
   const profiles = [
     { id: ADMIN_ID, email: 'admin@fixture.test',  role: 'admin',    gender: null,    team_id: null },
@@ -63,7 +65,21 @@
     { id: uuid(4),  email: 'jordan.reallylongaddress@fixture.test', role: 'coach', gender: 'boys', team_id: teamId('boys','5th Grade') },
     { id: uuid(5),  email: 'riley.chen@fixture.test', role: 'assistant', gender: 'girls', team_id: teamId('girls','6th Grade'),
       first_name: 'Riley', last_name: 'Chen', invited_by: uuid(3) },
+    { id: uuid(6),  email: 'pat.morgan@fixture.test', role: 'coach', gender: 'girls', team_id: teamId('girls','2nd Grade','Green'),
+      first_name: 'Pat', last_name: 'Morgan', invited_by: uuid(2) },
+    { id: uuid(7),  email: 'casey.lin@fixture.test', role: 'coach', gender: 'girls', team_id: teamId('girls','2nd Grade','White'),
+      first_name: 'Casey', last_name: 'Lin', invited_by: uuid(2) },
   ];
+  // Who coaches what (team_members). Sam, the fixture coach, heads Girls 6th
+  // and assists on Girls 2nd Grade Green; Riley only assists.
+  const team_members = [
+    [teamId('girls','6th Grade'), uuid(3), 'head'],
+    [teamId('girls','6th Grade'), uuid(5), 'assistant'],
+    [teamId('girls','2nd Grade','Green'), uuid(6), 'head'],
+    [teamId('girls','2nd Grade','Green'), uuid(3), 'assistant'],
+    [teamId('girls','2nd Grade','White'), uuid(7), 'head'],
+    [teamId('boys','5th Grade'), uuid(4), 'head'],
+  ].map(([team_id, profile_id, role]) => ({ team_id, profile_id, role, assigned_by: uuid(2), created_at: '2026-11-04T12:00:00Z' }));
 
   // Seeded off the real FIELDS table further down the page, so every fixture
   // booking sits on a slot that genuinely exists — otherwise the calendar
@@ -113,7 +129,7 @@
   }
 
   const store = {
-    teams, profiles, bookings,
+    teams, profiles, bookings, team_members,
     waitlist: [],
     app_settings: [{ id: true, schedule_locked: false, priority_booking_enabled: false, priority_forced_ranks: [], locked_by: null }],
   };
@@ -164,9 +180,10 @@
     return api;
   }
 
-  // &as=coach signs in as the Girls 6th Grade coach, &as=assistant as that
-  // team's assistant, &as=director as the girls director; default is the
-  // admin. Lets every role's screens be checked.
+  // &as=coach signs in as Sam (heads Girls 6th Grade, assists on Girls 2nd
+  // Grade Green), &as=assistant as Riley (assistant only, Girls 6th),
+  // &as=director as the girls director; default is the admin. Lets every
+  // role's screens be checked.
   const AS = new URLSearchParams(location.search).get('as');
   const who = AS === 'coach' ? store.profiles[2] : AS === 'assistant' ? store.profiles[4]
     : AS === 'director' ? store.profiles[1] : store.profiles[0];
@@ -193,10 +210,38 @@
     removeChannel: () => {},
   };
 
+  // The database's assignment rules (teams_assignments_2026_11_04.sql), for
+  // the in-memory store: one head per team (a new head replaces the old one,
+  // who comes off the team), at most 3 assistants, and profiles.role/team_id
+  // kept in step for every coach and assistant.
+  function syncProfile(pid){
+    const p = store.profiles.find(x => x.id === pid);
+    if(!p || p.role === 'admin' || p.role === 'director') return;
+    const mine = store.team_members.filter(m => m.profile_id === pid);
+    const head = mine.find(m => m.role === 'head');
+    const first = head || mine[0];
+    if(head) p.role = 'coach'; else if(first) p.role = 'assistant';
+    p.team_id = first ? first.team_id : null;
+    if(first) p.gender = teams.find(t => t.id === first.team_id)?.gender || p.gender;
+  }
+  function writeMember(team_id, profile_id, role){
+    const M = store.team_members;
+    if(role === 'assistant' && M.filter(m => m.team_id === team_id && m.role === 'assistant' && m.profile_id !== profile_id).length >= 3)
+      return 'A team can have at most 3 assistant coaches';
+    const old = role === 'head' ? M.find(m => m.team_id === team_id && m.role === 'head' && m.profile_id !== profile_id) : null;
+    if(old) M.splice(M.indexOf(old), 1);
+    const row = M.find(m => m.team_id === team_id && m.profile_id === profile_id);
+    if(row) row.role = role;
+    else M.push({ team_id, profile_id, role, assigned_by: who.id, created_at: new Date().toISOString() });
+    syncProfile(profile_id); if(old) syncProfile(old.profile_id);
+    return null;
+  }
+
   // invite-coach and manage-user are called with fetch, not the client, so
-  // they get a stand-in too: same rules as the deployed functions (a head
-  // coach adds up to 3 assistants to their own team and may remove them),
-  // applied to the in-memory store. Nothing leaves the page.
+  // they get a stand-in too: same rules as the deployed functions (since
+  // 2026-11-05 only admins and directors invite; manage-user still lets a
+  // head coach remove their own assistants), applied to the in-memory store.
+  // Nothing leaves the page.
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, opts = {}) => {
     const fn = String(url).match(/\/functions\/v1\/(invite-coach|manage-user)$/);
@@ -206,17 +251,22 @@
     const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
     const P = store.profiles;
     if(fn[1] === 'invite-coach'){
-      if(!['admin', 'director', 'coach'].includes(who.role)) return reply({ ok: false, error: 'Only directors, admins and head coaches can send invites' }, 403);
+      if(!['admin', 'director'].includes(who.role)) return reply({ ok: false, error: 'Only directors and admins can invite coaches. Ask your director.' }, 403);
       const role = body.inviteRole === 'director' ? 'director' : body.inviteRole === 'assistant' ? 'assistant' : 'coach';
-      if(who.role === 'coach' && role !== 'assistant') return reply({ ok: false, error: 'Head coaches can only add assistant coaches' }, 403);
-      const team = teams.find(t => t.id === (who.role === 'coach' ? who.team_id : body.teamId));
+      if(role === 'director' && who.role !== 'admin') return reply({ ok: false, error: 'Only admins can invite directors' }, 403);
+      const team = teams.find(t => t.id === body.teamId);
       if(role !== 'director' && !team) return reply({ ok: false, error: 'Team not found' }, 404);
-      if(who.role === 'coach' && P.filter(x => x.role === 'assistant' && x.team_id === team.id).length >= 3)
-        return reply({ ok: false, error: 'Your team already has 3 assistant coaches. Remove one to add another.' }, 409);
+      if(role !== 'director' && who.role === 'director' && team.gender !== who.gender)
+        return reply({ ok: false, error: 'You can only invite coaches for ' + who.gender + ' teams' }, 403);
+      if(role === 'assistant' && store.team_members.filter(m => m.team_id === team.id && m.role === 'assistant').length >= 3)
+        return reply({ ok: false, error: 'That team already has 3 assistant coaches. Remove one to add another.' }, 409);
       const email = String(body.email || '').trim().toLowerCase();
       if(P.some(x => x.email === email)) return reply({ ok: false, error: 'A user with this email address has already been registered' }, 400);
-      P.push({ id: crypto.randomUUID(), email, role, gender: role === 'director' ? body.gender : team.gender,
+      const id = crypto.randomUUID();
+      P.push({ id, email, role, gender: role === 'director' ? body.gender : team.gender,
         team_id: role === 'director' ? null : team.id, first_name: body.firstName || null, last_name: body.lastName || null, invited_by: who.id });
+      // profiles_assign_from_invite: an invited coach heads the team, an assistant assists.
+      if(role !== 'director') writeMember(team.id, id, role === 'coach' ? 'head' : 'assistant');
       return reply({ ok: true });
     }
     if(body.action === 'last-seen') return reply({ ok: true, seen: {} });
@@ -228,6 +278,7 @@
     if(body.action === 'remove'){
       const gone = new Set([target.id, ...(target.role === 'coach' ? P.filter(x => x.invited_by === target.id && x.role === 'assistant').map(x => x.id) : [])]);
       for(let i = P.length - 1; i >= 0; i--) if(gone.has(P[i].id)) P.splice(i, 1);
+      store.team_members = store.team_members.filter(m => !gone.has(m.profile_id)); // on delete cascade
       return reply({ ok: true, email: target.email, assistantsRemoved: gone.size - 1 });
     }
     if(body.action === 'set-name'){ target.first_name = body.firstName || null; target.last_name = body.lastName || null; return reply({ ok: true }); }
@@ -541,7 +592,7 @@
   }
   .hamburger-menu .hamburger-signout:hover { background: var(--danger-bg); }
   .header-hero { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 40px); }
-  .header-sub { font-size: var(--fs-xs); color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .header-sub { font-size: var(--fs-xs); color: var(--muted); font-weight: 400; margin-top: 2px; white-space: nowrap; } /* "Girls 2nd Grade Green" on one line */
   /* Dark-mode crest carries a white halo; the light one must not. */
   :root[data-theme="dark"] #headerCrest { content: url(seaford-lacrosse-badge-dark.png); }
   :root[data-theme="light"] #headerCrest { content: url(seaford-lacrosse-badge.png); }
@@ -1671,12 +1722,13 @@
   .ios-switch:disabled { opacity: .5; }
   .ios-switch:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { .ios-switch, .ios-switch::before { transition: none; } }
-  /* ---- My Team: assistant coaches (head coaches only) ------------------ */
+  /* ---- My Team: team switcher and Coaches (read-only) ------------------ */
+  .myteam-switch { margin: 14px 16px 0; }
+  .myteam-switch .grade-select { max-width: none; min-height: 44px; }
   .staff-card { margin-top: 24px; padding: 16px; background: var(--card); border-radius: var(--radius-card, 14px);
     box-shadow: 0 0 0 .5px var(--line); }
   .staff-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .staff-head h3 { margin: 0; font-size: var(--fs-md, 1.0625rem); font-weight: 600; color: var(--text-strong); }
-  .staff-count { font-size: var(--fs-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
   .staff-hint { margin: 4px 0 0; font-size: var(--fs-xs); line-height: 1.4; color: var(--muted); }
   .staff-hint:empty { display: none; }
   .staff-list { list-style: none; margin: 12px 0 0; padding: 0; border-top: .5px solid var(--line); }
@@ -1685,23 +1737,7 @@
   .staff-who { display: flex; flex-direction: column; min-width: 0; }
   .staff-name { color: var(--ink); font-size: var(--fs-base); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .staff-email { color: var(--muted); font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .staff-remove { flex: none; min-height: 44px; padding: 0 4px 0 12px; border: none; background: none; font: inherit;
-    font-size: var(--fs-sm); color: var(--danger); cursor: pointer; }
-  .staff-add { margin-top: 12px; }
-  .staff-add summary { list-style: none; display: flex; align-items: center; min-height: 44px; cursor: pointer;
-    color: var(--accent-fill); font-weight: 600; font-size: var(--fs-base); }
-  .staff-add summary::-webkit-details-marker { display: none; }
-  .staff-add summary::before { content: '+'; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px;
-    border-radius: 50%; background: color-mix(in srgb, var(--accent-fill) 16%, transparent); font-weight: 600; }
-  .staff-add[open] summary { color: var(--text-strong); }
-  .staff-form { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
-  .staff-names { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .staff-form input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: var(--fs-base);
-    color: var(--ink); background: var(--card-2, var(--chalk)); border: none; border-radius: 10px; }
-  .staff-form input:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 1px; }
-  .staff-send { min-height: 44px; border: none; border-radius: 12px; font: inherit; font-weight: 600; font-size: var(--fs-base);
-    background: var(--accent-fill); color: var(--on-accent); cursor: pointer; }
-  .staff-send:disabled { opacity: .6; }
+  .staff-foot { margin-top: 10px; }
 
   /* ---- Next Practice hero (ui/aurora.js) ---------------------------- */
   .next-card.hero {
@@ -2676,6 +2712,10 @@
 
 <!-- ============ MY TEAM'S PRACTICES (coaches only) ============ -->
 <div id="viewMyTeam" style="display:none">
+  <!-- On two or more teams: which one this tab shows (remembered per device). -->
+  <div class="myteam-switch" id="myTeamSwitch" hidden>
+    <select class="grade-select" id="myTeamSelect" aria-label="Team"></select>
+  </div>
   <!-- The next practice is the headline of your team's practices. It sat on
        Calendar, where it pushed the month off the first screen. -->
   <div class="next-card" id="nextPracticeCard" style="display:none"></div>
@@ -2805,7 +2845,7 @@
   </div></div>
     <div data-peoplepane="bulk" hidden><div class="admin-card" style="margin-top:16px">
     <h3>Bulk invite from spreadsheet</h3>
-    <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b>. Name can be one column or separate <b>First Name</b> / <b>Last Name</b> columns.
+    <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b>. Name can be one column or separate <b>First Name</b> / <b>Last Name</b> columns. For a grade split into two teams, add a <b>Team</b> column (Green, White).
       <a href="coach-roster-template.xlsx" download class="template-link" style="color:var(--turf);font-weight:700">Download the template</a>.
       Directors can only upload coaches for their own gender; other rows are skipped.
     </p>
@@ -2936,9 +2976,14 @@ let FIELD_MAP = Object.fromEntries(FIELDS.map(f => [f.id, f]));
 // ============ STATE ============
 let session = null;
 let myProfile = null;          // { role, gender, team_id, email }
-let teams = [];                // [{id, gender, grade}]
-let teamsById = {};             // id -> {gender, grade}
-let teamsByKey = {};             // "girls|3rd Grade" -> id
+let teams = [];                // [{id, gender, grade, name, league_name, priority_finished_at}]
+let teamsById = {};             // id -> that team's row
+// Who coaches which team (team_members: team_id, profile_id, role 'head' |
+// 'assistant'). A grade can hold two teams ("Girls 2nd Grade Green" and
+// "White"), so a team is always found by id, never by gender + grade.
+let teamMembers = [];
+let membersLoaded = false;
+let coachesShown = null;         // My Team's Coaches section, as last drawn (see renderCoaches)
 let bookingsCache = [];          // in-memory copy of all bookings, refreshed on load + realtime
 let waitlistCache = [];          // in-memory copy of all waitlist entries, refreshed on load + realtime
 let waitlistNotified = new Set(); // waitlist entry ids we've already flashed "it opened up!" for, this session
@@ -2951,8 +2996,8 @@ let pendingNativeRoute = null;
 
 let currentView = 'schedule';
 let scheduleGender = 'girls';
-let scheduleGrade = null;        // filter for schedule view, null = all
-let scheduleGradeTouched = false; // has the user actually opened the picker and chosen something (even "All teams")? Distinguishes that from "hasn't touched it yet", since both leave scheduleGrade null.
+let scheduleTeam = null;         // team id the schedule list is filtered to, null = all
+let scheduleGradeTouched = false; // has the user actually opened the picker and chosen something (even "All teams")? Distinguishes that from "hasn't touched it yet", since both leave scheduleTeam null.
 // Phones open on the list: a month of dots answers nothing a coach came for.
 // Wider screens have room for the grid, so they keep it.
 const LAST_VIEW_KEY = 'seaford-last-view'; // hoisted: switchView reads it (TDZ)
@@ -3142,16 +3187,18 @@ function paintMonogram(){
   m.innerHTML = ini ? escSafe(ini) : PERSON_SVG;
   document.getElementById('accountBtn')?.setAttribute('aria-label', myProfile ? `Account, ${personName(myProfile)}` : 'Account');
 }
-function accountRoleLine(){
-  if(!myProfile) return '';
+// Who you are: "Girls Director", "Admin", or one line per team,
+// "Head coach · Girls 6th Grade", "Assistant · Girls 2nd Grade Green"
+// (the app's accountRoles).
+function accountRoleLines(){
+  if(!myProfile) return [];
   const role = ROLE_LABEL[myProfile.role] || myProfile.role;
   const Role = role.charAt(0).toUpperCase() + role.slice(1);
-  if(onATeam()){
-    const t = teamsById[myProfile.team_id];
-    return t ? `${Role} · ${teamLabel(t.gender, t.grade)}` : Role;
-  }
-  if(myProfile.role === 'director') return `${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} ${Role}`;
-  return Role;
+  const perTeam = myTeams().map(m => `${m.role === 'head' ? 'Head coach' : 'Assistant'} · ${teamLabelOf(m.team)}`);
+  if(onATeam()) return perTeam.length ? perTeam : [Role];
+  if(myProfile.role === 'director')
+    return [`${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} ${Role}`, ...perTeam.filter(l => l.startsWith('Head coach'))];
+  return [Role];
 }
 function rebuildAccountSheet(){
   const body = document.getElementById('accountBody');
@@ -3162,7 +3209,7 @@ function rebuildAccountSheet(){
       <span class="monogram monogram-lg" aria-hidden="true">${ini ? escSafe(ini) : PERSON_SVG}</span>
       <p class="acct-name">${named ? escSafe(personName(myProfile)) : 'Add your name'}</p>
       ${myProfile.email ? `<p class="acct-meta">${escSafe(myProfile.email)}</p>` : ''}
-      <p class="acct-meta">${escSafe(accountRoleLine())}</p>
+      ${accountRoleLines().map(l => `<p class="acct-meta">${escSafe(l)}</p>`).join('')}
     </div>`;
   // Accounts created before names existed have none, and a coach should be
   // able to fix their own without asking an admin: open when missing.
@@ -3565,8 +3612,7 @@ function saveSeen(){
   try { localStorage.setItem(SEEN_KEY, JSON.stringify({ ids: bookingsCache.map(b => b.id), locked: !!scheduleLocked, ts: Date.now() })); } catch(e){}
 }
 function describeBooking(b){
-  const key = teamKeyFor(b.team_id);
-  const team = key ? teamLabel(...key.split('|')) : 'A team';
+  const team = teamLabelById(b.team_id, 'A team');
   const field = FIELD_MAP[b.field_id] ? (FIELD_MAP[b.field_id].short || FIELD_MAP[b.field_id].name) : b.field_id;
   return `${team} · ${field} ${fmtDateLong(b.date)}`;
 }
@@ -3726,7 +3772,7 @@ function personName(p){
   if(full) return full;
   return p.role === 'admin' ? 'Site Admin'
     : p.role === 'director' ? `${p.gender === 'girls' ? 'Girls' : 'Boys'} Director`
-    : teamLabel(p.gender, teamsById[p.team_id]?.grade || '') + (p.role === 'assistant' ? ' Assistant' : '');
+    : (teamsById[p.team_id] ? teamLabelById(p.team_id) : teamLabel(p.gender, '')) + (p.role === 'assistant' ? ' Assistant' : '');
 }
 // Split a single spreadsheet "Name" cell. Last token is the surname; everything
 // before it stays with the first name, so "Ana Maria de Souza" keeps its shape.
@@ -3736,17 +3782,81 @@ function splitName(full){
   if(parts.length === 1) return { first: parts[0], last: '' };
   return { first: parts.slice(0, -1).join(' '), last: parts[parts.length - 1] };
 }
-function teamLabel(gender, grade){ return `${gender==='girls'?'Girls':'Boys'} ${grade}`; }
+// "Girls 2nd Grade Green": program, grade, and the split name when the grade
+// has more than one team (teams.name; null for an unsplit team). The same
+// rule as the database's team_label().
+function teamLabel(gender, grade, name){ return `${gender==='girls'?'Girls':'Boys'} ${grade}${name ? ' ' + name : ''}`; }
+function teamLabelOf(t){ return t ? teamLabel(t.gender, t.grade, t.name) : ''; }
+function teamLabelById(id, fallback = ''){ const t = teamsById[id]; return t ? teamLabelOf(t) : fallback; }
+// Without the program word, for a menu that already sits under Girls/Boys.
+function teamShortLabel(t){ return t ? `${t.grade}${t.name ? ' ' + t.name : ''}` : ''; }
+// Girls first, youngest grade first, split teams side by side by name.
+function teamsInOrder(list){
+  return list.slice().sort((a, b) => (a.gender === b.gender ? 0 : a.gender === 'girls' ? -1 : 1)
+    || gradeRank(a.grade) - gradeRank(b.grade)
+    || (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }));
+}
+function teamsOfProgram(gender){ return teamsInOrder(teams.filter(t => t.gender === gender)); }
+// <option>s for a team menu, every team its own entry (a split grade is two).
+function teamOptionsHTML(list, withProgram){
+  return teamsInOrder(list).map(t => `<option value="${escSafe(t.id)}">${escSafe(withProgram ? teamLabelOf(t) : teamShortLabel(t))}</option>`).join('');
+}
+
+// ---- Memberships: which teams this person is on, and as what ----
+// One login can head some teams (books for them) and assist on others (view
+// only). The database is the authority (can_book_team); this only decides
+// what to offer.
+const ROLE_TITLE = { head: 'Head Coach', assistant: 'Assistant' };
+function myMemberships(){
+  if(!myProfile) return [];
+  const mine = teamMembers.filter(m => m.profile_id === myProfile.id);
+  if(mine.length || membersLoaded) return mine;
+  // Before team_members has loaded (a cached launch), the one team on the
+  // profile stands in: a coach heads it, an assistant assists on it.
+  if(!myProfile.team_id) return [];
+  if(myProfile.role === 'coach') return [{ team_id: myProfile.team_id, profile_id: myProfile.id, role: 'head' }];
+  if(myProfile.role === 'assistant') return [{ team_id: myProfile.team_id, profile_id: myProfile.id, role: 'assistant' }];
+  return [];
+}
+// [{ team, role }]: head teams first, then older grades first, then by label.
+function myTeams(){
+  return myMemberships().filter(m => teamsById[m.team_id])
+    .map(m => ({ team: teamsById[m.team_id], role: m.role }))
+    .sort((a, b) => (a.role === 'head' ? 0 : 1) - (b.role === 'head' ? 0 : 1)
+      || gradeRank(b.team.grade) - gradeRank(a.team.grade)
+      || teamLabelOf(a.team).localeCompare(teamLabelOf(b.team)));
+}
+function headTeams(){ return myTeams().filter(m => m.role === 'head').map(m => m.team); }
+function myTeamIdSet(){ return new Set(myTeams().map(m => m.team.id)); }
+// isMine, for a scope that names a local isMine.
+function isMineTeam(teamId){ return isMine(teamId); }
+// Gold "mine" marks: every team this person is on, plus the one being booked for.
+function isMine(teamId){
+  if(!teamId || !myProfile) return false;
+  return (onATeam() && myTeamIdSet().has(teamId)) || teamId === myBookingTeamId();
+}
+const MY_TEAM_KEY = 'seaford-my-team', BOOK_TEAM_KEY = 'seaford-book-team';
+function readPref(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function writePref(k, v){ try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch(e){} }
+// The team My Team shows: the one picked on this device, else the first.
+function shownTeamId(){
+  const mine = myTeams();
+  const saved = readPref(MY_TEAM_KEY);
+  return (mine.find(m => m.team.id === saved) || mine[0])?.team.id || null;
+}
+function myTeamRole(){ const id = shownTeamId(); return myTeams().find(m => m.team.id === id)?.role || null; }
+// A head coach's Book team: of several, the one picked on this device, else the first.
+function coachBookTeamId(){
+  const heads = headTeams();
+  const saved = readPref(BOOK_TEAM_KEY);
+  return (heads.find(t => t.id === saved) || heads[0])?.id || null;
+}
 // One rule for field names everywhere: full name, then the sub-field, joined
 // by a middle dot. Short codes stay inside chips, where space is the point.
 function fieldLabel(fieldId, subfield){
   const f = FIELD_MAP[fieldId];
   const name = f ? f.name : fieldId;
   return subfield ? `${name} \u00b7 ${subfield}` : name;
-}
-function teamKeyFor(teamId){
-  const t = teamsById[teamId];
-  return t ? (t.gender+'|'+t.grade) : null;
 }
 // Two-tap confirm for irreversible actions (booking, cancelling) — replaces
 // native confirm() dialogs and instant-fire buttons with an inline "tap again"
@@ -4225,10 +4335,12 @@ async function loadProfileAndStartInner(){
   if(cached && Array.isArray(cached.bookings) && cached.bookings.length){
     bookingsCache = cached.bookings;
     if(Array.isArray(cached.teams) && cached.teams.length){ indexTeams(cached.teams); warm = true; }
+    // Saved memberships stand in until the fresh ones land (myMemberships).
+    if(Array.isArray(cached.members)) teamMembers = cached.members;
     lastSyncedAt = cached.at;
   }
-  // The four reads are independent: one round of requests, not four in a row.
-  const fresh = Promise.all([loadCatalog(), loadTeams(), refreshBookings(), refreshWaitlist(), refreshLockState()]);
+  // The reads are independent: one round of requests, not one after another.
+  const fresh = Promise.all([loadCatalog(), loadTeams(), loadMembers(), refreshBookings(), refreshWaitlist(), refreshLockState()]);
   if(warm) fresh.then(() => { if(myProfile) rerenderCurrentView(); });
   else await fresh;
   autoAdvanceOverdueTier(); // fire-and-forget; no-op unless an admin and a tier is past its deadline
@@ -4259,7 +4371,7 @@ async function loadProfileAndStartInner(){
     // practices live in My Team's Practices, so narrowing this view to their
     // team just duplicated that tab and made this one's name untrue.
     scheduleGender = myProfile.gender;
-    scheduleGrade = null;
+    scheduleTeam = null;
     selectedField = defaultBookField();
   } else if(myProfile.role === 'director'){
     scheduleGender = myProfile.gender;
@@ -4298,7 +4410,10 @@ function teardown(){
   lastNativeContext = '';
   document.querySelectorAll('.view-tab[data-view="book"], .view-tab[data-view="openweek"]').forEach(t => { t.style.display = ''; });
   document.documentElement.classList.remove('role-assistant');
-  myProfile = null; teams = []; teamsById = {}; teamsByKey = {}; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
+  // A shared phone: the next person doesn't inherit this one's Book team.
+  writePref(BOOK_TEAM_KEY, null);
+  coachesShown = null;
+  myProfile = null; teams = []; teamsById = {}; teamMembers = []; membersLoaded = false; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
   el.viewTabs.style.display = 'none';
   document.getElementById('accountBtn').style.display = 'none';
@@ -4328,23 +4443,28 @@ el.signOutBtn.addEventListener('click', () => sb.auth.signOut());
 // ============ DATA LOADING ============
 function indexTeams(rows){
   teams = rows;
-  teamsById = {}; teamsByKey = {};
-  teams.forEach(t => {
-    teamsById[t.id] = { gender: t.gender, grade: t.grade };
-    teamsByKey[t.gender+'|'+t.grade] = t.id;
-  });
+  teamsById = {};
+  teams.forEach(t => { teamsById[t.id] = t; });
 }
 async function loadTeams(){
   const { data, error } = await sb.from('teams').select('*');
   if(error){ flash(friendlyError(error, 'Teams didn\'t load.'), 'err'); return; }
   indexTeams(data);
 }
+// Everyone signed in may read team_members (RLS members_read).
+async function loadMembers(){
+  const { data, error } = await sb.from('team_members').select('team_id, profile_id, role');
+  if(error) return; // the profile's own team stands in (myMemberships)
+  teamMembers = data || [];
+  membersLoaded = true;
+  if(bookingsCache.length) writeCache();
+}
 
 const CACHE_KEY = 'seaford-cache-v1';
 let lastSyncedAt = null;
 function readCache(){ try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e){ return null; } }
 function writeCache(){
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams, profile: myProfile })); }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams, members: teamMembers, profile: myProfile })); }
   catch(e){ /* quota or private mode: the app is fine without it */ }
 }
 // "Updated 2 min ago" is the honest version of a spinner: it says how stale
@@ -4537,7 +4657,7 @@ function currentBlockingRank(){
 // Team" dropdown a real placeholder and gate the booking UI behind an
 // actual choice, matching what the dropdown visually promises.
 function applyBookTeamGate(){
-  if(bookAsGrade){
+  if(bookAsTeam && teamsById[bookAsTeam]){
     el.pickTeamPrompt.style.display = 'none';
     buildFieldChips(); buildRecurringUI(); renderWeek();
     renderPriorityBookingGate();
@@ -4582,10 +4702,10 @@ function renderPriorityBookingGate(){
     return;
   }
   const unlocked = isTierUnlocked(team.grade);
-  const teamLabelText = teamLabel(team.gender, team.grade);
+  const teamLabelText = teamLabelOf(team);
   if(!unlocked){
     const blockers = blockingTeamsFor(team.grade);
-    const blockerList = blockers.map(t => teamLabel(t.gender, t.grade)).join(', ');
+    const blockerList = blockers.map(teamLabelOf).join(', ');
     const blockRank = currentBlockingRank();
     const left = (blockRank === null || blockRank === undefined) ? '' : tierTimeLeftText(blockRank);
     const clock = left ? `<div class="priority-clock${tierOverdue(blockRank) ? ' overdue' : ''}">${escSafe(GRADES[blockRank])} has <b>${escSafe(left)}</b> to finish booking${tierOverdue(blockRank) ? ' \u2014 the next grade opens automatically' : ''}.</div>` : '';
@@ -4664,6 +4784,13 @@ function setupRealtime(){
       if(currentView === 'book') renderPriorityBookingGate();
       if(currentView === 'admin') renderPriorityTierStatus();
     })
+    // A director assigning or moving a coach changes which teams this person
+    // books for and sees on My Team, while the app is open.
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, async () => {
+      await loadMembers();
+      switchView(currentView);
+      syncNativeContext();
+    })
     .subscribe();
 }
 
@@ -4740,9 +4867,11 @@ function setHeaderTitle(view){
   if(!sub) return;
   // Who am I looking at? The same grid served a coach and an admin silently.
   if(!myProfile){ sub.textContent = ''; return; }
-  const teamId = chosenTeamId();
+  // Book and Find a Time name the team being booked for; the rest, the team
+  // My Team shows (a coach can head one team and assist on another).
+  const teamId = onATeam() && (view === 'book' || view === 'openweek') ? myBookingTeamId() : chosenTeamId();
   const t2 = teamId && teamsById[teamId];
-  sub.textContent = t2 ? teamLabel(t2.gender, t2.grade)
+  sub.textContent = t2 ? teamLabelOf(t2)
     : view === 'book' ? 'Choose a team to book for'
     : myProfile.role === 'admin' ? 'All teams' : (myProfile.gender === 'girls' ? 'All girls teams' : 'All boys teams');
   const lt = document.getElementById('largeTitle');
@@ -4819,10 +4948,21 @@ function switchView(view){
   } else if(view === 'book'){
     renderWelcome();
     if(myProfile.role === 'coach'){
-      el.teamPicker.style.display = 'none';
-      el.lockedTeamBanner.style.display = 'block';
-      const grade = teamsById[myProfile.team_id]?.grade || '';
-      el.lockedTeamBanner.textContent = `Booking for: ${teamLabel(myProfile.gender, grade)}`;
+      // A coach books for the teams they head. One: named, no picker. Two or
+      // more: the director's team menu, remembered on this device.
+      const heads = headTeams();
+      if(heads.length > 1){
+        el.lockedTeamBanner.style.display = 'none';
+        el.teamPicker.style.display = '';
+        el.pickerHeading.textContent = 'Team';
+        document.querySelectorAll('.gtab').forEach(g => g.style.display = 'none');
+        buildGradeGrid(true);
+      } else {
+        el.teamPicker.style.display = 'none';
+        el.lockedTeamBanner.style.display = 'block';
+        el.lockedTeamBanner.textContent = heads.length ? `Booking for: ${teamLabelOf(heads[0])}` : 'Booking for: No team yet';
+      }
+      el.pickTeamPrompt.style.display = 'none';
       buildFieldChips(); buildRecurringUI(); renderWeek();
       renderPriorityBookingGate();
     } else if(myProfile.role === 'admin'){
@@ -4846,7 +4986,8 @@ function switchView(view){
   } else if(view === 'openweek'){
     el.teamPicker.style.display = 'none';
     el.lockedTeamBanner.style.display = 'none';
-    if((myProfile.role === 'director' || myProfile.role === 'admin') && !bookAsGrade) bookAsGrade = GRADES[0];
+    if((myProfile.role === 'director' || myProfile.role === 'admin') && !teamsById[bookAsTeam])
+      bookAsTeam = teamsOfProgram(myProfile.role === 'admin' ? bookAsGender : myProfile.gender)[0]?.id || null;
     renderOpenWeek();
   } else if(view === 'myteam'){
     el.teamPicker.style.display = 'none';
@@ -4865,45 +5006,60 @@ function switchView(view){
 }
 
 // ============ TEAM PICKER (dual purpose: schedule filter / director's book-as team) ============
-let bookAsGrade = null;
+// By team id, never by grade: a split grade has two teams (Green and White).
+let bookAsTeam = null;
 let bookAsGender = 'girls'; // only used when myProfile.role === 'admin'
 
 function teamCounts(){
   const c = {};
-  bookingsCache.forEach(b => { const k = teamKeyFor(b.team_id); if(k) c[k]=(c[k]||0)+1; });
+  bookingsCache.forEach(b => { if(teamsById[b.team_id]) c[b.team_id] = (c[b.team_id] || 0) + 1; });
   return c;
+}
+// Switching program keeps the grade (and the split name, when the other
+// program has a team like it), as the app does.
+function sameTeamIn(gender, teamId){
+  const old = teamsById[teamId];
+  if(!old) return null;
+  const same = teamsOfProgram(gender).filter(t => t.grade === old.grade);
+  return (same.find(t => (t.name || '') === (old.name || '')) || same[0])?.id || null;
 }
 
 function buildGradeGrid(forBooking){
-  const cnts = teamCounts();
-  const activeGrade = forBooking ? bookAsGrade : scheduleGrade;
+  // A head coach of two or more teams picks among those, full names, and
+  // always has one picked.
+  if(forBooking && myProfile.role === 'coach'){
+    el.gradeGrid.innerHTML = teamOptionsHTML(headTeams(), true);
+    el.gradeGrid.value = coachBookTeamId() || '';
+    el.gradeGrid.setAttribute('aria-label', 'Team');
+    return;
+  }
+  el.gradeGrid.setAttribute('aria-label', forBooking ? 'Team' : 'Filter by team');
+  const active = forBooking ? bookAsTeam : scheduleTeam;
   const gender = forBooking ? (myProfile.role === 'admin' ? bookAsGender : myProfile.gender) : scheduleGender;
   // A disabled placeholder is the closed-state text whenever nothing's picked
   // yet — the whole point is making it obvious at a glance that this is a
   // tappable dropdown, not a static label.
-  const showPlaceholder = forBooking ? !activeGrade : (!activeGrade && !scheduleGradeTouched);
+  const showPlaceholder = forBooking ? !active : (!active && !scheduleGradeTouched);
   const placeholderText = forBooking ? 'Select team' : 'All teams';
   let html = `<option value="__placeholder__" disabled ${showPlaceholder ? 'selected' : ''}>${placeholderText}</option>`;
   if(!forBooking) html += `<option value="">All teams</option>`;
-  html += GRADES.map(g => {
-    const key = gender+'|'+g;
-    const n = cnts[key] || 0;
-    return `<option value="${g}">${g}</option>`;
-  }).join('');
+  html += teamOptionsHTML(teamsOfProgram(gender), false);
   el.gradeGrid.innerHTML = html;
-  el.gradeGrid.value = showPlaceholder ? '__placeholder__' : (activeGrade || '');
+  el.gradeGrid.value = showPlaceholder ? '__placeholder__' : (active || '');
 }
 
 document.getElementById('genderTabs').addEventListener('click', e => {
   if(!e.target.classList.contains('gtab')) return;
   if(currentView === 'schedule'){
     scheduleGender = e.target.dataset.g;
+    if(scheduleTeam) scheduleTeam = sameTeamIn(scheduleGender, scheduleTeam);
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
     positionModeThumb(el.genderTabs);
     buildGradeGrid();
     renderSchedule();
   } else if(currentView === 'book' && myProfile.role === 'admin'){
     bookAsGender = e.target.dataset.g;
+    if(bookAsTeam) bookAsTeam = sameTeamIn(bookAsGender, bookAsTeam);
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
     positionModeThumb(el.genderTabs);
     buildGradeGrid(true);
@@ -4912,20 +5068,26 @@ document.getElementById('genderTabs').addEventListener('click', e => {
 });
 
 el.gradeGrid.addEventListener('change', e => {
-  const grade = e.target.value || null;
+  const id = (e.target.value && teamsById[e.target.value]) ? e.target.value : null;
   if(currentView === 'schedule'){
-    scheduleGrade = grade;
+    scheduleTeam = id;
     scheduleGradeTouched = true;
     buildGradeGrid();
     renderSchedule();
+  } else if(currentView === 'book' && myProfile.role === 'coach'){
+    if(!id) return;
+    writePref(BOOK_TEAM_KEY, id);
+    haptic('selection');
+    switchView('book');
+    syncNativeContext();
   } else if(currentView === 'book' && (myProfile.role === 'director' || myProfile.role === 'admin')){
-    bookAsGrade = grade;
+    bookAsTeam = id;
     buildGradeGrid(true);
     applyBookTeamGate();
   }
 });
 
-el.allBtn.addEventListener('click', () => { scheduleGrade = null; scheduleGradeTouched = true; buildGradeGrid(); renderSchedule(); });
+el.allBtn.addEventListener('click', () => { scheduleTeam = null; scheduleGradeTouched = true; buildGradeGrid(); renderSchedule(); });
 
 // ============ EXPORT TO CSV (TeamSnap import format) ============
 // TeamSnap's schedule-import template has these exact columns. Every
@@ -4981,15 +5143,15 @@ function parseTimeRangeForExport(range){
   };
 }
 
-function getTeamBookingsSorted(teamKey){
+function getTeamBookingsSorted(teamId){
   return bookingsCache
-    .filter(b => teamKeyFor(b.team_id) === teamKey)
+    .filter(b => b.team_id === teamId)
     .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 }
 
-function exportTeamScheduleCSV(teamKey, teamLabelText){
-  if(!teamKey) return;
-  const filtered = getTeamBookingsSorted(teamKey);
+function exportTeamScheduleCSV(teamId, teamLabelText){
+  if(!teamId) return;
+  const filtered = getTeamBookingsSorted(teamId);
 
   const rows = filtered.map(b => {
     const { startStr, durStr } = parseTimeRangeForExport(b.time);
@@ -5023,9 +5185,8 @@ function exportTeamScheduleCSV(teamKey, teamLabelText){
   URL.revokeObjectURL(url);
 }
 el.exportCsvBtn.addEventListener('click', () => {
-  const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
-  if(!teamKey) return;
-  exportTeamScheduleCSV(teamKey, teamLabel(scheduleGender, scheduleGrade));
+  if(!teamsById[scheduleTeam]) return;
+  exportTeamScheduleCSV(scheduleTeam, teamLabelById(scheduleTeam));
 });
 
 // ---- Calendar (.ics) export — works for Apple Calendar and Google Calendar ----
@@ -5062,8 +5223,7 @@ function exportOneBookingICS(bookingId){
   if(!b) return;
   const t = parseTimeRangeTo24h(b.time);
   if(!t) return;
-  const team = teamsById[b.team_id];
-  const label = team ? teamLabel(team.gender, team.grade) : 'Practice';
+  const label = teamLabelById(b.team_id, 'Practice');
   const stamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
   const dt = (h, m) => b.date.replace(/-/g,'') + 'T' + String(h).padStart(2,'0') + String(m).padStart(2,'0') + '00';
   const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Seaford Lacrosse//Schedule//EN','BEGIN:VEVENT',
@@ -5079,9 +5239,9 @@ function exportOneBookingICS(bookingId){
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   haptic('success');
 }
-function exportTeamScheduleICS(teamKey, teamLabelText){
-  if(!teamKey) return;
-  const filtered = getTeamBookingsSorted(teamKey);
+function exportTeamScheduleICS(teamId, teamLabelText){
+  if(!teamId) return;
+  const filtered = getTeamBookingsSorted(teamId);
   const nowStamp = new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
   let ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Seaford Lacrosse//Schedule//EN\r\nCALSCALE:GREGORIAN\r\n';
   filtered.forEach(b => {
@@ -5173,13 +5333,12 @@ function renderScheduleMode(){
 }
 
 // ============ SCHEDULE VIEW ============
-// highlightTeamKey: which team gets the gold "mine" styling (independent of
-// what's being shown — a coach should see their own bookings highlighted
+// highlight(teamId): which bookings get the gold "mine" styling (independent
+// of what's being shown — a coach should see their own bookings highlighted
 // even while browsing the full town schedule, not just when filtered to
-// just their team). filterKey: pass the active filter separately so the
-// per-slot team-name label only gets suppressed when actually filtered to
-// one team (defaults to highlightTeamKey for callers that don't need the split).
-function renderGroupedByFieldDate(filtered, highlightTeamKey, filterKey = highlightTeamKey){
+// just their team). oneTeam: the list is one team's, so the per-slot team
+// name is left off.
+function renderGroupedByFieldDate(filtered, highlight, oneTeam){
   const byField = {};
   filtered.forEach(b => {
     if(!byField[b.field_id]) byField[b.field_id] = {};
@@ -5200,10 +5359,9 @@ function renderGroupedByFieldDate(filtered, highlightTeamKey, filterKey = highli
       const slots = byField[field.id][date].sort((a,b) => a.time.localeCompare(b.time));
       html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}${weatherBadge(date)}</div><div class="slots">`;
       slots.forEach(s => {
-        const key = teamKeyFor(s.team_id);
-        const mine = highlightTeamKey && key === highlightTeamKey;
-        const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
-        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(formatSlotTime(s.time))}</span><span class="who">${!filterKey ? escSafe(teamText) + ' \u00b7 ' : ''}${escSafe(s.subfield)}</span></span>`;
+        const mine = !!(highlight && highlight(s.team_id));
+        const teamText = teamLabelById(s.team_id, '(unknown team)');
+        html += `<span class="slot${mine?' mine':''}"><span class="time">${escSafe(formatSlotTime(s.time))}</span><span class="who">${!oneTeam ? escSafe(teamText) + ' \u00b7 ' : ''}${escSafe(s.subfield)}</span></span>`;
       });
       html += '</div></div>';
     });
@@ -5232,16 +5390,17 @@ function practiceCountdown(dateISO, time){
   return months === 1 ? 'In a month' : `In ${months} months`;
 }
 let heroAurora = null, heroFieldId = null;
-// The app's widgets, Watch, Live Activity and calendar show the coach's team:
-// its upcoming practices, as the raw rows (the app parses times itself, the
-// same way the team-ics feed is parsed). Sent only when something changed.
+// The app's widgets, Watch, Live Activity and calendar show the coach's team
+// (for someone on several, the one chosen on My Team): its upcoming
+// practices, as the raw rows (the app parses times itself, the same way the
+// team-ics feed is parsed). Sent only when something changed.
 function syncNativeContext(){
   if(!window.Native.features() || !myProfile || !teams.length) return;
   const teamId = chosenTeamId();
   const t = teamId ? teamsById[teamId] : null;
   const todayISO = fmtDateISO(new Date());
   const ctx = t ? {
-    teamId, teamLabel: teamLabel(t.gender, t.grade),
+    teamId, teamLabel: teamLabelOf(t),
     practices: bookingsCache
       .filter(b => b.team_id === teamId && b.date >= todayISO)
       .sort((a, b) => a.date.localeCompare(b.date) || slotStartMinutes(a.time) - slotStartMinutes(b.time))
@@ -5313,7 +5472,7 @@ function renderNextPractice(){
     <p class="eyebrow"><span class="fm-dot"></span>Next practice${teamId ? '' : ' · any team'}</p>
     <p class="countdown${near ? '' : ' is-date'}">${escSafe(bigLine)}</p>
     <p class="when">${escSafe(whenLine)}</p>
-    <p class="where">${escSafe(fieldLabel(n.field_id, n.subfield))}${t && !teamId ? ' · ' + escSafe(teamLabel(t.gender, t.grade)) : ''}${after > 0 ? ` · ${after} more after this` : ''}</p>
+    <p class="where">${escSafe(fieldLabel(n.field_id, n.subfield))}${t && !teamId ? ' · ' + escSafe(teamLabelOf(t)) : ''}${after > 0 ? ` · ${after} more after this` : ''}</p>
     <div class="row2">
       <a href="${mapsUrl}" target="_blank" rel="noopener">Directions</a>
       <button type="button" data-nextjump="${escSafe(n.date)}">See the day</button>
@@ -5368,17 +5527,18 @@ document.addEventListener('click', e => {
 });
 function renderSchedule(){
   setHeaderTitle(currentView);
-  const teamKey = scheduleGrade ? scheduleGender+'|'+scheduleGrade : null;
-  const myTeamKey = onATeam() ? teamKeyFor(myProfile.team_id) : null;
-  const label = scheduleGrade ? `${scheduleGender==='girls'?'Girls':'Boys'} &middot; ${scheduleGrade}` : 'All teams';
-  el.nowShowing.innerHTML = scheduleGrade ? `Showing <span class="tag">${label}</span>` : 'All teams';
-  el.exportCsvBtn.style.display = teamKey ? 'inline-block' : 'none';
-  el.scheduleIcsBtn.style.display = teamKey ? 'inline-block' : 'none';
-  el.scheduleShareBtn.style.display = teamKey ? 'inline-flex' : 'none';
-  el.allBtn.style.display = teamKey ? 'inline-block' : 'none';
+  const teamId = teamsById[scheduleTeam] ? scheduleTeam : null;
+  const highlight = onATeam() ? isMine : null;
+  const ft = teamsById[teamId];
+  const label = ft ? `${ft.gender==='girls'?'Girls':'Boys'} &middot; ${escSafe(teamShortLabel(ft))}` : 'All teams';
+  el.nowShowing.innerHTML = ft ? `Showing <span class="tag">${label}</span>` : 'All teams';
+  el.exportCsvBtn.style.display = teamId ? 'inline-block' : 'none';
+  el.scheduleIcsBtn.style.display = teamId ? 'inline-block' : 'none';
+  el.scheduleShareBtn.style.display = teamId ? 'inline-flex' : 'none';
+  el.allBtn.style.display = teamId ? 'inline-block' : 'none';
 
-  const filtered = teamKey
-    ? bookingsCache.filter(b => teamKeyFor(b.team_id) === teamKey)
+  const filtered = teamId
+    ? bookingsCache.filter(b => b.team_id === teamId)
     : bookingsCache;
 
   if(!filtered.length){
@@ -5394,133 +5554,114 @@ function renderSchedule(){
   // Highlight the viewer's own team whenever they're a coach, independent of
   // the filter — so "mine" styling works even while browsing the full town
   // schedule, not just when narrowed down to just their own team.
-  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, myTeamKey, teamKey);
+  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, highlight, !!teamId);
   el.results.innerHTML = html;
-  el.count.textContent = `${totalSlots} practice${totalSlots!==1?'s':''} \u00b7 ${venuesShown} field${venuesShown!==1?'s':''}${myTeamKey ? ' \u00b7 yours in gold' : ''}`;
+  el.count.textContent = `${totalSlots} practice${totalSlots!==1?'s':''} \u00b7 ${venuesShown} field${venuesShown!==1?'s':''}${highlight ? ' \u00b7 yours in gold' : ''}`;
 }
 
 // ============ MY TEAM'S PRACTICES (coaches) ============
+// Someone on two or more teams switches between them at the top ("Girls 6th
+// Grade · Head Coach" / "Girls 2nd Grade Green · Assistant"); the choice is
+// kept on this device. Everything below follows the chosen team.
+function renderMyTeamSwitcher(){
+  const box = document.getElementById('myTeamSwitch');
+  const sel = document.getElementById('myTeamSelect');
+  if(!box || !sel) return;
+  const mine = myTeams();
+  if(mine.length < 2){ box.hidden = true; return; }
+  box.hidden = false;
+  const current = shownTeamId();
+  sel.innerHTML = mine.map(m => `<option value="${escSafe(m.team.id)}">${escSafe(teamLabelOf(m.team) + ' · ' + ROLE_TITLE[m.role])}</option>`).join('');
+  sel.value = current || '';
+}
+document.getElementById('myTeamSelect')?.addEventListener('change', e => {
+  if(!myTeams().some(m => m.team.id === e.target.value)) return;
+  writePref(MY_TEAM_KEY, e.target.value);
+  haptic('selection');
+  setHeaderTitle(currentView);
+  renderMyTeam();
+});
 function renderMyTeam(){
+  renderMyTeamSwitcher();
   renderNextPractice();
-  const teamId = myProfile.team_id;
-  const key = teamKeyFor(teamId);
-  const label = key ? teamLabel(...key.split('|')) : '';
-  el.myTeamHeading.textContent = label;
-  const filtered = getTeamBookingsSorted(key);
+  const teamId = shownTeamId();
+  el.myTeamHeading.textContent = teamLabelById(teamId);
+  const filtered = teamId ? getTeamBookingsSorted(teamId) : [];
+  const role = myTeamRole();
+  ['myTeamExportIcsBtn', 'myTeamShareBtn', 'myTeamExportCsvBtn'].forEach(id => { el[id].style.display = teamId ? '' : 'none'; });
 
-  renderAssistants();
+  renderCoaches(teamId);
+  if(!teamId){
+    el.myTeamResults.innerHTML = `<div class="empty-schedule"><b>No Team Yet</b>Your account isn't on a team. Ask your director to add you to one.</div>`;
+    el.myTeamCount.innerHTML = '';
+    return;
+  }
   if(!filtered.length){
-    el.myTeamResults.innerHTML = canBook()
-      ? `<div class="empty-schedule"><b>Nothing Booked Yet</b>Your team's practices show up here once they're booked.<br><button class="cta" onclick="switchView('book')">Book a Practice</button></div>`
+    el.myTeamResults.innerHTML = role === 'head'
+      ? `<div class="empty-schedule"><b>Nothing Booked Yet</b>Your team's practices show up here once they're booked.<br><button class="cta" data-book-team="${escSafe(teamId)}">Book a Practice</button></div>`
       : `<div class="empty-schedule"><b>No practices booked yet</b>They'll show here as soon as your head coach books them.</div>`;
     el.myTeamCount.innerHTML = '';
     return;
   }
 
-  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, key);
+  const { html, totalSlots, venuesShown } = renderGroupedByFieldDate(filtered, id => id === teamId, true);
   el.myTeamResults.innerHTML = html;
   // The bar already names the team; saying it a third time was noise.
   el.myTeamCount.innerHTML = `${totalSlots} practice${totalSlots!==1?'s':''} across ${venuesShown} field${venuesShown!==1?'s':''}`;
 }
-// ---- Assistant coaches (a head coach's own team; JJ, 2026-09-22) ----
-// Up to 3, invited by email so they set their own password. The list is read
-// straight from profiles: RLS lets a head coach see their own team's
-// assistants and nobody else's. invite-coach and manage-user enforce the
-// same rules server-side.
-const MAX_ASSISTANTS = 3;
-let assistantRows = [];
-async function renderAssistants(){
+// Book a Practice opens Book on the team shown here, not the last one booked for.
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-book-team]');
+  if(!b) return;
+  if(headTeams().some(t => t.id === b.dataset.bookTeam)) writePref(BOOK_TEAM_KEY, b.dataset.bookTeam);
+  switchView('book');
+});
+// ---- Coaches: who coaches the team shown, read-only for everyone ----
+// Head coach first, then assistants by name. Directors assign coaches
+// (Admin > Teams); invite-coach refuses head coaches since 2026-11-05. RLS
+// lets anyone see the people they share a team with.
+async function renderCoaches(teamId){
   const box = document.getElementById('myTeamStaff');
   if(!box) return;
-  if(!myProfile || myProfile.role !== 'coach'){ box.hidden = true; return; }
+  if(!teamId){ box.hidden = true; coachesShown = null; return; }
   box.hidden = false;
-  const { data, error } = await sb.from('profiles')
-    .select('id, email, first_name, last_name').eq('role', 'assistant').eq('team_id', myProfile.team_id);
-  assistantRows = error ? [] : (data || []).sort((a, b) => personName(a).localeCompare(personName(b)));
-  const full = assistantRows.length >= MAX_ASSISTANTS;
-  const rows = assistantRows.map(a => {
-    const named = !!(a.first_name || a.last_name);
-    return `<li class="staff-row">
-      <span class="staff-who"><span class="staff-name">${escSafe(named ? personName(a) : a.email)}</span>${named ? `<span class="staff-email">${escSafe(a.email)}</span>` : ''}</span>
-      <button type="button" class="staff-remove" data-remove-assistant="${escSafe(a.id)}" aria-label="Remove ${escSafe(named ? personName(a) : a.email)}">Remove</button>
-    </li>`;
-  }).join('');
-  box.innerHTML = `
-    <div class="staff-head"><h3 id="staffHeading">Assistant coaches</h3><span class="staff-count">${assistantRows.length} of ${MAX_ASSISTANTS}</span></div>
-    <p class="staff-hint">Assistants see your team's schedule. They can't book or cancel.</p>
-    ${error ? `<p class="staff-hint">Couldn't load your assistants: ${escSafe(error.message)}</p>` : ''}
-    ${rows ? `<ul class="staff-list">${rows}</ul>` : ''}
-    ${full ? `<p class="staff-hint">That's the limit. Remove one to add another.</p>` : `
-    <details class="staff-add"${assistantRows.length ? '' : ' open'}>
-      <summary>Add an assistant coach</summary>
-      <form class="staff-form" id="assistantForm" novalidate>
-        <div class="staff-names">
-          <input type="text" name="first" placeholder="First name" autocomplete="off" aria-label="First name">
-          <input type="text" name="last" placeholder="Last name" autocomplete="off" aria-label="Last name">
-        </div>
-        <input type="email" name="email" placeholder="Email" autocomplete="off" aria-label="Email" required>
-        <button type="submit" class="staff-send">Send invite</button>
-        <p class="staff-hint" data-assistant-status role="status"></p>
-      </form>
-    </details>`}`;
-}
-document.addEventListener('submit', async e => {
-  const form = e.target.closest('#assistantForm');
-  if(!form) return;
-  e.preventDefault();
-  const status = form.querySelector('[data-assistant-status]');
-  const btn = form.querySelector('.staff-send');
-  const email = form.email.value.trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ status.textContent = 'Enter their email address.'; form.email.focus(); return; }
-  btn.disabled = true; btn.textContent = 'Sending…'; status.textContent = '';
-  try {
-    const { data: { session: s } } = await sb.auth.getSession();
-    const res = await fetch(INVITE_FUNCTION_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token },
-      body: JSON.stringify({ email, inviteRole: 'assistant', teamId: myProfile.team_id,
-        firstName: form.first.value.trim(), lastName: form.last.value.trim() }),
-    });
-    const result = await res.json();
-    if(result.ok){
-      haptic('success');
-      flash(`Invite sent to ${email}. They'll get an email to set their password.`, 'ok');
-      renderAssistants();
-      return;
+  const rows = teamMembers.filter(m => m.team_id === teamId);
+  const key = teamId + '|' + rows.map(m => m.profile_id + ':' + m.role).sort().join(',');
+  if(coachesShown && coachesShown.key === key && coachesShown.html){ if(box.innerHTML !== coachesShown.html) box.innerHTML = coachesShown.html; return; }
+  coachesShown = { key, html: '' };
+  const footer = `<p class="staff-hint staff-foot">Your director assigns coaches.</p>`;
+  const head = `<div class="staff-head"><h3 id="staffHeading">Coaches</h3></div>`;
+  let body;
+  if(!rows.length){
+    body = `<p class="staff-hint">No coaches assigned yet.</p>`;
+  } else {
+    const { data, error } = await sb.from('profiles').select('id, email, first_name, last_name').in('id', rows.map(m => m.profile_id));
+    if(!coachesShown || coachesShown.key !== key) return; // a newer team or change is drawing
+    if(error){
+      body = `<p class="staff-hint">${escSafe(friendlyError(error, "Couldn't load the coaches."))}</p>`;
+    } else {
+      const who = p => [p.first_name, p.last_name].filter(Boolean).join(' ').trim();
+      const people = rows.map(m => ({ m, p: (data || []).find(p => p.id === m.profile_id) })).filter(x => x.p)
+        .sort((a, b) => (a.m.role === 'head' ? 0 : 1) - (b.m.role === 'head' ? 0 : 1)
+          || (who(a.p) || a.p.email).localeCompare(who(b.p) || b.p.email, undefined, { numeric: true }));
+      body = people.length ? `<ul class="staff-list">${people.map(({ m, p }) => {
+        const name = who(p);
+        return `<li class="staff-row"><span class="staff-who"><span class="staff-name">${escSafe(name || p.email)}</span><span class="staff-email">${escSafe(ROLE_TITLE[m.role] + (name ? ' · ' + p.email : ''))}</span></span></li>`;
+      }).join('')}</ul>` : `<p class="staff-hint">No coaches assigned yet.</p>`;
     }
-    status.textContent = result.error || 'That invite did not go through.';
-  } catch(err){
-    status.textContent = 'Could not reach the invite service. Check your connection and try again.';
   }
-  btn.disabled = false; btn.textContent = 'Send invite';
-});
-document.addEventListener('click', async e => {
-  const btn = e.target.closest('[data-remove-assistant]');
-  if(!btn) return;
-  const a = assistantRows.find(r => r.id === btn.dataset.removeAssistant);
-  if(!a) return;
-  const who = (a.first_name || a.last_name) ? personName(a) : a.email;
-  const ok = await confirmAction({
-    title: `Remove ${who}?`,
-    body: 'They lose access to Seaford Lacrosse right away. You can invite them again later.',
-    verb: 'Remove',
-  });
-  if(!ok) return;
-  btn.disabled = true;
-  const res = await manageUser({ action: 'remove', userId: a.id }).catch(err => ({ ok: false, error: err.message }));
-  if(!res.ok){ btn.disabled = false; flash(res.error || 'Could not remove them', 'err'); return; }
-  flash(`${who} no longer has access.`, 'ok');
-  renderAssistants();
-});
+  coachesShown.html = head + body + footer;
+  box.innerHTML = coachesShown.html;
+}
 
 el.myTeamExportCsvBtn.addEventListener('click', () => {
-  const key = teamKeyFor(myProfile.team_id);
-  if(!key) return;
-  exportTeamScheduleCSV(key, teamLabel(...key.split('|')));
+  const id = shownTeamId();
+  if(!id) return;
+  exportTeamScheduleCSV(id, teamLabelById(id));
 });
 el.myTeamExportIcsBtn.addEventListener('click', async () => {
-  const key = teamKeyFor(myProfile.team_id);
-  if(!key) return;
+  const id = shownTeamId();
+  if(!id) return;
   // In the app, Calendar is the app's own job (EventKit, kept in sync), the
   // same switch as Account > Add Practices to Calendar. A web subscription
   // link would be a second, lesser way to do the same thing.
@@ -5530,13 +5671,13 @@ el.myTeamExportIcsBtn.addEventListener('click', async () => {
     else if(st && st.calendarAccess === 'denied') flash('Calendar access is off. Turn it on in Settings > Apps > Seaford Lacrosse.', 'warn');
     return;
   }
-  openCalendarSheet(key, teamLabel(...key.split('|')));
+  openCalendarSheet(id, teamLabelById(id));
 });
 // Calendar + share for whichever team the Schedule view is filtered to — so a
 // director can hand a coach's parents the calendar or a card, not just coaches.
 el.scheduleIcsBtn.addEventListener('click', () => {
-  if(!scheduleGrade) return;
-  openCalendarSheet(scheduleGender+'|'+scheduleGrade, teamLabel(scheduleGender, scheduleGrade));
+  if(!teamsById[scheduleTeam]) return;
+  openCalendarSheet(scheduleTeam, teamLabelById(scheduleTeam));
 });
 
 // ============ CALENDAR SYNC ============
@@ -5546,10 +5687,9 @@ el.scheduleIcsBtn.addEventListener('click', () => {
 // calendar stays right without them thinking about it.
 const TEAM_ICS_URL = 'https://gjpqwmcdejpvffdimddk.supabase.co/functions/v1/team-ics';
 let calSheetTeam = null;
-function openCalendarSheet(teamKey, teamLabelText){
-  const teamId = teamsByKey[teamKey];
-  if(!teamId) return;
-  calSheetTeam = { key: teamKey, label: teamLabelText, id: teamId, https: TEAM_ICS_URL + '?team=' + encodeURIComponent(teamId) };
+function openCalendarSheet(teamId, teamLabelText){
+  if(!teamsById[teamId]) return;
+  calSheetTeam = { key: teamId, label: teamLabelText, id: teamId, https: TEAM_ICS_URL + '?team=' + encodeURIComponent(teamId) };
   document.getElementById('calSheetTitle').textContent = 'Add ' + teamLabelText + ' to Calendar';
   const sheet = document.getElementById('calSheet');
   sheet.style.display = 'flex';
@@ -5577,13 +5717,13 @@ document.getElementById('calDownloadBtn').addEventListener('click', () => {
   closeCalendarSheet();
 });
 el.scheduleShareBtn.addEventListener('click', () => {
-  if(!scheduleGrade) return;
-  openShareCard(scheduleGender+'|'+scheduleGrade, teamLabel(scheduleGender, scheduleGrade));
+  if(!teamsById[scheduleTeam]) return;
+  openShareCard(scheduleTeam, teamLabelById(scheduleTeam));
 });
 el.myTeamShareBtn.addEventListener('click', () => {
-  const key = teamKeyFor(myProfile.team_id);
-  if(!key) return;
-  openShareCard(key, teamLabel(...key.split('|')));
+  const id = shownTeamId();
+  if(!id) return;
+  openShareCard(id, teamLabelById(id));
 });
 
 // ============ SHARE CARD (next 7 days → the team group chat) ============
@@ -5598,7 +5738,7 @@ function roundRect(ctx, x, y, w, h, r){
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-async function buildShareCard(teamKey, teamLabelText){
+async function buildShareCard(teamId, teamLabelText){
   const W = 1080, H = 1350;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const ctx = c.getContext('2d');
@@ -5630,7 +5770,7 @@ async function buildShareCard(teamKey, teamLabelText){
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const end = addDays(today, 6);
   const startISO = fmtDateISO(today), endISO = fmtDateISO(end);
-  const items = getTeamBookingsSorted(teamKey).filter(b => b.date >= startISO && b.date <= endISO);
+  const items = getTeamBookingsSorted(teamId).filter(b => b.date >= startISO && b.date <= endISO);
   ctx.fillStyle = '#cfe3d5'; ctx.font = '600 36px Manrope';
   ctx.fillText(`${DOW_SHORT[today.getDay()]} ${MONTHS[today.getMonth()].slice(0,3)} ${today.getDate()} – ${DOW_SHORT[end.getDay()]} ${MONTHS[end.getMonth()].slice(0,3)} ${end.getDate()}`, 72, 296);
 
@@ -5678,8 +5818,8 @@ async function buildShareCard(teamKey, teamLabelText){
   return new Promise(resolve => c.toBlob(resolve, 'image/png'));
 }
 let currentShare = null;
-async function openShareCard(teamKey, teamLabelText){
-  const blob = await buildShareCard(teamKey, teamLabelText);
+async function openShareCard(teamId, teamLabelText){
+  const blob = await buildShareCard(teamId, teamLabelText);
   if(!blob){ flash('Could not build the share card.', 'err'); return; }
   if(currentShare?.url) URL.revokeObjectURL(currentShare.url);
   const filename = `${teamLabelText.replace(/\s+/g,'-').toLowerCase()}-this-week.png`;
@@ -5779,10 +5919,7 @@ function leagueFilteredBookings(){
 }
 function buildLeagueTeamSelect(){
   const genders = leagueGenderFilter === 'all' ? ['girls','boys'] : [leagueGenderFilter];
-  const opts = genders.flatMap(g => GRADES
-    .filter(gr => teamsByKey[g+'|'+gr])
-    .map(gr => `<option value="${escSafe(teamsByKey[g+'|'+gr])}">${escSafe(teamLabel(g, gr))}</option>`));
-  el.leagueTeamSelect.innerHTML = '<option value="all">All teams</option>' + opts.join('');
+  el.leagueTeamSelect.innerHTML = '<option value="all">All teams</option>' + teamOptionsHTML(teams.filter(t => genders.includes(t.gender)), true);
   // A team chosen under one gender is not in scope once you switch to the other.
   if(leagueTeamFilter !== 'all' && !el.leagueTeamSelect.querySelector(`option[value="${leagueTeamFilter}"]`)) leagueTeamFilter = 'all';
   el.leagueTeamSelect.value = leagueTeamFilter;
@@ -5836,7 +5973,7 @@ function renderLeague(){
 
   const filtered = leagueFilteredBookings();
   const label = leagueTeamFilter === 'all' ? leagueLabel()
-    : (teamsById[leagueTeamFilter] ? teamLabel(teamsById[leagueTeamFilter].gender, teamsById[leagueTeamFilter].grade) : leagueLabel());
+    : teamLabelById(leagueTeamFilter, leagueLabel());
   if(!filtered.length){
     el.leagueResults.innerHTML = `<div class="empty-schedule"><b>No bookings yet</b>Nothing booked for ${escSafe(label)} so far this season.</div>`;
     el.leagueCount.innerHTML = '';
@@ -6044,17 +6181,22 @@ el.dateJumpInput.addEventListener('change', () => {
   el.dateJumpInput.value = '';
 });
 
+// The team the page is about: for a coach or assistant, the one My Team
+// shows (the hero, the header, the app's widgets); for a director or admin,
+// the one picked on Book, if any.
 function chosenTeamId(){
   if(!myProfile) return null;
-  if(onATeam()) return myProfile.team_id;
-  return bookAsGrade ? myBookingTeamId() : null;
+  if(onATeam()) return shownTeamId();
+  return bookAsTeam && teamsById[bookAsTeam] ? bookAsTeam : null;
 }
+// The team a booking, cancel or waitlist is made for.
 function myBookingTeamId(){
-  if(onATeam()) return myProfile.team_id;
-  // director/admin: whichever gender+grade they've selected to book as
-  const grade = bookAsGrade || GRADES[0];
-  const gender = myProfile.role === 'admin' ? bookAsGender : myProfile.gender;
-  return teamsByKey[gender+'|'+grade];
+  if(!myProfile) return null;
+  if(myProfile.role === 'coach') return coachBookTeamId();
+  if(myProfile.role === 'assistant') return shownTeamId(); // books nothing; marks their team
+  // director/admin: whichever team they've selected to book as
+  if(bookAsTeam && teamsById[bookAsTeam]) return bookAsTeam;
+  return teamsOfProgram(myProfile.role === 'admin' ? bookAsGender : myProfile.gender)[0]?.id || null;
 }
 
 function firstDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
@@ -6202,8 +6344,7 @@ function renderBookDayMobile(monday){
       const existing = bookingsCache.find(b => b.field_id === selectedField && b.date === dateStr && b.subfield === sub && b.time === time);
       if(existing){
         const isMine = existing.team_id === myTeamId;
-        const key = teamKeyFor(existing.team_id);
-        const teamText = key ? teamLabel(...key.split('|')) : 'Another team';
+        const teamText = teamLabelById(existing.team_id, 'Another team');
         if(isMine){
           html += `<div class="ios-row bd-row mine" data-flip-id="${fid}">
             <span class="bd-sub">${escSafe(sub)}<small>${escSafe(teamText)}</small></span>
@@ -6268,8 +6409,7 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
         const existing = bookingsCache.find(b => b.field_id===selectedField && b.date===dateStr && b.subfield===sub && b.time===time);
         if(existing){
           const isMine = existing.team_id === myTeamId;
-          const key = teamKeyFor(existing.team_id);
-          const teamText = key ? teamLabel(...key.split('|')) : '(unknown team)';
+          const teamText = teamLabelById(existing.team_id, '(unknown team)');
           let waitHtml = '';
           if(!isMine && !isPast && myTeamId){
             const slotWaiters = waitlistCache.filter(w => w.field_id===selectedField && w.date===dateStr && w.subfield===sub && w.time===time);
@@ -6593,10 +6733,7 @@ function calSourceBookings(which){
   let base = which === 'league' ? leagueFilteredBookings() : bookingsCache;
   const h = calState[which].hidden;
   if(h.size) base = base.filter(b => !h.has(b.field_id));
-  if(calShow(which) === 'mine'){
-    const t = myBookingTeamId();
-    base = t ? base.filter(b => b.team_id === t) : [];
-  }
+  if(calShow(which) === 'mine') base = base.filter(b => isMine(b.team_id));
   return base;
 }
 function calDefaultSelected(which){
@@ -6657,7 +6794,7 @@ function renderMonthCalendar(which, host){
     // Apple Calendar shows what is on a day, not that something is. Start
     // times in the field's colour; your team's first, marked in gold.
     const ordered = day.slice().sort((a, b) => {
-      const am = myTeamId && a.team_id === myTeamId, bm = myTeamId && b.team_id === myTeamId;
+      const am = isMine(a.team_id), bm = isMine(b.team_id);
       if(am !== bm) return am ? -1 : 1;
       return slotStartMinutes(a.time) - slotStartMinutes(b.time);
     });
@@ -6669,7 +6806,7 @@ function renderMonthCalendar(which, host){
       ? openHere.slice(0, SHOW).map(g => `<span class="cal-ev open" style="--c:var(--field-${g.field.id})">${escSafe(slotStartShort(g.time))}</span>`).join('')
         + (openHere.length > SHOW ? `<span class="cal-more">+${openHere.length - SHOW}</span>` : '')
       : ordered.slice(0, SHOW).map(b => {
-      const isMine = myTeamId && b.team_id === myTeamId;
+      const isMine = isMineTeam(b.team_id);
       return `<span class="cal-ev${isMine ? ' mine' : ''}" style="--c:var(--field-${b.field_id})">${escSafe(slotStartShort(b.time))}</span>`;
     }).join('') + (ordered.length > SHOW ? `<span class="cal-more">+${ordered.length - SHOW}</span>` : '');
     const dots = evs;
@@ -6690,11 +6827,12 @@ function renderMonthCalendar(which, host){
   const startMins = t => { const p = parseTimeRangeTo24h(t); return p ? p.startHour24 * 60 + p.startMin : 0; };
   const dayItems = (byDate[st.selected] || []).slice().sort((a, b) => startMins(a.time) - startMins(b.time));
   const agenda = dayItems.length ? dayItems.map(b => {
-    const key = teamKeyFor(b.team_id);
-    const team = key ? teamLabel(...key.split('|')) : 'Unknown team';
+    const team = teamLabelById(b.team_id, 'Unknown team');
     const field = FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id;
-    const isMine = myTeamId && b.team_id === myTeamId;
-    const canCancel = isMine && canBook();
+    const isMine = isMineTeam(b.team_id);
+    // Only where the database would allow it (can_book_team): the team being
+    // booked for, or any team this person heads. Not a team they assist on.
+    const canCancel = canBook() && (b.team_id === myTeamId || headTeams().some(t => t.id === b.team_id));
     // You could only ever cancel a practice from the Book tab's week grid, via a
     // small x inside a chip — even though this agenda is where a coach actually
     // looks at their own schedule. Your own team's rows are cancellable here now.
@@ -7169,8 +7307,7 @@ function renderOpenWeek(){
   buildFinderChips();
   const teamId = myBookingTeamId();
   if(teamId){
-    const key = teamKeyFor(teamId);
-    el.openWeekBookingAs.textContent = key ? `Booking as: ${teamLabel(...key.split('|'))}` : '';
+    el.openWeekBookingAs.textContent = teamsById[teamId] ? `Booking as: ${teamLabelById(teamId)}` : '';
   } else {
     el.openWeekBookingAs.textContent = '';
   }
@@ -7278,7 +7415,7 @@ function renderOpenWeekMobile(all, shown, usual){
   // up front and don't offer Book (it used to fail after the tap).
   const teamId = myBookingTeamId(), team = teamId ? teamsById[teamId] : null;
   const locked = !!(priorityBookingEnabled && team && !isTierUnlocked(team.grade));
-  let html = locked ? `<p class="finder-note">Not ${escSafe(teamLabel(team.gender, team.grade))}’s turn yet. Book opens when earlier grades finish choosing.</p>`
+  let html = locked ? `<p class="finder-note">Not ${escSafe(teamLabelOf(team))}’s turn yet. Book opens when earlier grades finish choosing.</p>`
     : usual ? `<p class="finder-note">Showing your team’s usual days and time.</p>` : '';
   Object.keys(byDay).sort().forEach(dateStr => {
     const slots = byDay[dateStr].sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.fieldName.localeCompare(b.fieldName) || a.sub.localeCompare(b.sub));
@@ -7424,10 +7561,7 @@ function renderAdmin(){
     syncInviteFormFields();
     el.inviteGenderField.style.display = 'none';
     el.inviteTeamField.style.display = 'block';
-    el.inviteGrade.innerHTML = GRADES.map(g => {
-      const id = teamsByKey[myProfile.gender+'|'+g];
-      return `<option value="${id}">${g}</option>`;
-    }).join('');
+    el.inviteGrade.innerHTML = teamOptionsHTML(teamsOfProgram(myProfile.gender), false);
     el.userListLabel.textContent = 'Coaches on your teams';
     el.userListHead.innerHTML = '<tr><th>Name</th><th>Team</th><th>Coach email</th><th>Last seen</th><th></th></tr>';
   }
@@ -7497,9 +7631,9 @@ function renderUsageDashboard(){
   const cnts = teamCounts();
   const gendersToShow = isAdmin ? ['girls','boys'] : [myProfile.gender];
   const teamRows = [];
-  gendersToShow.forEach(g => GRADES.forEach(grade => {
-    teamRows.push({ label: teamLabel(g, grade), booked: cnts[g+'|'+grade] || 0 });
-  }));
+  teamsInOrder(teams.filter(t => gendersToShow.includes(t.gender))).forEach(t => {
+    teamRows.push({ label: teamLabelOf(t), booked: cnts[t.id] || 0 });
+  });
   teamRows.sort((a,b) => a.booked - b.booked); // least-booked (the actionable ones) first
   const maxTeamBooked = Math.max(1, ...teamRows.map(r => r.booked));
 
@@ -7587,7 +7721,7 @@ function renderPriorityTierStatus(){
     const nextGrade = blockingRank > 0 ? GRADES[blockingRank - 1] : null;
     el.priorityForceAdvanceBtn.style.display = 'inline-block';
     el.priorityForceAdvanceBtn.textContent = `Override: push past ${blockingGrade}${nextGrade ? ` so ${nextGrade} can book` : ''}`;
-    el.priorityForceHint.textContent = `Still waiting on: ${pending.map(t => teamLabel(t.gender, t.grade)).join(', ')}. This doesn't mark them finished, it just stops them from blocking the next grade.`;
+    el.priorityForceHint.textContent = `Still waiting on: ${pending.map(teamLabelOf).join(', ')}. This doesn't mark them finished, it just stops them from blocking the next grade.`;
   }
 }
 el.priorityToggleBtn.addEventListener('click', async () => {
@@ -7639,16 +7773,10 @@ function renderClearControls(){
   // Clear by team: admin sees all 14, director sees only their own gender's 7
   if(myProfile.role === 'admin'){
     el.clearGenderField.style.display = 'none';
-    el.clearTeamSelect.innerHTML = GRADES.map(g =>
-      `<option value="${teamsByKey['girls|'+g]}">Girls ${g}</option>`
-    ).join('') + GRADES.map(g =>
-      `<option value="${teamsByKey['boys|'+g]}">Boys ${g}</option>`
-    ).join('');
+    el.clearTeamSelect.innerHTML = teamOptionsHTML(teams, true);
   } else {
     el.clearGenderField.style.display = 'none';
-    el.clearTeamSelect.innerHTML = GRADES.map(g =>
-      `<option value="${teamsByKey[myProfile.gender+'|'+g]}">${g}</option>`
-    ).join('');
+    el.clearTeamSelect.innerHTML = teamOptionsHTML(teamsOfProgram(myProfile.gender), false);
   }
 
   // Clear by field: same 6 fields for everyone with access to this tab
@@ -7703,11 +7831,7 @@ el.clearFieldBtn.addEventListener('click', async () => {
 
 function populateTeamSelect(){
   // Full list of 14 teams, gender-labeled, for admin coach invites
-  el.inviteGrade.innerHTML = GRADES.map(g =>
-    `<option value="${teamsByKey['girls|'+g]}">Girls ${g}</option>`
-  ).join('') + GRADES.map(g =>
-    `<option value="${teamsByKey['boys|'+g]}">Boys ${g}</option>`
-  ).join('');
+  el.inviteGrade.innerHTML = teamOptionsHTML(teams, true);
 }
 
 function syncInviteFormFields(){
@@ -7859,7 +7983,7 @@ function renderActivity(){
   }
   el.activityList.innerHTML = rows.map(r => {
     const t = teamsById[r.team_id];
-    const team = t ? teamLabel(t.gender, t.grade) : '';
+    const team = teamLabelOf(t);
     // The trigger stores the raw field id, since Postgres has no idea what the
     // fields are called. Translate it here, where FIELDS lives.
     const detail = (r.detail || '').replace(/\bat ([a-z]+)\b/, (m, id) =>
@@ -7927,7 +8051,7 @@ function userRoleLabel(u){
 function userRowTeamText(u){
   return u.role === 'director'
     ? `All ${u.gender === 'girls' ? 'Girls' : 'Boys'} teams`
-    : teamLabel(teamsById[u.team_id]?.gender || u.gender, teamsById[u.team_id]?.grade || '(unknown)');
+    : teamsById[u.team_id] ? teamLabelById(u.team_id) : teamLabel(u.gender, '(unknown)');
 }
 function renderUserList(){
   const colspan = myProfile.role === 'admin' ? 6 : 5;
@@ -7946,7 +8070,7 @@ function renderUserList(){
     }).join('');
   } else {
     el.coachListBody.innerHTML = rows.map(c => {
-      const grade = (teamsById[c.team_id]?.grade || '(unknown)') + (c.role === 'assistant' ? ' · Assistant' : '');
+      const grade = (teamShortLabel(teamsById[c.team_id]) || '(unknown)') + (c.role === 'assistant' ? ' · Assistant' : '');
       return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(grade)}</td><td class="email-cell">${escSafe(c.email)}</td><td class="seen-cell">${escSafe(lastSeenText(c.id))}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
@@ -8119,7 +8243,12 @@ el.bulkUploadBtn.addEventListener('click', async () => {
       skipped.push({name, email, reason:`You can only invite ${myProfile.gender} coaches`});
       return;
     }
-    const teamId = teamsByKey[gender+'|'+grade];
+    // A split grade has two teams; a Team column ("Green") says which.
+    const split = String(row.Team || row.team || '').trim().toLowerCase();
+    const inGrade = teamsOfProgram(gender).filter(t => t.grade === grade);
+    const pick = split ? inGrade.filter(t => (t.name || '').toLowerCase() === split) : inGrade;
+    if(pick.length > 1){ skipped.push({name, email, reason:`${teamLabel(gender, grade)} has ${pick.length} teams (${pick.map(t => t.name || 'unnamed').join(', ')}). Add a Team column naming one`}); return; }
+    const teamId = pick[0]?.id;
     if(!teamId){ skipped.push({name, email, reason:'Could not match a team'}); return; }
     validRows.push({ name, first, last, email, gender, grade, teamId });
   });
@@ -8155,7 +8284,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
       <th style="text-align:left;padding:8px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Result</th>
     </tr></thead><tbody>`;
   sent.forEach(r => {
-    html += `<tr><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.name)}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.email)}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(teamLabel(r.gender, r.grade))}</td><td style="padding:8px;border-bottom:1px solid var(--line);color:${r.ok?'var(--text-strong)':'var(--danger)'};font-weight:${r.ok?400:700}">${r.ok ? 'Invited' : escSafe(r.error||'Failed')}</td></tr>`;
+    html += `<tr><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.name)}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.email)}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(r.teamId ? teamLabelById(r.teamId, teamLabel(r.gender, r.grade)) : teamLabel(r.gender, r.grade))}</td><td style="padding:8px;border-bottom:1px solid var(--line);color:${r.ok?'var(--text-strong)':'var(--danger)'};font-weight:${r.ok?400:700}">${r.ok ? 'Invited' : escSafe(r.error||'Failed')}</td></tr>`;
   });
   skipped.forEach(s => {
     html += `<tr><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(s.name||'—')}</td><td style="padding:8px;border-bottom:1px solid var(--line)">${escSafe(s.email||'—')}</td><td style="padding:8px;border-bottom:1px solid var(--line)">—</td><td style="padding:8px;border-bottom:1px solid var(--line);color:var(--danger);font-weight:700">${escSafe(s.reason)}</td></tr>`;

@@ -107,6 +107,11 @@ different project** — drive the dashboard in the browser instead.
   refusal text. Inviting a *head coach* to a team that already has one
   replaces the head (trigger `profiles_assign_from_invite`), and a director
   who heads a team in the other program books for it too (`can_book_team`)
+- **Notifications** (account sheet > Notifications) saves each switch at once
+  to `notification_prefs` (upsert on profile_id, never `teams_chosen`; no row
+  = SQL defaults) and team picks through `set_notification_teams`, which
+  *drops* teams a person may not follow instead of refusing. Never save an
+  empty list (null = back to assigned teams), as the app does
 
 ## iOS app (App Store)
 The Capacitor shell lives in `../seaford-lax-app` (branch `app-store`). It
@@ -208,7 +213,7 @@ rendered output is what a coach sees.**
   fixture coach heads Girls 6th and assists on the split Girls 2nd Grade
   Green; `&shots=1` hides the banner
   for store screenshots. `invite-coach`/`manage-user` are called with fetch,
-  so fixture mode stands them in with the same rules (the team RPCs too, on the mock client's `rpc()`). `&now=soon` / `&now=live`
+  so fixture mode stands them in with the same rules (the team RPCs and `set_notification_teams` too, on the mock client's `rpc()`, which also takes `upsert`). `&now=soon` / `&now=live`
   add a practice today for the fixture coach (Live Activity, widget states)
 - `tools/pixel-audit.js` — fetch and `eval` it on a phone-width fixture page.
   Walks every tab, reports sub-44pt targets and text under WCAG contrast measured

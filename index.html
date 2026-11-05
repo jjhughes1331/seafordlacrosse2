@@ -128,8 +128,12 @@
     }
   }
 
+  // notification_settings_2026_11_04.sql: nobody has a row until they save
+  // one; a missing row means these defaults.
+  const PREFS_DEFAULTS = { waitlist_opened: true, schedule_lock: true, booking_turn: true, team_bookings: false, field_duty: true, teams_chosen: false };
   const store = {
     teams, profiles, bookings, team_members,
+    notification_prefs: [], notification_teams: [],
     waitlist: [],
     app_settings: [{ id: true, schedule_locked: false, priority_booking_enabled: false, priority_forced_ranks: [], locked_by: null }],
   };
@@ -139,13 +143,31 @@
     op === 'eq' ? row[k] === v : op === 'neq' ? row[k] !== v : op === 'in' ? v.includes(row[k]) : true);
 
   function from(table){
-    let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false;
+    let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false, conflict = 'id';
     const rows = () => (store[table] = store[table] || []);
     async function exec(){
       seedBookings();
-      const hit = rows().filter(r => match(r, filters));
+      // The alert tables' RLS: own rows only, and notification_teams is
+      // read-only (set_notification_teams writes it).
+      const own = table === 'notification_prefs' || table === 'notification_teams';
+      if(table === 'notification_teams' && op !== 'select')
+        return { data: null, error: { code: '42501', message: 'permission denied for table notification_teams' } };
+      const hit = rows().filter(r => match(r, filters) && (!own || r.profile_id === who.id));
       let data;
       if(op === 'select') data = hit.map(r => ({ ...r }));
+      else if(op === 'upsert'){
+        const keys = conflict.split(',').map(k => k.trim());
+        data = [];
+        for(const r of (Array.isArray(payload) ? payload : [payload])){
+          if(own && r.profile_id !== who.id)
+            return { data: null, error: { code: '42501', message: 'new row violates row-level security policy for table "' + table + '"' } };
+          const stamp = table === 'notification_prefs' ? { updated_at: new Date().toISOString() } : {};
+          const ex = rows().find(x => keys.every(k => x[k] === r[k]));
+          if(ex) Object.assign(ex, r, stamp);
+          else rows().push({ ...(table === 'notification_prefs' ? PREFS_DEFAULTS : {}), ...r, ...stamp });
+          data.push({ ...(ex || rows()[rows().length - 1]) });
+        }
+      }
       else if(op === 'insert'){
         const list = (Array.isArray(payload) ? payload : [payload]).map(r => ({ id: crypto.randomUUID(), ...r }));
         // mirror the real unique constraint on a slot
@@ -167,6 +189,7 @@
     const api = {
       select(){ if(op === 'select') op = 'select'; return api; },
       insert(d){ op = 'insert'; payload = d; return api; },
+      upsert(d, o){ op = 'upsert'; payload = d; conflict = (o && o.onConflict) || 'id'; return api; },
       update(d){ op = 'update'; payload = d; return api; },
       delete(){ op = 'delete'; return api; },
       eq(k, v){ filters.push([k, 'eq', v]); return api; },
@@ -299,6 +322,26 @@
       store.team_members = store.team_members.filter(m => !(m.team_id === p.p_team && m.profile_id === p.p_profile));
       syncProfile(p.p_profile);
       return ok();
+    }
+    if(name === 'set_notification_teams'){
+      // null = back to the default (assigned teams, a director's program);
+      // teams this person may not follow (may_follow_team) are dropped, as
+      // the SQL does. Returns what was saved.
+      const mayFollow = id => store.team_members.some(m => m.team_id === id && m.profile_id === who.id) || who.role === 'admin'
+        || (who.role === 'director' && teams.some(t => t.id === id && t.gender === who.gender));
+      const ids = p.p_team_ids == null ? null : [...new Set(p.p_team_ids)].filter(mayFollow);
+      // An admin may follow any team, so an id that is no team reaches the
+      // foreign key, and the whole call rolls back.
+      if(ids && ids.some(id => !teams.some(t => t.id === id)))
+        return fail('insert or update on table "notification_teams" violates foreign key constraint "notification_teams_team_id_fkey"', '23503');
+      let row = store.notification_prefs.find(r => r.profile_id === who.id);
+      if(!row){ row = { profile_id: who.id, ...PREFS_DEFAULTS }; store.notification_prefs.push(row); }
+      store.notification_teams = store.notification_teams.filter(r => r.profile_id !== who.id);
+      row.updated_at = new Date().toISOString();
+      if(ids == null){ row.teams_chosen = false; return ok(null); }
+      ids.forEach(team_id => store.notification_teams.push({ profile_id: who.id, team_id }));
+      row.teams_chosen = true;
+      return ok(ids);
     }
     return fail('Unknown function ' + name, '42883');
   }
@@ -1780,14 +1823,16 @@
   .ios-switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 51px; height: 31px;
     margin: 0; border-radius: 999px; background: var(--seg-track); cursor: pointer;
     transition: background-color .25s ease; }
-  .ios-switch::before { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  /* ::after is the thumb; ::before is a clear 44pt hit area round the 31pt track. */
+  .ios-switch::before { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+  .ios-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
     background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.16);
     transition: transform .3s cubic-bezier(.3,1.4,.5,1); }
   .ios-switch:checked { background: #34c759; }
-  .ios-switch:checked::before { transform: translateX(20px); }
+  .ios-switch:checked::after { transform: translateX(20px); }
   .ios-switch:disabled { opacity: .5; }
   .ios-switch:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
-  @media (prefers-reduced-motion: reduce) { .ios-switch, .ios-switch::before { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .ios-switch, .ios-switch::after { transition: none; } }
   /* ---- My Team: team switcher and Coaches (read-only) ------------------ */
   .myteam-switch { margin: 14px 16px 0; }
   .myteam-switch .grade-select { max-width: none; min-height: 44px; }
@@ -2284,6 +2329,13 @@
   .row-btn { flex: none; min-height: 44px; min-width: 44px; padding: 0 4px; border: none; background: none; font: inherit;
     font-size: var(--ios-body); color: var(--danger); cursor: pointer; }
   .ios-group-footer.err { color: var(--danger); }
+  /* Account > Notifications */
+  #notifBody { padding-top: 8px; }
+  .nf-row:disabled { cursor: default; }
+  .nf-check { width: 22px; height: 22px; flex: none; color: var(--tint); visibility: hidden; }
+  .nf-check.on { visibility: visible; }
+  .nf-check svg { display: block; width: 100%; height: 100%; }
+  .nf-saving { margin-left: 4px; }
   #teamBody .ios-field > span { width: 112px; }
   #addTeamBody .ios-field > span { width: 88px; }
   #teamBody .ios-field input, #addTeamBody .ios-field input { min-height: 44px; }
@@ -2566,6 +2618,18 @@
       <button type="button" class="sheet-done" data-account-close>Done</button>
     </div>
     <div class="sheet-scroll" id="accountBody"></div>
+  </div>
+</div>
+<!-- Account > Notifications: opens over the account sheet, so it comes after it. -->
+<div class="share-modal" id="notifSheet" style="display:none">
+  <div class="share-backdrop" data-notif-close></div>
+  <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="notifSheetTitle">
+    <div class="sheet-bar">
+      <span></span>
+      <h3 id="notifSheetTitle" tabindex="-1">Notifications</h3>
+      <button type="button" class="sheet-done" data-notif-close>Done</button>
+    </div>
+    <div class="sheet-scroll" id="notifBody"></div>
   </div>
 </div>
 <!-- Fields: Calendar's "Calendars" sheet. Each field is a calendar with its
@@ -3364,6 +3428,9 @@ function rebuildAccountSheet(){
       </label>
     </div>
     <p class="ios-group-footer" id="deviceSettingsNote" hidden></p>` : '';
+  const alertsRow = `<div class="ios-group">
+      <button type="button" class="ios-row" id="openNotifBtn" aria-haspopup="dialog"><span>Notifications</span>${CHEVRON_SVG}</button>
+    </div>`;
   const theme = window.Theme ? window.Theme.get() : '';
   const general = `<div class="ios-group">
       <label class="ios-row ios-select-row"><span>Appearance</span>
@@ -3391,8 +3458,9 @@ function rebuildAccountSheet(){
       <picture><source srcset="seaford-lacrosse-badge-dark.png" media="(prefers-color-scheme: dark)"><img src="seaford-lacrosse-badge.png" alt=""></picture>
       <span>Seaford Lacrosse</span>
     </div>`;
-  body.innerHTML = hero + nameGroup + device + general + actions;
+  body.innerHTML = hero + nameGroup + alertsRow + device + general + actions;
   if(device) wireDeviceSettings(body);
+  document.getElementById('openNotifBtn').addEventListener('click', openNotifSheet);
 
   document.getElementById('appearanceSelect').addEventListener('change', e => {
     window.Theme.set(e.target.value || null);
@@ -3498,6 +3566,262 @@ document.getElementById('accountSheet').addEventListener('click', e => {
   if(e.target.closest('[data-account-close]')) closeAccountSheet();
 });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeAccountSheet(); });
+
+// ============ NOTIFICATION SETTINGS (account sheet > Notifications) ============
+// Which alerts a person gets and which teams they cover, the app's
+// NotificationSettingsView. Stored in notification_prefs (one row each; a
+// missing row means the SQL defaults) and notification_teams, which only
+// set_notification_teams() writes (notification_settings_2026_11_04.sql).
+// Every switch and tick saves at once; a refusal shows the database's text
+// in red under that group and the control goes back to what was saved.
+const ALERT_DEFAULTS = { waitlist_opened: true, schedule_lock: true, booking_turn: true, team_bookings: false, field_duty: true, teams_chosen: false };
+const ALERTS = [
+  ['waitlist_opened', 'Slot Opened', 'When a slot your team is waiting for opens up.'],
+  ['schedule_lock', 'Schedule Locked', 'When an admin pauses or reopens booking.'],
+  ['booking_turn', 'Your Turn to Book', 'When priority booking reaches your team.'],
+  ['team_bookings', 'Bookings on My Teams', 'When someone books or cancels for your teams.'],
+  ['field_duty', 'Field Setup & Breakdown', 'Two days and two hours before your team sets up or breaks down the field.'],
+];
+let nf;
+function resetAlertSettings(){
+  nf = { loaded: false, tried: false, loading: false, loadError: '',
+    prefs: { ...ALERT_DEFAULTS }, confirmed: { ...ALERT_DEFAULTS }, teams: [],
+    alertsError: '', teamsError: '', savingTeams: false, pending: 0, chain: Promise.resolve(), pushWatch: null };
+}
+resetAlertSettings();
+const nfMine = me => !!myProfile && myProfile.id === me;
+// Not $tid: that const is declared further down the file (TDZ at load).
+const nfEl = id => document.getElementById(id);
+
+// Push permission, the app's PushPermission states. In the App Store build
+// OneSignal's native SDK reports it (window.__nativePushGranted, unknown until
+// deviceready); on the web it is the browser's own permission.
+function pushState(){
+  if(window.__IS_NATIVE_APP) return window.__nativePushGranted === undefined ? 'unknown' : window.__nativePushGranted ? 'on' : 'ask';
+  if(!('Notification' in window)) return 'unsupported';
+  return Notification.permission === 'granted' ? 'on' : Notification.permission === 'denied' ? 'off' : 'ask';
+}
+function pushGroupHTML(){
+  const st = pushState();
+  if(st === 'unknown') return '';
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const value = v => `<div class="ios-group"><div class="ios-row"><span>Notifications</span><span class="ios-value">${v}</span></div></div>`;
+  if(st === 'on') return value('On');
+  if(st === 'off') return value('Off') + '<p class="ios-group-footer">Notifications are turned off for this site in your browser settings.</p>';
+  if(st === 'unsupported') return value('Not Available') + `<p class="ios-group-footer">${ios
+    ? 'On iPhone, add this site to your Home Screen, open it from there, then turn notifications on here.'
+    : 'This browser can&rsquo;t show notifications.'}</p>`;
+  return '<div class="ios-group"><button type="button" class="ios-row ios-action" data-nf-push>Turn On Notifications</button></div>';
+}
+// The same request the setup checklist makes; the answer arrives later (a
+// system prompt, or Settings), so watch for it while the sheet is up.
+async function turnOnPush(){
+  const before = pushState();
+  await window.Native.pushRequestPermission();
+  clearInterval(nf.pushWatch);
+  let ticks = 0;
+  nf.pushWatch = setInterval(() => {
+    const open = nfEl('notifSheet').style.display !== 'none';
+    if(pushState() !== before){ renderNotifSheet(); renderWelcome(); }
+    if(!open || pushState() !== before || ++ticks > 90){ clearInterval(nf.pushWatch); nf.pushWatch = null; }
+  }, 700);
+}
+
+// The teams this person may follow (may_follow_team): their own, plus a
+// director's program or an admin's league.
+function followableTeams(){
+  if(!myProfile) return [];
+  const mine = new Set(myMemberships().map(m => m.team_id));
+  return teamsInOrder(teams.filter(t => myProfile.role === 'admin' || mine.has(t.id)
+    || (myProfile.role === 'director' && t.gender === myProfile.gender)));
+}
+function defaultAlertTeamsText(){
+  if(!myProfile || myProfile.role !== 'director') return 'Your assigned teams';
+  return myProfile.gender === 'boys' ? 'Your assigned teams and all Boys teams' : 'Your assigned teams and all Girls teams';
+}
+
+async function loadAlertSettings(){
+  if(!myProfile || nf.loading) return;
+  const me = myProfile.id;
+  nf.loading = true; renderNotifSheet();
+  const safe = q => Promise.resolve(q).then(r => r, err => ({ error: err }));
+  const [p, t] = await Promise.all([
+    safe(sb.from('notification_prefs').select('waitlist_opened, schedule_lock, booking_turn, team_bookings, field_duty, teams_chosen').eq('profile_id', me)),
+    safe(sb.from('notification_teams').select('team_id').eq('profile_id', me)),
+  ]);
+  if(!nfMine(me)) return;
+  nf.loading = false; nf.tried = true;
+  if(!p.error){
+    const row = (p.data || [])[0] || {};
+    nf.confirmed = {};
+    Object.keys(ALERT_DEFAULTS).forEach(k => { nf.confirmed[k] = typeof row[k] === 'boolean' ? row[k] : ALERT_DEFAULTS[k]; });
+    // Switches still being saved keep their local values; the chain settles them.
+    if(!nf.pending) nf.prefs = { ...nf.confirmed };
+  }
+  if(!t.error) nf.teams = (t.data || []).map(r => r.team_id);
+  // Only a complete read lets the switches act: they save over what the server holds.
+  if(!p.error && !t.error) nf.loaded = true;
+  nf.loadError = (p.error || t.error) ? rpcText(p.error || t.error) : '';
+  renderNotifSheet();
+}
+
+// Flips one alert now and saves it (an upsert of the person's own row that
+// never touches teams_chosen). Saves run one after another; a failed one
+// puts only its own switch back.
+function setAlert(key, on){
+  if(!myProfile || !nf.loaded) return;
+  const me = myProfile.id;
+  nf.alertsError = '';
+  nf.prefs[key] = on;
+  nf.pending++;
+  const run = async () => {
+    if(!nfMine(me)) return;
+    const row = { profile_id: me };
+    ALERTS.forEach(([k]) => { row[k] = nf.confirmed[k]; });
+    row[key] = on;
+    let res;
+    try { res = await sb.from('notification_prefs').upsert(row, { onConflict: 'profile_id' }); } catch(err){ res = { error: err }; }
+    if(!nfMine(me)) return;
+    nf.pending--;
+    if(res && res.error){
+      nf.prefs[key] = nf.confirmed[key];
+      nf.alertsError = rpcText(res.error);
+      haptic('error');
+    } else nf.confirmed[key] = on;
+    paintAlerts();
+  };
+  nf.chain = nf.chain.then(run, run);
+  haptic('selection');
+  paintAlerts();
+}
+// In place, not a redraw, so a switch keeps its slide.
+function paintAlerts(){
+  const body = nfEl('notifBody');
+  if(!body) return;
+  body.querySelectorAll('[data-alert]').forEach(i => { i.checked = !!nf.prefs[i.dataset.alert]; });
+  const note = nfEl('nfAlertsNote');
+  if(note) note.textContent = nf.alertsError;
+}
+
+// null puts the alerts back on the person's assigned teams. The database
+// drops teams they may not follow, so what it saved is what's shown.
+async function chooseAlertTeams(ids){
+  if(!myProfile || nf.savingTeams) return;
+  const me = myProfile.id;
+  nf.teamsError = ''; nf.savingTeams = true; renderNotifSheet();
+  let res;
+  try { res = await sb.rpc('set_notification_teams', { p_team_ids: ids }); } catch(err){ res = { error: err }; }
+  if(!nfMine(me)) return;
+  nf.savingTeams = false;
+  if(res && res.error){ nf.teamsError = rpcText(res.error); haptic('error'); }
+  else {
+    nf.teams = (res && res.data) || [];
+    nf.prefs.teams_chosen = nf.confirmed.teams_chosen = ids !== null;
+    haptic('selection');
+  }
+  renderNotifSheet();
+}
+function pickAlertTeams(mode){
+  if(!nf.loaded || nf.savingTeams) return;
+  if(mode === 'default'){ if(nf.prefs.teams_chosen) chooseAlertTeams(null); return; }
+  if(nf.prefs.teams_chosen) return;
+  // Start from today's coverage; never save an empty list.
+  const own = myTeams().map(m => m.team.id);
+  const seed = nf.teams.length ? nf.teams : own.length ? own : followableTeams().map(t => t.id);
+  if(!seed.length){ nf.teamsError = 'There are no teams to choose from.'; renderNotifSheet(); return; }
+  chooseAlertTeams(seed);
+}
+function toggleAlertTeam(id){
+  if(!nf.loaded || nf.savingTeams) return;
+  let ids = nf.teams.slice();
+  if(ids.includes(id)){
+    // Never save an empty list: the last tick stays.
+    if(ids.length <= 1) return;
+    ids = ids.filter(x => x !== id);
+  } else ids.push(id);
+  chooseAlertTeams(ids);
+}
+
+function renderNotifSheet(){
+  const body = nfEl('notifBody');
+  if(!body || !myProfile || nfEl('notifSheet').style.display === 'none') return;
+  // Keep focus on the control that was used: the list is redrawn under it.
+  const act = document.activeElement;
+  const keep = act && body.contains(act) ? (act.dataset.alert ? `[data-alert="${act.dataset.alert}"]`
+    : act.dataset.nfTeam ? `[data-nf-team="${act.dataset.nfTeam}"]` : act.dataset.nfTeams ? `[data-nf-teams="${act.dataset.nfTeams}"]` : null) : null;
+  const off = !nf.loaded;
+  const loading = nf.loaded ? '' : `<div class="ios-group">${nf.tried && !nf.loading
+    ? `<div class="ios-row"><span class="row-muted">Couldn&rsquo;t load your alert settings.</span></div>
+       <button type="button" class="ios-row ios-action" data-nf-retry>Try Again</button>`
+    : '<div class="ios-row"><span class="row-muted">Loading your alert settings&hellip;</span></div>'}</div>
+    ${nf.tried && !nf.loading && nf.loadError ? `<p class="ios-group-footer err" role="alert">${escSafe(nf.loadError)}</p>` : ''}`;
+  const alerts = `<p class="ios-group-header">Alerts</p>
+    <div class="ios-group">${ALERTS.map(([k, name, note]) => `<label class="ios-row switch-row">
+        <span class="switch-text">${escSafe(name)}<small>${escSafe(note)}</small></span>
+        <input type="checkbox" class="ios-switch" data-alert="${k}"${nf.prefs[k] ? ' checked' : ''}${off ? ' disabled' : ''}>
+      </label>`).join('')}</div>
+    <p class="ios-group-footer err" id="nfAlertsNote" role="alert">${escSafe(nf.alertsError)}</p>`;
+  const chosen = !!nf.prefs.teams_chosen, dis = (off || nf.savingTeams) ? ' disabled' : '';
+  const check = on => `<span class="nf-check${on ? ' on' : ''}" aria-hidden="true">${CHECK_SMALL}</span>`;
+  const pick = (mode, title, note, on) => `<button type="button" class="ios-row nf-row" role="radio" aria-checked="${on}" data-nf-teams="${mode}"${dis}>
+      <span class="cf-text">${title}${note ? `<small>${escSafe(note)}</small>` : ''}</span>${check(on)}</button>`;
+  const list = chosen ? followableTeams() : [];
+  const teamsHTML = `<p class="ios-group-header">Teams${nf.savingTeams ? ' <span class="nf-saving">Saving&hellip;</span>' : ''}</p>
+    <div class="ios-group" role="radiogroup" aria-label="Teams">
+      ${pick('default', 'My Assigned Teams', defaultAlertTeamsText(), !chosen)}
+      ${pick('choose', 'Choose Teams', '', chosen)}
+    </div>
+    ${list.length ? `<div class="ios-group nf-teams" role="group" aria-label="Teams to follow">${list.map(t => {
+      const on = nf.teams.includes(t.id);
+      return `<button type="button" class="ios-row nf-row" role="checkbox" aria-checked="${on}" data-nf-team="${escSafe(t.id)}"${dis}>
+        <span>${escSafe(teamLabelOf(t))}</span>${check(on)}</button>`;
+    }).join('')}</div>` : ''}
+    <p class="ios-group-footer err" role="alert">${escSafe(nf.teamsError)}</p>`;
+  body.innerHTML = pushGroupHTML() + loading + alerts + teamsHTML;
+  if(keep) body.querySelector(keep)?.focus?.();
+}
+function openNotifSheet(){
+  if(!myProfile) return;
+  nf.alertsError = ''; nf.teamsError = '';
+  const m = nfEl('notifSheet');
+  m.style.display = 'flex';
+  renderNotifSheet();
+  haptic('light');
+  if(window.Spring && !Spring.reduced()){
+    const sheet = m.querySelector('.share-sheet');
+    Spring.set(sheet, { y: sheet.offsetHeight * .6, opacity: 1 });
+    Spring.to(sheet, { y: 0 }, { preset: 'gentle' }).then(() => { sheet.style.transform = ''; });
+  }
+  setTimeout(() => nfEl('notifSheetTitle')?.focus?.(), 50);
+  loadAlertSettings();
+}
+function closeNotifSheet(){
+  const m = nfEl('notifSheet');
+  if(!m || m.style.display === 'none') return;
+  m.style.display = 'none';
+  clearInterval(nf.pushWatch); nf.pushWatch = null;
+  // Back to the account sheet, where it was opened from.
+  if(nfEl('accountSheet').style.display !== 'none') nfEl('openNotifBtn')?.focus?.();
+}
+nfEl('notifSheet').addEventListener('click', e => {
+  if(e.target.closest('[data-notif-close]')){ closeNotifSheet(); return; }
+  if(e.target.closest('[data-nf-push]')){ turnOnPush(); return; }
+  if(e.target.closest('[data-nf-retry]')){ loadAlertSettings(); return; }
+  const mode = e.target.closest('[data-nf-teams]');
+  if(mode){ pickAlertTeams(mode.dataset.nfTeams); return; }
+  const team = e.target.closest('[data-nf-team]');
+  if(team) toggleAlertTeam(team.dataset.nfTeam);
+});
+nfEl('notifSheet').addEventListener('change', e => {
+  const sw = e.target.closest('[data-alert]');
+  if(sw) setAlert(sw.dataset.alert, sw.checked);
+});
+// Capture phase: one Escape closes this sheet, not the account sheet under it.
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape' || nfEl('notifSheet').style.display === 'none' || nfEl('confirmModal').style.display === 'flex') return;
+  e.stopPropagation();
+  closeNotifSheet();
+}, true);
 
 // ============ REFRESH ============
 // One refresh, whoever asks: the app's native UIRefreshControl calls it
@@ -4552,6 +4876,7 @@ function teardown(){
   document.getElementById('accountBtn').style.display = 'none';
   document.getElementById('scheduleViewBtn').style.display = 'none';
   closeAccountSheet();
+  closeNotifSheet(); resetAlertSettings();
   // Role tabs belong to the person who signed in; the next person on this
   // device must not inherit an Admin or League tab.
   [el.adminTab, el.myTeamTab, el.leagueTab].forEach(t => { t.style.display = 'none'; });

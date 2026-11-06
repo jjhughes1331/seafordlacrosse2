@@ -4712,8 +4712,8 @@ function slotToastMsg(lead, b){
   return { text: `${lead} ${where}, ${day}, ${time}`,
     html: `${escSafe(lead)} ${escSafe(where)}, ${escSafe(day)}, <span class="toast-time">${escSafe(time)}</span>` };
 }
-function flashBooked(payload, insertedId){
-  const msg = slotToastMsg('Booked', payload);
+function flashBooked(payload, insertedId, message){
+  const msg = message || slotToastMsg('Booked', payload);
   if(!insertedId){ flash(msg, 'ok'); return; }
   flash(msg, 'ok', { label: 'Undo', onClick: async () => {
     const { error } = await sb.from('bookings').delete().eq('id', insertedId);
@@ -8175,28 +8175,6 @@ el.finderTimes.addEventListener('click', e => {
   finderLimit = 40; haptic('light'); renderOpenWeek();
 });
 
-// Booking the same weekday and time for the rest of the season used to require
-// entering a separate "Season" mode BEFORE picking anything. Making it an offer
-// on the booking you just made means the repeat decision happens when the coach
-// actually has it — right after they've chosen a slot they like.
-async function repeatForSeason(payload, teamId){
-  const dow = parseISO(payload.date).getDay();
-  const rows = [];
-  let d = addDays(parseISO(payload.date), 7);
-  while(d <= SEASON_END){
-    const dateStr = fmtDateISO(d);
-    const taken = bookingsCache.some(b => b.field_id===payload.fieldId && b.date===dateStr && b.subfield===payload.subfield && b.time===payload.time);
-    if(!taken) rows.push({ field_id: payload.fieldId, date: dateStr, subfield: payload.subfield,
-                           time: payload.time, team_id: teamId, booked_by: session.user.id });
-    d = addDays(d, 7);
-  }
-  if(!rows.length){ flash('Nothing left to repeat: every later ' + DOW_FULL[dow] + ' is already taken.', 'err'); return; }
-  const { data, error } = await sb.from('bookings').insert(rows).select();
-  await refreshBookings();
-  renderOpenWeek();
-  if(error) flash(friendlyError(error, 'Next week wasn\'t booked.'), 'err');
-  else flash('Booked ' + (data ? data.length : rows.length) + ' more ' + DOW_FULL[dow] + 's at ' + payload.time + '.', 'ok');
-}
 // A team can legitimately want two fields at once, so this warns rather than
 // blocks — but nothing warned at all before, and a clash only surfaced when a
 // parent turned up at the wrong field.
@@ -8229,9 +8207,7 @@ el.openWeekResults.addEventListener('click', async e => {
     else if(error.code === '42501') flash('Your team can\'t book this slot yet. Earlier grades are still choosing.', 'warn');
     else flash(friendlyError(error, 'The practice wasn\'t booked.'), 'err');
   } else {
-    const dow = DOW_FULL[parseISO(payload.date).getDay()];
-    flash('Booked ' + formatSlotTime(payload.time) + ' on ' + fmtDateLong(payload.date) + '.', 'ok',
-      { label: 'Repeat every ' + dow, onClick: () => repeatForSeason(payload, teamId) });
+    flashBooked(payload, inserted && inserted.id, 'Booked ' + formatSlotTime(payload.time) + ' on ' + fmtDateLong(payload.date) + '.');
   }
   await refreshBookings();
   renderOpenWeek();

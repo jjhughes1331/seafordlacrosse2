@@ -532,6 +532,9 @@
     --mine: #b8860b;
     --mine-deep: #8a6508;
     --mine-bg: #fdf3dc;
+    /* Gold as small text: --mine is 2.9:1 on the page, this passes 4.5:1 on
+       the page, a card and --mine-bg. */
+    --mine-text: #7c5c00;
     /* Tinted chip/highlight backgrounds — MUST be tokens, not raw hex, or they
        stay light in dark mode while their text color goes light-on-light. */
     --chip-bg: rgba(118,118,128,.12);
@@ -576,6 +579,7 @@
       --mine: #ffd60a;
       --mine-deep: #ffe066;
       --mine-bg: rgba(255,214,10,.16);
+      --mine-text: #ffd60a;
       --chip-bg: rgba(118,118,128,.24);
       --chip-hover-bg: rgba(118,118,128,.36);
       --ok-bg: rgba(48,209,88,.18);
@@ -620,6 +624,7 @@
     --mine: #ffd60a;
     --mine-deep: #ffe066;
     --mine-bg: rgba(255,214,10,.16);
+    --mine-text: #ffd60a;
     --chip-bg: rgba(118,118,128,.24);
     --chip-hover-bg: rgba(118,118,128,.36);
     --ok-bg: rgba(48,209,88,.18);
@@ -1011,7 +1016,7 @@
   .book-month-badge { font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: var(--radius-sm); line-height: 1.5; white-space: nowrap; }
   .book-month-badge.open { background: var(--chip-bg); color: var(--text-strong); }
   .book-month-badge.full { background: var(--danger-bg); color: var(--danger); }
-  .book-month-badge.mine { background: var(--mine-bg); color: var(--mine-deep); }
+  .book-month-badge.mine { background: var(--mine-bg); color: var(--mine-text); }
   .book-month-badge.past { background: none; color: var(--muted); font-weight: 600; }
   .book-month-cell.selected { border-color: var(--text-strong); box-shadow: 0 0 0 2px var(--text-strong) inset; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
@@ -1209,7 +1214,10 @@
   .ladder-row.you { background: var(--mine-bg); border: 1.5px solid var(--mine); font-weight: 600; }
   .ladder-row.you .ladder-dot { background: var(--mine); color: #1c1c1e; }
   .ladder-row.you .ladder-note { color: var(--mine-deep); }
-  .ladder-row.after, .ladder-row.waiting { opacity: .55; }
+  /* Later grades read as quieter, not faded: the text stays at full opacity
+     in --muted (dimmed, it failed contrast) and only the dot steps back. */
+  .ladder-row.after, .ladder-row.waiting { color: var(--muted); }
+  .ladder-row.after .ladder-dot, .ladder-row.waiting .ladder-dot { opacity: .55; }
   /* League field utilization bars */
   .league-util { margin-top: 18px; }
   .util-row { display: grid; grid-template-columns: minmax(84px, 120px) 1fr auto; align-items: center; gap: 10px; margin-bottom: 8px; font-size: var(--fs-sm); }
@@ -1777,7 +1785,7 @@
   .book-month-badge { font-size: 11px; font-weight: 600; padding: 0; background: none !important; letter-spacing: -.2px; font-variant-numeric: tabular-nums; }
   .book-month-badge.open { color: var(--accent-fill); }
   .book-month-badge.full { color: var(--muted); } /* full is a fact, not an error */
-  .book-month-badge.mine { color: var(--mine); }
+  .book-month-badge.mine { color: var(--mine-text); }
   .book-month-badge.past { color: var(--silver-deep); }
   .book-month-dow { font-size: 11px; letter-spacing: .2px; }
   .field-note { font-style: normal; }

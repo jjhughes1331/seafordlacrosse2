@@ -1202,6 +1202,11 @@
   /* Toast action (Undo) */
   .toast-action { margin-left: 6px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: var(--fs-xs); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .toast-action:hover { background: rgba(255,255,255,.26); }
+  /* Undo is the recovery path for the one action with no confirm sheet, so
+     it gets the full 44pt target, not its 28pt pill. */
+  .toast-action { position: relative; flex: none; }
+  .toast-action::before { content: ''; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+  #status .toast-time { white-space: nowrap; }
   /* Priority ladder */
   .ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
   .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-chip); background: var(--cell-bg); color: var(--ink); font-size: var(--fs-sm); } /* was translucent white: white-on-white in dark mode */
@@ -4584,7 +4589,10 @@ function flash(msg, type, action){
   const warn = type === 'warn';
   if(warn) type = 'err';
   const icon = type === 'ok' ? ICON_CHECK : type === 'err' ? ICON_WARN : '';
-  el.status.innerHTML = icon + '<span>' + escSafe(msg) + '</span>';
+  // msg is text, or { text, html } when part of it must not wrap (a time).
+  const html = msg && typeof msg === 'object' ? msg.html : escSafe(msg);
+  if(msg && typeof msg === 'object') msg = msg.text;
+  el.status.innerHTML = icon + '<span>' + html + '</span>';
   if(action){
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'toast-action'; b.textContent = action.label;
@@ -4609,8 +4617,19 @@ document.getElementById('statusClose').addEventListener('click', () => {
 // "Booked · Undo" — one tap to take it back for a few seconds. Cold thumbs at
 // a field hit the wrong slot; an undo beats making them find the × and
 // two-tap a cancel. Needs the new row's id, so callers insert with .select().
+// "Booked Seaford Harbor Field 2, Mon Mar 1, 4:30 to 5:30 PM": "Field 2" is at
+// four of the five sites, so the toast says which site and which day, and the
+// time never breaks across two lines.
+function slotToastMsg(lead, b){
+  const fid = b.fieldId || b.field_id, f = FIELD_MAP[fid], d = parseISO(b.date);
+  const where = [f ? f.name : fid, b.subfield].filter(Boolean).join(' ');
+  const day = `${DOW_SHORT[d.getDay()]} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}`;
+  const time = formatSlotTime(b.time).replace('\u2013', ' to ');
+  return { text: `${lead} ${where}, ${day}, ${time}`,
+    html: `${escSafe(lead)} ${escSafe(where)}, ${escSafe(day)}, <span class="toast-time">${escSafe(time)}</span>` };
+}
 function flashBooked(payload, insertedId){
-  const msg = 'Booked ' + payload.subfield + ', ' + formatSlotTime(payload.time);
+  const msg = slotToastMsg('Booked', payload);
   if(!insertedId){ flash(msg, 'ok'); return; }
   flash(msg, 'ok', { label: 'Undo', onClick: async () => {
     const { error } = await sb.from('bookings').delete().eq('id', insertedId);
@@ -7216,7 +7235,7 @@ el.weekGrid.addEventListener('click', async e => {
     const { data, error } = await sb.from('bookings').delete().eq('id', cancelBtn.dataset.cancel).select();
     if(error){ flash(friendlyError(error, 'The practice wasn\'t cancelled.'), 'err'); }
     else if(!data || !data.length){ flash('Could not cancel. You may not have permission.', 'err'); }
-    else { flash('Booking cancelled', 'ok'); }
+    else { flash(cx ? slotToastMsg('Cancelled', cx) : 'Booking cancelled', 'ok'); }
     await refreshBookings();
     renderWeek();
   }
@@ -7619,7 +7638,7 @@ document.addEventListener('click', async e => {
   const { data, error } = await sb.from('bookings').delete().eq('id', x.dataset.cancel).select();
   if(error) flash(friendlyError(error, 'The practice wasn\'t cancelled.'), 'err');
   else if(!data || !data.length) flash('Could not cancel. You may not have permission.', 'err');
-  else flash('Booking cancelled', 'ok');
+  else flash(bk ? slotToastMsg('Cancelled', bk) : 'Booking cancelled', 'ok');
   await refreshBookings();
   if(currentView === 'league') renderLeague(); else renderScheduleCalendar();
 });

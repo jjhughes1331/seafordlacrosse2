@@ -45,17 +45,12 @@ begin
 end;
 $$;
 
--- Row security: add a director update policy alongside whatever lets admins
--- update today (permissive policies combine with OR, so admins are unaffected).
--- RLS itself is left as it is.
-drop policy if exists directors_update_settings on public.app_settings;
-create policy directors_update_settings on public.app_settings
-  for update to authenticated
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'director'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'director'));
+-- Row security needs no change: the live policy app_settings_update_admin_director
+-- (checked 2026-11-06) already lets admins and directors update this row, so
+-- the trigger above is what decides which columns a director may change.
 
 commit;
 
--- What it looks like now: the policies on app_settings, including
--- directors_update_settings.
-select polname, polcmd from pg_policy where polrelid = 'public.app_settings'::regclass;
+-- Check: the function now names directors.
+select position('director' in prosrc) > 0 as directors_allowed
+from pg_proc where proname = 'enforce_app_settings_admin_update';

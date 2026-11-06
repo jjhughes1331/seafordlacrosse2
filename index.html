@@ -2320,7 +2320,8 @@
   }
 
   @media (max-width: 700px) {
-    #adminPaneToggle, #peoplePaneToggle { margin: 12px 16px; }   /* not flush to the screen edge */
+    #adminPaneToggle { margin: 12px 16px; }   /* not flush to the screen edge */
+    #viewAdmin > .admin-pane.wrap { padding-left: 16px; padding-right: 16px; }   /* the 16pt phone gutter, as Book */
   }
 
   /* ---- "Since you were here": an in-app notification ------------------- */
@@ -3006,7 +3007,7 @@
 <!-- ============ ADMIN VIEW ============ -->
 <div id="viewAdmin" style="display:none">
   
-  <div class="mode-toggle" id="adminPaneToggle" style="margin:0 0 18px">
+  <div class="mode-toggle" id="adminPaneToggle">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab active" data-pane="people">People</button>
     <button class="mtab" data-pane="teams">Teams</button>
@@ -3015,7 +3016,7 @@
     <button class="mtab" data-pane="reports">Reports</button>
   </div>
 
-  <div class="admin-pane" data-adminpane="people"><p class="admin-section-label">People</p>
+  <div class="admin-pane wrap" data-adminpane="people"><p class="admin-section-label">People</p>
     <div class="mode-toggle" id="peoplePaneToggle" style="margin:0 0 16px">
       <span class="mode-toggle-thumb"></span>
       <button class="mtab active" data-people="users">Users</button>
@@ -3102,7 +3103,7 @@
 
   
   </div></div>
-  <div class="admin-pane" data-adminpane="teams" hidden>
+  <div class="admin-pane wrap" data-adminpane="teams" hidden>
     <p class="admin-section-label">Teams</p>
     <div class="teams-bar">
       <p class="hint" id="teamsHint"></p>
@@ -3113,7 +3114,7 @@
     <div id="leagueSched"></div>
     <input type="file" id="leagueFile" accept=".xlsx" hidden>
   </div>
-  <div class="admin-pane" data-adminpane="booking" hidden>
+  <div class="admin-pane wrap" data-adminpane="booking" hidden>
 <p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
   <div class="admin-card" id="scheduleLockCard">
     <h3>Schedule lock</h3>
@@ -3134,7 +3135,7 @@
   
   </div>
 
-  <div class="admin-pane" data-adminpane="danger" hidden>
+  <div class="admin-pane wrap" data-adminpane="danger" hidden>
 <p class="admin-section-label danger">Danger zone</p>
   <div class="admin-card admin-card-danger">
     <h3>Clear bookings</h3>
@@ -3172,7 +3173,7 @@
   
   </div>
 
-  <div class="admin-pane" data-adminpane="reports" hidden>
+  <div class="admin-pane wrap" data-adminpane="reports" hidden>
 <p class="admin-section-label">Reports</p>
   <details class="admin-card admin-card-collapsible" id="activityCard" open>
     <summary><h3>Activity</h3></summary>

@@ -2742,9 +2742,10 @@
   <div class="share-backdrop" data-tsheet-close></div>
   <div class="share-sheet ios-sheet" role="dialog" aria-modal="true" aria-labelledby="teamSheetTitle">
     <div class="sheet-bar">
-      <span></span>
+      <!-- With an unsaved Name or League Name: Cancel (asks first) and Save. -->
+      <button type="button" class="sheet-done sheet-lead" id="teamSheetCancel" data-tsheet-close style="visibility:hidden">Cancel</button>
       <h3 id="teamSheetTitle" tabindex="-1">Team</h3>
-      <button type="button" class="sheet-done" data-tsheet-close>Done</button>
+      <button type="button" class="sheet-done" id="teamSheetDone" data-tsheet-close>Done</button>
     </div>
     <div class="sheet-scroll" id="teamBody"></div>
   </div>
@@ -8795,14 +8796,59 @@ function closeTSheet(id){
 }
 document.addEventListener('click', e => {
   const c = e.target.closest('[data-tsheet-close]');
-  if(c) closeTSheet(c.closest('.share-modal').id);
+  if(!c) return;
+  const id = c.closest('.share-modal').id;
+  if(id === 'teamSheet' && teamDraftDirty()){
+    if(c.id === 'teamSheetDone') saveTeamDraft(); else confirmDiscardTeam();
+    return;
+  }
+  closeTSheet(id);
 });
+// The team sheet never drops a typed Name or League Name: Save saves and
+// closes, and Cancel, a swipe down or Escape ask first.
+function teamDraftDirty(){
+  const t = teamSheetId && teamsById[teamSheetId];
+  if(!t || !teamDraft) return false;
+  return (teamDraft.name || '').trim() !== (t.name || '') || (teamDraft.league || '').trim() !== (t.league_name || '');
+}
+function syncTeamBar(){
+  const dirty = teamDraftDirty(), done = $tid('teamSheetDone'), cancel = $tid('teamSheetCancel');
+  if(!done || !cancel) return;
+  done.textContent = dirty ? 'Save' : 'Done';
+  done.disabled = dirty && teamBusy;
+  cancel.style.visibility = dirty ? '' : 'hidden';
+}
+let discardAsking = false;
+async function confirmDiscardTeam(){
+  if(discardAsking) return;
+  discardAsking = true;
+  const ok = await confirmAction({ title: 'Discard changes?', body: 'The name you typed for this team won\'t be saved.', verb: 'Discard Changes' });
+  discardAsking = false;
+  if(ok){ closeTSheet('teamSheet'); return; }
+  // A swipe already carried the sheet off: bring it back up.
+  const sheet = $tid('teamSheet').querySelector('.share-sheet');
+  if(window.Spring && !Spring.reduced() && sheet){
+    Spring.set(sheet, { y: sheet.offsetHeight * .35, opacity: 1 });
+    Spring.to(sheet, { y: 0 }, { preset: 'gentle' }).then(() => { sheet.style.transform = ''; });
+  }
+}
+// Save, then close; a refusal stays open with the database's text under Name.
+async function saveTeamDraft(){
+  const t = teamsById[teamSheetId]; if(!t || teamBusy) return;
+  const name = (teamDraft.name || '').trim() || null, league = (teamDraft.league || '').trim() || null;
+  if(await teamRun('name', () => sb.rpc('rename_team', { p_team: t.id, p_name: name, p_league_name: league }))){
+    haptic('success'); closeTSheet('teamSheet'); flash('Saved.', 'ok');
+  }
+}
 // Capture phase, so it runs before the confirm sheet's own Escape closes it:
 // one Escape closes one thing.
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape' || $tid('confirmModal').style.display === 'flex') return;
   for(const id of ['personSheet', 'addTeamSheet', 'teamSheet']){
-    if($tid(id).style.display !== 'none'){ closeTSheet(id); return; }
+    if($tid(id).style.display !== 'none'){
+      if(id === 'teamSheet' && teamDraftDirty()){ e.stopPropagation(); confirmDiscardTeam(); } else closeTSheet(id);
+      return;
+    }
   }
 }, true);
 
@@ -8846,18 +8892,20 @@ function renderTeamSheet(){
      <div class="ios-group">
        <label class="ios-row ios-field"><span>Name</span><input type="text" id="teamNameInput" placeholder="Green, White…" autocomplete="off" value="${escSafe(teamDraft.name)}"></label>
        <label class="ios-row ios-field"><span>League Name</span><input type="text" id="teamLeagueInput" placeholder="Optional" autocomplete="off" value="${escSafe(teamDraft.league)}"></label>
-       <button type="button" class="ios-row ios-action" data-team-save${dis}>Save</button>
      </div>
      <p class="ios-group-footer" style="${teamStatus.name ? 'margin-bottom:6px' : ''}">The name splits a grade, like Green or White. League Name is how the league schedule spells this team, when it is not simply &ldquo;Seaford 2 Green&rdquo;.</p>${note('name')}
      <div class="ios-group">
        <button type="button" class="ios-row ios-destructive" data-team-remove${dis}>Remove Team</button>
      </div>${note('remove')}`;
   if(keep){ const n = $tid(keep.id); if(n){ n.focus(); try { n.setSelectionRange(keep.at, keep.at); } catch(e){} } }
+  syncTeamBar();
 }
 document.addEventListener('input', e => {
   if(!teamDraft) return;
   if(e.target.id === 'teamNameInput') teamDraft.name = e.target.value;
   else if(e.target.id === 'teamLeagueInput') teamDraft.league = e.target.value;
+  else return;
+  syncTeamBar();
 });
 
 // Runs one RPC for the open team, shows the database's text under the right
@@ -8923,15 +8971,6 @@ document.addEventListener('click', async e => {
     const ok = await confirmAction({ title: `Remove ${name}?`, body: `${name} comes off ${teamLabelOf(t)} as an assistant.`, verb: 'Remove' });
     if(!ok) return;
     if(await teamRun('assistant', () => sb.rpc('unassign_team_member', { p_team: t.id, p_profile: id }))) haptic('success');
-    return;
-  }
-  if(e.target.closest('[data-team-save]')){
-    const name = (teamDraft.name || '').trim() || null, league = (teamDraft.league || '').trim() || null;
-    if(await teamRun('name', () => sb.rpc('rename_team', { p_team: t.id, p_name: name, p_league_name: league }))){
-      const fresh = teamsById[t.id];
-      if(fresh) teamDraft = { name: fresh.name || '', league: fresh.league_name || '' };
-      renderTeamSheet(); flash('Saved.', 'ok');
-    }
     return;
   }
   if(e.target.closest('[data-team-remove]')){

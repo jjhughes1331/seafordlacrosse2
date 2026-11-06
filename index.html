@@ -1876,10 +1876,14 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-fill) 35%, transparent);
   }
   .fm-trigger.needs-choice .fm-chev { color: var(--accent-fill); }
-  #fieldNote { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 4px; }
-  #fieldNote .field-note-text { margin: 0; font-size: var(--fs-sm); line-height: 1.45; color: var(--muted); }
-  #fieldNote .field-map-toggle { margin: 0; }
-  #fieldNote .field-map-box { align-self: stretch; }
+  /* The note and Map/Directions share one 44pt row, so the slots start on
+     the first screen. A long note clamps to two lines; tap it for the rest. */
+  #fieldNote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; margin-top: 4px; }
+  #fieldNote .field-note-text { flex: 1 1 0; min-width: 0; margin: 0; font-size: var(--ios-foot); line-height: 1.3; color: var(--muted);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  #fieldNote .field-note-text.full { display: block; -webkit-line-clamp: none; line-clamp: none; }
+  #fieldNote .field-map-toggle { margin: 0; flex: none; }
+  #fieldNote .field-map-box { flex: 1 0 100%; }
 
   /* ---- Menu: On this iPhone (app 1.1+) -------------------------------- */
   .hamburger-heading { margin: 8px 12px 2px; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .3px;
@@ -2173,6 +2177,9 @@
   .tip-row.done:active { background: none; }
   .tip-done { color: var(--accent-fill); display: flex; }
   .tip-done svg { width: 17px; height: 17px; }
+  .welcome-card.folded { padding: 0; }
+  .welcome-card.folded .tip-summary { padding-left: 20px; }
+  .tip-count { color: var(--muted); font-variant-numeric: tabular-nums; }
   .sr-only { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   /* ---- Find a Time on a phone ---------------------------------------- */
@@ -2898,9 +2905,6 @@
 
 <!-- ============ BOOK VIEW ============ -->
 <div id="viewBook" class="booking" style="display:none">
-  <!-- Book is where a coach lands first, so the setup checklist lives here. -->
-  <div class="welcome-card" id="welcomeCard" style="display:none"></div>
-  <div class="install-nudge" id="installNudge" style="display:none"></div>
   <div id="pickTeamPrompt" class="locked-team-banner" style="display:none">Choose the team you are booking for, and the open fields appear here.</div>
   <div id="priorityLockedBanner" class="priority-locked-banner" style="display:none"></div>
   <div id="priorityFinishedRow" class="priority-finished-row" style="display:none"></div>
@@ -2946,6 +2950,11 @@
     <button class="allbtn" style="width:auto;padding:12px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
     <div id="recurringResults"></div>
   </div>
+  <!-- Book is where a coach lands first, so the setup checklist lives here,
+       after the slots on a phone: booking is the job (renderWelcome places
+       it, and folds it to one row once anything on it is done). -->
+  <div class="welcome-card" id="welcomeCard" style="display:none"></div>
+  <div class="install-nudge" id="installNudge" style="display:none"></div>
 </div>
 
 <!-- ============ OPEN THIS WEEK VIEW ============ -->
@@ -4205,9 +4214,24 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferr
 // The App Store build IS installed, by definition — a "put this on your home
 // screen" card inside it is nonsense, and it showed up in store screenshots.
 function isInstalled(){ return window.__IS_NATIVE_APP || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+// Once anything on the checklist is done it folds to one row ("Get Set Up,
+// 1 of 3") until tapped open, so it never holds the slots below the fold.
+let welcomeOpen = false;
+const PHONE_MQ = window.matchMedia('(max-width: 700px)');
+// Booking is the job. On a phone the checklist sits after the slots (with no
+// field chosen that is right under the field menu, since nothing else shows);
+// the desktop agenda has the room, so it stays at the top there.
+function placeWelcome(card){
+  const book = document.getElementById('viewBook'), nudge = document.getElementById('installNudge');
+  if(!book || !nudge) return;
+  if(PHONE_MQ.matches){ if(card.nextElementSibling !== nudge) nudge.before(card); }
+  else if(book.firstElementChild !== card) book.prepend(card);
+}
+PHONE_MQ.addEventListener?.('change', () => { const c = document.getElementById('welcomeCard'); if(c) placeWelcome(c); });
 function renderWelcome(){
   const card = document.getElementById('welcomeCard'), nudge = document.getElementById('installNudge');
   if(!card || !myProfile) return;
+  placeWelcome(card);
   let flags = {}; try { flags = JSON.parse(localStorage.getItem('seaford-welcome') || '{}'); } catch(e){}
   const myTeam = myBookingTeamId();
   const favDone = !!getFavoriteField();
@@ -4232,7 +4256,16 @@ function renderWelcome(){
         <span class="tip-label">${text}${done ? '<span class="sr-only">, done</span>' : ''}</span>
         ${done ? `<span class="tip-done" aria-hidden="true">${CHECK_SMALL}</span>` : CHEVRON_SVG}
       </button>`;
-    card.innerHTML = `<div class="tip-head">
+    const doneCount = [favDone, bookDone, pushDone].filter(Boolean).length;
+    const folded = doneCount > 0 && !welcomeOpen;
+    card.classList.toggle('folded', folded);
+    card.innerHTML = folded
+      ? `<button type="button" class="ios-row tip-row tip-summary" data-welcome="open" aria-expanded="false">
+          <span class="tip-tile" style="--t:var(--accent-fill)"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.9 7.2-6.2 6.2a1.2 1.2 0 0 1-1.7 0l-3-3a1.2 1.2 0 1 1 1.7-1.7l2.15 2.15 5.35-5.35a1.2 1.2 0 1 1 1.7 1.7Z"/></svg></span>
+          <span class="tip-label">Get Set Up</span>
+          <span class="tip-count">${doneCount} of 3</span>${CHEVRON_SVG}
+        </button>`
+      : `<div class="tip-head">
         <div><h3>${myProfile.first_name ? 'Welcome, ' + escSafe(myProfile.first_name) : 'Get Set Up'}</h3>
         <p class="hint">Three things, and the app takes it from there.</p></div>
         <button type="button" class="tip-x" data-welcome="dismiss" aria-label="Dismiss">${XMARK_CIRCLE}</button>
@@ -4263,6 +4296,7 @@ document.addEventListener('click', async e => {
   if(w){
     const a = w.dataset.welcome;
     if(a === 'dismiss'){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e2){} renderWelcome(); }
+    else if(a === 'open'){ welcomeOpen = true; haptic('light'); renderWelcome(); document.querySelector('#welcomeCard .tip-row:not(.done)')?.focus(); }
     else if(a === 'push'){
       await window.Native.pushRequestPermission(); renderWelcome();
     }
@@ -6651,6 +6685,8 @@ function fieldNoteHTML(f){
     </div>`;
 }
 document.addEventListener('click', e => {
+  const note = e.target.closest('#fieldNote .field-note-text');
+  if(note && note.scrollHeight > note.clientHeight + 1){ note.classList.add('full'); return; }
   const btn = e.target.closest('.field-map-toggle');
   if(!btn) return;
   const box = document.getElementById('mapbox-' + btn.dataset.mapfor);

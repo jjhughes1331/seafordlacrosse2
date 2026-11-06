@@ -998,6 +998,8 @@
   .mtab.active, .gtab.active, .mtab.active:hover, .gtab.active:hover { color: var(--ink); font-weight: 600; }
   .recurring-card { max-width: 1000px; margin: 8px auto 0; }
   .recurring-card .ios-group-footer b { font-weight: 600; color: var(--ink); }
+  /* A long time ("Half Field B (South) at 7:15-9:00 PM") wraps instead of trailing off. */
+  .recurring-card .ios-select-row .sel-text { white-space: normal; overflow: visible; text-overflow: clip; text-align: right; }
   /* Seven days across one row: no row inset, so each day keeps a 44pt width at 375. */
   .ios-row.recurring-days-row { padding: 6px 8px; cursor: default; }
   .ios-row.recurring-days-row:active { background: none; }
@@ -3150,7 +3152,6 @@
   </div>
   <div class="admin-pane wrap" data-adminpane="booking" hidden>
 <p class="admin-section-label" id="bookingControlsLabel">Booking Controls</p>
-  <p class="pane-intro" id="bookingAdminOnlyNote" hidden>Only an admin can lock the schedule or turn priority booking on and off.</p>
   <!-- Settings grammar: each control is a switch row whose state reads at a
        glance, with what it does in the footer. -->
   <div id="scheduleLockCard">
@@ -3171,7 +3172,7 @@
       </label>
       <button type="button" class="ios-row ios-action" id="priorityResetBtn">Reset Finished Teams</button>
     </div>
-    <p class="ios-group-footer">When on, teams can only book once every older grade has finished: 6th grade first, then 5th, and so on down to Kindergarten, across both programs (all 6th grade teams finish before any 5th grade team unlocks). Each team&rsquo;s coach or director taps Finished booking on Book once their team is done for the season. Reset Finished Teams starts the ladder over and clears any overrides.</p>
+    <p class="ios-group-footer">When on, teams can only book once every older grade has finished: 6th grade first, then 5th, and so on down to Kindergarten, across both programs (all 6th grade teams finish before any 5th grade team unlocks). Each team&rsquo;s coach or director taps Finished booking on Book once their team is done for the season.<span id="priorityResetHint"> Reset Finished Teams starts the ladder over and clears any overrides.</span></p>
     <div id="priorityTierStatus" class="priority-tier-status"></div>
     <div id="priorityForceGroup" hidden>
       <div class="ios-group">
@@ -5237,8 +5238,8 @@ function tierTimeLeftText(rank){
 }
 // Writing the rank into priority_forced_ranks is the same mechanism the manual
 // Override button uses, and the one the Postgres gate already honours — so the
-// database and the UI can't disagree. Only admins may write app_settings, so
-// this fires when an admin has the app open rather than on a server timer.
+// database and the UI can't disagree. Only admins may write the forced ranks
+// (directors only lock and switch priority on or off), so this fires when an admin has the app open rather than on a server timer.
 async function autoAdvanceOverdueTier(){
   if(!priorityBookingEnabled || myProfile?.role !== 'admin') return;
   const r = currentBlockingRank();
@@ -5389,10 +5390,11 @@ document.addEventListener('click', async e => {
   flash('Marked finished. The next grade unlocks once every team in this tier is done.', 'ok');
   renderPriorityBookingGate();
 });
+function canUseBookingSwitches(){ return !!myProfile && (myProfile.role === 'admin' || myProfile.role === 'director'); }
 function renderLockBanner(){
   el.lockBanner.classList.toggle('show', scheduleLocked);
   el.lockBanner.textContent = scheduleLocked ? 'The schedule is locked. Bookings and cancellations are paused right now.' : '';
-  if(myProfile && myProfile.role === 'admin'){ renderLockToggleButton(); renderPriorityToggleButton(); }
+  if(canUseBookingSwitches()){ renderLockToggleButton(); renderPriorityToggleButton(); }
 }
 
 function rerenderCurrentView(){
@@ -8232,14 +8234,18 @@ function renderAdmin(){
   }
   loadUserList();
   renderTeamsList(); loadTeamPeople();
+  // JJ, 2026-11-06: directors lock the schedule and turn priority booking on
+  // and off too (director_settings_2026_11_06.sql). Reset Finished Teams and
+  // Push Past stay admin-only, and the database refuses them for directors.
+  const canSwitch = canUseBookingSwitches();
   const isAdminSettings = myProfile.role === 'admin';
   const scheduleLockCard = document.getElementById('scheduleLockCard');
   const priorityBookingCard = document.getElementById('priorityBookingCard');
-  // A director sees why the pane is empty instead of a blank page.
-  document.getElementById('bookingAdminOnlyNote').hidden = isAdminSettings;
-  if(scheduleLockCard) scheduleLockCard.style.display = isAdminSettings ? '' : 'none';
-  if(priorityBookingCard) priorityBookingCard.style.display = isAdminSettings ? '' : 'none';
-  if(isAdminSettings){
+  if(scheduleLockCard) scheduleLockCard.style.display = canSwitch ? '' : 'none';
+  if(priorityBookingCard) priorityBookingCard.style.display = canSwitch ? '' : 'none';
+  document.getElementById('priorityResetBtn').hidden = !isAdminSettings;
+  document.getElementById('priorityResetHint').hidden = !isAdminSettings;
+  if(canSwitch){
     renderLockToggleButton();
     renderPriorityToggleButton();
   }
@@ -8372,7 +8378,7 @@ function renderPriorityTierStatus(){
   el.priorityTierStatus.innerHTML = html ? `<p class="ios-group-header">Grades, Oldest First</p><div class="ios-group">${html}</div>` : '';
 
   const blockingRank = currentBlockingRank();
-  if(blockingRank === null){
+  if(blockingRank === null || !myProfile || myProfile.role !== 'admin'){
     forceGroup.hidden = true;
     el.priorityForceHint.textContent = '';
   } else {

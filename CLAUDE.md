@@ -89,6 +89,10 @@ different project** — drive the dashboard in the browser instead.
   their account (an App Store requirement) or save their name
 
 ## Domain rules that surprise people
+- **Directors lock the schedule and switch priority booking on/off** (JJ,
+  2026-11-06; `director_settings_2026_11_06.sql`). The lock covers both
+  programs. Push Past and Reset Finished Teams stay admin-only, and the
+  `app_settings` trigger refuses any other column for directors
 - **The priority ladder is combined across genders.** Girls 6th finishing does
   not unlock 5th until Boys 6th finishes too. Working as designed
 - A tier's deadline is *derived*, not stored: it opened when the tier above

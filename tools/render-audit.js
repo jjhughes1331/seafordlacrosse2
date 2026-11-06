@@ -23,7 +23,7 @@
   const cs = e => getComputedStyle(e);
 
   // Emoji in text the browser actually rendered (entities included)
-  const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u;
+  const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{FE0F}]/u;
   out.emoji = els.filter(e => !e.children.length && EMOJI.test(e.textContent || ''))
     .map(e => e.tagName + '.' + e.className + ': ' + e.textContent.trim().slice(0, 30));
 

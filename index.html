@@ -851,9 +851,11 @@
   .grade-select:hover { border-color: var(--hover-edge); }
   .grade-select:focus { outline: none; border-color: var(--text-strong); }
   .locked-team-banner { background: var(--chip-bg); border: 1.5px solid var(--text-strong); border-radius: var(--radius-card); padding: 12px 16px; font-size: var(--fs-base); font-weight: 600; color: var(--text-strong); margin: 0 auto 18px; max-width: 1000px; }
+  /* Not your turn yet is a wait, not an error: a neutral card, with gold
+     only on your own row. Red is for destructive actions. */
   .priority-locked-banner {
-    background: var(--danger-bg); border: 1.5px solid var(--danger); border-radius: var(--radius-card);
-    padding: 16px 18px; font-size: var(--fs-base); color: var(--danger); margin-bottom: 18px; line-height: 1.5;
+    background: var(--cell-bg); border: none; border-radius: var(--group-radius);
+    padding: 16px; font-size: var(--fs-base); color: var(--ink); margin-bottom: 18px; line-height: 1.5;
   }
   .priority-finished-row { margin-bottom: 18px; }
   .priority-finished-badge {
@@ -1203,8 +1205,9 @@
   /* Priority ladder */
   .ladder { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
   .ladder-row { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-chip); background: var(--cell-bg); color: var(--ink); font-size: var(--fs-sm); } /* was translucent white: white-on-white in dark mode */
-  .ladder-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: var(--line); color: var(--muted); }
-  .ladder-note { font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .ladder-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--line); color: var(--muted); }
+  .ladder-dot svg { width: 12px; height: 12px; }
+  .ladder-note { font-size: var(--ios-foot, .765rem); font-weight: 600; color: var(--muted); }
   .ladder-row.done { opacity: .75; }
   .ladder-row.done .ladder-dot { background: var(--chip-bg); color: var(--text-strong); }
   .ladder-row.blocking { background: var(--card-2); font-weight: 600; }
@@ -1213,7 +1216,7 @@
   .ladder-row.blocking .ladder-note { color: var(--ink); }
   .ladder-row.you { background: var(--mine-bg); border: 1.5px solid var(--mine); font-weight: 600; }
   .ladder-row.you .ladder-dot { background: var(--mine); color: #1c1c1e; }
-  .ladder-row.you .ladder-note { color: var(--mine-deep); }
+  .ladder-row.you .ladder-note { color: var(--mine-text); }
   /* Later grades read as quieter, not faded: the text stays at full opacity
      in --muted (dimmed, it failed contrast) and only the dot steps back. */
   .ladder-row.after, .ladder-row.waiting { color: var(--muted); }
@@ -5200,6 +5203,13 @@ function applyBookTeamGate(){
 // done, pushed through, still booking (the real blocker), you, or after you.
 // A coach shouldn't have to parse "still finishing: 6th Grade, 5th Grade"
 // to work out how many tiers are ahead of them.
+// Custom solid glyphs for the ladder's dots. The blocking row's hourglass was
+// &#8987;, which iOS draws as a colour emoji.
+const LADDER_ICONS = {
+  done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.6 18.2a1.4 1.4 0 0 1-1-.4l-4.2-4.2a1.4 1.4 0 0 1 2-2l3.2 3.2 8-8a1.4 1.4 0 0 1 2 2l-9 9a1.4 1.4 0 0 1-1 .4Z"/></svg>',
+  you: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.5" fill="currentColor"/></svg>',
+  blocking: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.3 2h11.4a1.3 1.3 0 0 1 0 2.6h-.3v2.2a5.8 5.8 0 0 1-2.5 4.8L13.4 12l1.5.4a5.8 5.8 0 0 1 2.5 4.8v2.2h.3a1.3 1.3 0 0 1 0 2.6H6.3a1.3 1.3 0 0 1 0-2.6h.3v-2.2a5.8 5.8 0 0 1 2.5-4.8l1.5-.4-1.5-.4a5.8 5.8 0 0 1-2.5-4.8V4.6h-.3a1.3 1.3 0 0 1 0-2.6Z"/></svg>',
+};
 function priorityLadderHTML(team){
   const myRank = gradeRank(team.grade);
   let blockerFound = false;
@@ -5209,13 +5219,13 @@ function priorityLadderHTML(team){
     let state, note;
     if(r > myRank){
       const pending = teamsAtGradeRank(r).filter(t => !t.priority_finished_at);
-      if(priorityForcedRanks.has(r)){ state = 'done'; note = 'pushed through'; }
-      else if(!pending.length){ state = 'done'; note = 'done'; }
-      else if(!blockerFound){ state = 'blocking'; blockerFound = true; note = `${pending.length} team${pending.length !== 1 ? 's' : ''} still booking`; }
-      else { state = 'waiting'; note = 'waiting'; }
-    } else if(r === myRank){ state = 'you'; note = blockerFound ? "you're next after that" : 'your turn'; }
-    else { state = 'after'; note = 'after you'; }
-    rows.push(`<div class="ladder-row ${state}"><span class="ladder-dot">${state === 'done' ? '&#10003;' : state === 'you' ? '&#9679;' : state === 'blocking' ? '&#8987;' : ''}</span><span class="ladder-label">${escSafe(label)}</span><span class="ladder-note">${escSafe(note)}</span></div>`);
+      if(priorityForcedRanks.has(r)){ state = 'done'; note = 'Pushed Through'; }
+      else if(!pending.length){ state = 'done'; note = 'Done'; }
+      else if(!blockerFound){ state = 'blocking'; blockerFound = true; note = `${pending.length} Team${pending.length !== 1 ? 's' : ''} Still Booking`; }
+      else { state = 'waiting'; note = 'Waiting'; }
+    } else if(r === myRank){ state = 'you'; note = blockerFound ? "You're Next" : 'Your Turn'; }
+    else { state = 'after'; note = 'After You'; }
+    rows.push(`<div class="ladder-row ${state}"><span class="ladder-dot">${LADDER_ICONS[state] || ''}</span><span class="ladder-label">${escSafe(label)}</span><span class="ladder-note">${escSafe(note)}</span></div>`);
   }
   return `<div class="ladder">${rows.join('')}</div>`;
 }
@@ -5237,7 +5247,7 @@ function renderPriorityBookingGate(){
     const blockerList = blockers.map(teamLabelOf).join(', ');
     const blockRank = currentBlockingRank();
     const left = (blockRank === null || blockRank === undefined) ? '' : tierTimeLeftText(blockRank);
-    const clock = left ? `<div class="priority-clock${tierOverdue(blockRank) ? ' overdue' : ''}">${escSafe(GRADES[blockRank])} has <b>${escSafe(left)}</b> to finish booking${tierOverdue(blockRank) ? ' \u2014 the next grade opens automatically' : ''}.</div>` : '';
+    const clock = left ? `<div class="priority-clock${tierOverdue(blockRank) ? ' overdue' : ''}">${escSafe(GRADES[blockRank])} has <b>${escSafe(left)}</b> to finish booking${tierOverdue(blockRank) ? '. The next grade opens automatically' : ''}.</div>` : '';
     el.priorityLockedBanner.innerHTML = `<b>Not ${escSafe(teamLabelText)}'s turn yet.</b> Here's the line:${priorityLadderHTML(team)}${clock}`;
     el.priorityLockedBanner.style.display = 'block';
     el.priorityFinishedRow.style.display = 'none';

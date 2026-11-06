@@ -2177,6 +2177,8 @@
   .tip-row.done:active { background: none; }
   .tip-done { color: var(--accent-fill); display: flex; }
   .tip-done svg { width: 17px; height: 17px; }
+  .nf-dim .switch-text, .nf-dim .switch-text small { color: var(--muted); }
+  .nf-dim .ios-switch { opacity: .45; }
   .welcome-card.folded { padding: 0; }
   .welcome-card.folded .tip-summary { padding-left: 20px; }
   .tip-count { color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -3693,11 +3695,19 @@ function pushGroupHTML(){
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const value = v => `<div class="ios-group"><div class="ios-row"><span>Notifications</span><span class="ios-value">${v}</span></div></div>`;
   if(st === 'on') return value('On');
-  if(st === 'off') return value('Off') + '<p class="ios-group-footer">Notifications are turned off for this site in your browser settings.</p>';
-  if(st === 'unsupported') return value('Not Available') + `<p class="ios-group-footer">${ios
-    ? 'On iPhone, add this site to your Home Screen, open it from there, then turn notifications on here.'
-    : 'This browser can&rsquo;t show notifications.'}</p>`;
-  return '<div class="ios-group"><button type="button" class="ios-row ios-action" data-nf-push>Turn On Notifications</button></div>';
+  // Not on: the top row is the way to turn them on, never a dead "Off".
+  const action = (label, attr) => `<div class="ios-group"><button type="button" class="ios-row ios-action" ${attr}>${label}</button></div>`;
+  if(st === 'unsupported'){
+    // iPhone Safari only shows web alerts from a Home Screen app.
+    if(ios && !isInstalled()) return action('Add to Home Screen to get alerts', 'data-nf-install aria-expanded="' + !!nf.showInstall + '"')
+      + `<p class="ios-group-footer">${nf.showInstall
+        ? 'Tap <b>Share</b> at the bottom of Safari, then <b>Add to Home Screen</b>. Open Seaford Lax from your Home Screen and turn notifications on here.'
+        : 'iPhone shows alerts from the Home Screen app, not from a Safari tab.'}</p>`;
+    return value('Not Available') + '<p class="ios-group-footer">This browser can&rsquo;t show notifications.</p>';
+  }
+  if(st === 'off') return action('Turn On Notifications', 'data-nf-push')
+    + '<p class="ios-group-footer">Notifications are blocked for this site. Allow them in your browser&rsquo;s site settings, then come back here.</p>';
+  return action('Turn On Notifications', 'data-nf-push');
 }
 // The same request the setup checklist makes; the answer arrives later (a
 // system prompt, or Settings), so watch for it while the sheet is up.
@@ -3841,11 +3851,16 @@ function renderNotifSheet(){
        <button type="button" class="ios-row ios-action" data-nf-retry>Try Again</button>`
     : '<div class="ios-row"><span class="row-muted">Loading your alert settings&hellip;</span></div>'}</div>
     ${nf.tried && !nf.loading && nf.loadError ? `<p class="ios-group-footer err" role="alert">${escSafe(nf.loadError)}</p>` : ''}`;
+  // Push not on: the switches still save, but read as dimmed so no one takes
+  // a green switch for an alert that can't arrive. Text stays at --muted, not
+  // faded, so it keeps its contrast.
+  const pst = pushState(), dimAlerts = pst !== 'on' && pst !== 'unknown';
   const alerts = `<p class="ios-group-header">Alerts</p>
-    <div class="ios-group">${ALERTS.map(([k, name, note]) => `<label class="ios-row switch-row">
+    <div class="ios-group${dimAlerts ? ' nf-dim' : ''}">${ALERTS.map(([k, name, note]) => `<label class="ios-row switch-row">
         <span class="switch-text">${escSafe(name)}<small>${escSafe(note)}</small></span>
         <input type="checkbox" class="ios-switch" data-alert="${k}"${nf.prefs[k] ? ' checked' : ''}${off ? ' disabled' : ''}>
       </label>`).join('')}</div>
+    ${dimAlerts ? '<p class="ios-group-footer">These arrive once notifications are on.</p>' : ''}
     <p class="ios-group-footer err" id="nfAlertsNote" role="alert">${escSafe(nf.alertsError)}</p>`;
   const chosen = !!nf.prefs.teams_chosen, dis = (off || nf.savingTeams) ? ' disabled' : '';
   const check = on => `<span class="nf-check${on ? ' on' : ''}" aria-hidden="true">${CHECK_SMALL}</span>`;
@@ -3892,6 +3907,7 @@ function closeNotifSheet(){
 nfEl('notifSheet').addEventListener('click', e => {
   if(e.target.closest('[data-notif-close]')){ closeNotifSheet(); return; }
   if(e.target.closest('[data-nf-push]')){ turnOnPush(); return; }
+  if(e.target.closest('[data-nf-install]')){ nf.showInstall = !nf.showInstall; haptic('selection'); renderNotifSheet(); return; }
   if(e.target.closest('[data-nf-retry]')){ loadAlertSettings(); return; }
   const mode = e.target.closest('[data-nf-teams]');
   if(mode){ pickAlertTeams(mode.dataset.nfTeams); return; }

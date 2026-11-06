@@ -88,7 +88,8 @@ scratchpad; the rules it produced are below.
    pull-down pills over native `<select>`s so iOS draws its own pickers.
 4. **Book on a phone is Calendar's day view**: a week strip (dots: green open,
    gold yours), then one day as a grouped list, a section per time, a row per
-   field, a GET pill that arms to Confirm (armTwoTap), gold when booked.
+   field, a GET pill that books on one tap (Undo in the toast), gold when
+   booked.
 5. **Haptics by outcome**: `selection` for segments/filters/strip, `light` to
    open, `success`/`warning`/`error` for how it went (warning = another coach
    took the slot). Tab taps are silent, as in iOS.

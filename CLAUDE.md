@@ -105,7 +105,8 @@ different project** — drive the dashboard in the browser instead.
   `teamLabelOf`/`teamLabelById`. A person's teams come from `team_members`,
   not `profiles.team_id`: a coach books only for teams they head and can
   assist on others. Book and My Team remember the chosen team per device
-  (`seaford-book-team`, `seaford-my-team`)
+  (`seaford-book-team`, `seaford-my-team`); directors and admins get their
+  Book team back too, and sign-out clears it
 - **Admin > Teams** adds, renames, removes and staffs teams only through the
   five RPCs (`create_team`, `rename_team`, `delete_team`,
   `assign_team_member`, `unassign_team_member`) and shows the database's own
@@ -187,13 +188,19 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
 - **Icons are custom and solid.** No stroked icon sets
 - **44pt minimum** tap target; small controls get a `::before` overlay
 - **One confirmation model**: `confirmAction()` sheet for anything destructive.
-  `armTwoTap` survives only on booking a slot, which has Undo
+  **Book books on one tap** (JJ, 2026-11-06): the button shows "Booking..."
+  while in flight, and the Booked toast's Undo is the safety net. `armTwoTap`
+  is kept but has no booking caller
 - Phones have **no footer**: Appearance, Privacy, Support live in the account
   sheet (monogram, top right). There is no hamburger
 - **v3 type tokens are ratios of the root**: `1rem` is iOS Body (17pt), not
   16px. `--ios-body` is `1rem`; see DESIGN.md v3. Nothing under 11pt
 - **Book on a phone** is a week strip plus one day as a grouped list with GET
-  pills (Book -> Confirm via `armTwoTap`). Desktop keeps the week agenda
+  pills. Desktop keeps the week agenda. The field is one row (switcher, then a
+  More menu with Favorite and Directions) and Today replaces Jump to Date.
+  Week/Month/Season is remembered per device (`seaford-book-mode`, first
+  default Month). Matches the app: spec in
+  `../seaford-lax-app/docs/superpowers/specs/2026-11-06-book-one-tap-design.md`
 - The tab bar's shape, order and labels are JJ's — do not change them. The
   order is **Book, Find a Time, Calendar, My Team** (JJ, 2026-09-23: the order
   a coach works in). First launch opens on Book, then the last tab is restored.

@@ -966,13 +966,6 @@
   .pull-refresh-indicator .spinner { width: 20px; height: 20px; border-width: 2.5px; animation: none; }
   .pull-refresh-indicator.ready .spinner { border-top-color: var(--turf); }
   .pull-refresh-indicator.refreshing .spinner { animation: spin .7s linear infinite; }
-  .date-jump-row { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
-  .date-jump-label { display: flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); cursor: pointer; }
-  #dateJumpInput {
-    border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: var(--radius-chip);
-    padding: 6px 8px; font-size: var(--fs-xs); font-family: inherit; color-scheme: light dark;
-  }
-  #dateJumpInput:hover, #dateJumpInput:focus { border-color: var(--hover-edge); outline: none; }
   /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
      button instead of each button separately swapping its own background — the
      iOS-native segmented-control look. */
@@ -1085,6 +1078,7 @@
     .weeknav button { padding: 8px 14px; font-size: var(--fs-md); }
   }
   .weeknav .label { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-base); color: var(--ink); }
+  .weeknav .today-btn[hidden] { display: none; }
   .day { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: 12px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
   .day h3 { font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
   .day h3 .past { color: var(--muted); font-weight: 600; font-size: 11.5px; margin-left: 6px; }
@@ -1112,7 +1106,7 @@
   .book-slot.mine .cancel::before { content: ''; position: absolute; inset: -9px; }
   .book-slot.mine .cancel:hover { background: rgba(0,0,0,.24); }
   .book-slot:disabled, .cal-slot.empty:disabled { opacity: .45; cursor: not-allowed; }
-  .book-slot.armed, .cal-slot.empty.armed { background: var(--accent-fill) !important; border-style: solid !important; border-color: var(--accent-fill) !important; color: var(--on-accent) !important; font-weight: 600; }
+  .book-slot[aria-busy="true"]:disabled { opacity: .7; cursor: progress; }
   .book-slot.found-highlight { animation: foundPulse 2.6s var(--ease); }
   /* Two-tap confirm countdown ring — shows how long the armed state lasts
      instead of leaving people guessing when it silently disarms. */
@@ -1377,16 +1371,7 @@
   @media (max-width: 560px) {
     .usage-row { grid-template-columns: 90px 1fr 90px; gap: 6px; }
   }
-  .field-map-toggle {
-    display: inline-block; margin: 6px 8px 0 0; border: 1px solid var(--line); background: none;
-    color: var(--turf); font-size: var(--fs-2xs); font-weight: 600; padding: 4px 8px; font-style: normal;
-    border-radius: var(--radius-chip); cursor: pointer; font-family: inherit;
-  }
-  .field-map-toggle:hover, .field-map-toggle.open { border-color: var(--hover-edge); background: var(--chip-hover-bg); }
-  .field-map-directions { display: inline-block; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 600; font-style: normal; }
   .inline-icon { width: 14px; height: 14px; vertical-align: -2.5px; flex: none; }
-  .field-map-box { margin-top: 10px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid var(--line); }
-  .field-map-box iframe { width: 100%; height: 220px; border: 0; display: block; }
   .weather-badge {
     /* Rain is Weather's blue, not the destructive red. */
     display: inline-block; font-size: var(--fs-2xs); font-weight: 600; color: color-mix(in srgb, #0a84ff 80%, var(--ink));
@@ -1456,16 +1441,14 @@
   #hamburgerBtn { width: 44px; height: 44px; }
   #hamburgerBtn svg { width: 20px; height: 20px; }
   .signout-btn { min-height: 44px; display: inline-flex; align-items: center; }
-  #dateJumpInput { min-height: 44px; }
   .invite-form button { min-height: 44px; }
   #themeToggleBtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
-  .field-map-toggle { min-height: 44px; display: inline-flex; align-items: center; }
   /* Inline text links can't grow to 44px without wrecking the paragraph, so
      they get an invisible 44px hit area instead - the trick .fav-star uses. */
   .footer-links { font-size: var(--fs-2xs); font-weight: 600; }
   .footer-links a { color: var(--muted); }
-  .link-btn, .field-map-directions, .template-link { position: relative; display: inline-block; }
-  .link-btn::before, .field-map-directions::before, .template-link::before {
+  .link-btn, .template-link { position: relative; display: inline-block; }
+  .link-btn::before, .template-link::before {
     content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%);
   }
   #userSearch { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
@@ -1809,10 +1792,8 @@
   .book-month-badge.past { color: var(--silver-deep); }
   .book-month-dow { font-size: 11px; letter-spacing: .2px; }
   .field-note { font-style: normal; }
-  .field-map-toggle { border: none !important; background: var(--chip-bg); border-radius: var(--radius-pill); color: var(--ink); }
   @media (max-width: 700px) {
     #lockedTeamBanner { display: none !important; }        /* the subtitle already says who you book for */
-    .date-jump-row { display: none; }                      /* month chevrons and Week/Season cover it */
     .weeknav .navlabel { display: none; }
     .weeknav button { font-size: 26px; font-weight: 300; }
     #viewBook .mode-toggle { margin: 0 0 14px; }
@@ -1839,8 +1820,6 @@
   #weekGrid .book-slot.mine { background: var(--mine-bg); box-shadow: none; }
   #weekGrid .book-slot.mine .team { color: var(--ink); font-weight: 600; }
   #weekGrid .book-slot.mine::before { content: none; }
-  #weekGrid .book-slot.armed { background: var(--accent-fill) !important; }
-  #weekGrid .book-slot.armed .sub, #weekGrid .book-slot.armed .plus { color: var(--on-accent); }
   #weekGrid .waitlist-btn { border: none; background: none; color: var(--accent-fill); font-size: var(--fs-xs); font-weight: 600; padding: 4px 0 4px 4px; }
   #weekGrid .waitlist-btn.on { color: var(--mine); }
   #weekGrid .book-slot .cancel { border: none; background: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 0 0 0 4px; }
@@ -1863,8 +1842,6 @@
   #openWeekResults .book-slot .time { font-weight: 600; font-variant-numeric: tabular-nums; }
   #openWeekResults .book-slot .sub { color: color-mix(in srgb, var(--ink) 74%, transparent); font-weight: 400; font-size: var(--fs-sm); }
   #openWeekResults .book-slot .plus { color: var(--accent-fill); font-weight: 600; }
-  #openWeekResults .book-slot.armed { background: var(--accent-fill) !important; }
-  #openWeekResults .book-slot.armed * { color: var(--on-accent) !important; }
   #finderUsualNote { font-size: var(--fs-xs); color: var(--muted); }
   @media (max-width: 700px) { #openWeekBookingAs { display: none; } }
 
@@ -1888,14 +1865,21 @@
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-fill) 35%, transparent);
   }
   .fm-trigger.needs-choice .fm-chev { color: var(--accent-fill); }
-  /* The note and Map/Directions share one 44pt row, so the slots start on
-     the first screen. A long note clamps to two lines; tap it for the rest. */
-  #fieldNote { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; margin-top: 4px; }
-  #fieldNote .field-note-text { flex: 1 1 0; min-width: 0; margin: 0; font-size: var(--ios-foot); line-height: 1.3; color: var(--muted);
+  /* The field is one row: the switcher, then More (Favorite, Directions).
+     The note is a caption under it, so the slots start on the first screen.
+     A long note clamps to two lines; tap it for the rest. */
+  #fieldChips { flex-wrap: nowrap; align-items: center; gap: 4px; margin-bottom: 0; }
+  #fieldChips .fm-trigger { min-width: 0; margin-bottom: 0; }
+  #fieldChips .fm-trigger .fm-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .field-more { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+    padding: 0; border: none; background: none; border-radius: 50%; color: var(--tint); cursor: pointer; }
+  .field-more svg { width: 24px; height: 24px; }
+  .field-more:active { opacity: .6; }
+  #fieldNote { margin: 4px 0 12px; }
+  #fieldNote:empty { display: none; }
+  #fieldNote .field-note-text { margin: 0; font-size: var(--ios-foot); line-height: 1.3; color: var(--muted);
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   #fieldNote .field-note-text.full { display: block; -webkit-line-clamp: none; line-clamp: none; }
-  #fieldNote .field-map-toggle { margin: 0; flex: none; }
-  #fieldNote .field-map-box { flex: 1 0 100%; }
 
   /* ---- Menu: On this iPhone (app 1.1+) -------------------------------- */
   .hamburger-heading { margin: 8px 12px 2px; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .3px;
@@ -2080,10 +2064,11 @@
     #viewBook .weeknav { margin: 0 0 6px; padding: 0; gap: 0; }
     #viewBook .weeknav .label { order: -1; flex: 1; text-align: left; font-size: var(--ios-title3); font-weight: 700;
       letter-spacing: -.3px; color: var(--ink); }
-    #viewBook .weeknav button { width: 44px; min-width: 44px; padding: 0; font-size: 0; color: var(--tint); }
-    #viewBook .weeknav button::after { content: ''; width: 11px; height: 11px; border: solid currentColor;
+    #viewBook .weeknav button:not(.today-btn) { width: 44px; min-width: 44px; padding: 0; font-size: 0; color: var(--tint); }
+    #viewBook .weeknav button:not(.today-btn)::after { content: ''; width: 11px; height: 11px; border: solid currentColor;
       border-width: 0 0 2.6px 2.6px; border-radius: 1.5px; transform: rotate(45deg); margin-left: 4px; }
-    #viewBook .weeknav button:last-child::after { transform: rotate(-135deg); margin: 0 4px 0 0; }
+    #viewBook .weeknav #nextWeek::after, #viewBook .weeknav #nextMonth::after { transform: rotate(-135deg); margin: 0 4px 0 0; }
+    #viewBook .weeknav .today-btn { order: -1; padding: 0 10px; font-size: var(--ios-sub); font-weight: 600; color: var(--tint); }
     #viewBook .weeknav button:disabled { color: var(--silver-deep); opacity: .5; }
   }
 
@@ -2137,8 +2122,6 @@
   .get-pill.quiet, #weekGrid .get-pill.quiet { background: var(--chip-bg); color: var(--ink); font-weight: 600; }
   .get-pill.on, #weekGrid .get-pill.on { background: var(--mine-bg); color: color-mix(in srgb, var(--mine) 60%, var(--ink)); }
   .get-pill:active { opacity: .6; }
-  #weekGrid .get-pill.armed { background: var(--tint) !important; color: var(--on-accent); padding-right: 30px !important; }
-  #weekGrid .get-pill.armed .plus { color: var(--on-accent); }
   @media (prefers-reduced-motion: reduce) { .bd-row.just-booked { animation: none; } }
 
   /* ---- Bar buttons: glass circles beside the monogram ---------------- */
@@ -2219,8 +2202,6 @@
   .fw-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); margin-right: -2px; }
   .ios-more { display: block; width: 100%; min-height: 50px; margin: -8px 0 24px; border: none; background: var(--cell-bg);
     border-radius: var(--group-radius); color: var(--tint); font: inherit; font-size: var(--ios-body); cursor: pointer; }
-  #openWeekResults .get-pill.armed { background: var(--tint) !important; color: var(--on-accent); padding-right: 30px !important; }
-  #openWeekResults .get-pill.armed .plus { color: var(--on-accent); }
 
   /* ---- My Team: Contacts' action tiles -------------------------------- */
   @media (max-width: 700px) {
@@ -2283,10 +2264,9 @@
   input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
   @media (hover: none) {
     .allbtn:hover, .btn-primary:hover, .empty-schedule .cta:hover, .cal-nav:hover, .cal-today-btn:hover, .manage-btn:hover,
-    .waitlist-btn:hover, .field-map-toggle:hover, .cal-item-cancel:hover, .toast-action:hover, .book-slot:hover, .daytoggle:hover {
+    .waitlist-btn:hover, .cal-item-cancel:hover, .toast-action:hover, .book-slot:hover, .daytoggle:hover {
       transform: none !important; filter: none !important; opacity: 1; }
     .allbtn:hover { background: var(--card); border-color: var(--line); color: var(--ink); }
-    .field-map-toggle:hover { background: var(--chip-bg); }
   }
   /* The page behind an open sheet is inert (ui/sheet.js). */
   .share-backdrop { touch-action: none; }
@@ -2382,7 +2362,6 @@
   .install-nudge .kbd { background: var(--chip-bg); border: none; border-radius: 6px; font-weight: 600; }
   .install-nudge .allbtn { border: none; background: none; color: var(--tint); font-size: var(--ios-body); font-weight: 400; padding: 8px 4px; min-height: 44px; }
 
-  a.field-map-toggle { text-decoration: none; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; min-height: 44px; }
   /* ---- Calendar tab: the month as iPhone's Calendar draws it (v3.1) -----
      JJ, 2026-09-23: "a monthly calendar ... per field, just like the
      calendar on their iPhones". Weeks run edge to edge with a hairline above
@@ -2931,24 +2910,22 @@
   <div class="mode-toggle" id="bookModeToggle">
     <span class="mode-toggle-thumb"></span>
     <button class="mtab" data-mode="week">Week</button>
-    <button class="mtab active" data-mode="month">Month</button>
+    <button class="mtab" data-mode="month">Month</button>
     <button class="mtab" data-mode="season">Season</button>
   </div>
 
   <div id="calendarSection">
-    <div class="date-jump-row">
-      <label for="dateJumpInput" class="date-jump-label"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.4 1.8a1.3 1.3 0 0 1 1.3 1.3v.7h6.6v-.7a1.3 1.3 0 1 1 2.6 0v.7h.5a3.4 3.4 0 0 1 3.4 3.4v11.4a3.4 3.4 0 0 1-3.4 3.4H5.6a3.4 3.4 0 0 1-3.4-3.4V7.2a3.4 3.4 0 0 1 3.4-3.4h.5v-.7a1.3 1.3 0 0 1 1.3-1.3ZM4.6 10.2v8.4c0 .44.36.8.8.8h13.2c.44 0 .8-.36.8-.8v-8.4H4.6Z"/><circle cx="8.2" cy="14.6" r="1.3"/><circle cx="12" cy="14.6" r="1.3"/><circle cx="15.8" cy="14.6" r="1.3"/></svg> Jump to date</label>
-      <input type="date" id="dateJumpInput">
-    </div>
     <div class="weeknav" id="weekNavBar" style="display:none">
       <button id="prevWeek">&larr; <span class="navlabel">Prev week</span></button>
       <span class="label" id="weekLabel"></span>
       <button id="nextWeek"><span class="navlabel">Next week</span> &rarr;</button>
+      <button type="button" class="today-btn" id="weekToday" hidden>Today</button>
     </div>
     <div class="weeknav" id="monthNavBar">
       <button id="prevMonth">&larr; <span class="navlabel">Prev month</span></button>
       <span class="label" id="monthLabel"></span>
       <button id="nextMonth"><span class="navlabel">Next month</span> &rarr;</button>
+      <button type="button" class="today-btn" id="monthToday" hidden>Today</button>
     </div>
 
     <div id="weekGrid"></div>
@@ -3325,7 +3302,10 @@ function defaultBookField(){
 }
 let selectedField = defaultBookField();
 let currentWeekMonday = mondayOf(SEASON_TODAY);
-let bookViewMode = 'month'; // 'week' | 'month' | 'season'
+// Week, Month or Season, remembered on this device (JJ, 2026-11-06, as the
+// app's @AppStorage). The first-ever default is Month.
+const BOOK_MODE_KEY = 'seaford-book-mode';
+let bookViewMode = (() => { const m = readPref(BOOK_MODE_KEY); return ['week', 'month', 'season'].includes(m) ? m : 'month'; })();
 let currentMonthFirst = new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1);
 
 // ============ ELEMENTS ============
@@ -3370,7 +3350,6 @@ const el = {
   bookModeToggle: document.getElementById('bookModeToggle'),
   calendarSection: document.getElementById('calendarSection'),
   recurringCard: document.getElementById('recurringCard'),
-  dateJumpInput: document.getElementById('dateJumpInput'),
   weekNavBar: document.getElementById('weekNavBar'),
   monthNavBar: document.getElementById('monthNavBar'),
   monthLabel: document.getElementById('monthLabel'),
@@ -4476,10 +4455,11 @@ function fieldLabel(fieldId, subfield){
   const name = f ? f.name : fieldId;
   return subfield ? `${name} \u00b7 ${subfield}` : name;
 }
-// Two-tap confirm for irreversible actions (booking, cancelling) — replaces
-// native confirm() dialogs and instant-fire buttons with an inline "tap again"
-// state on the button itself. First tap arms it and shows armedHtml for 3s;
-// a second tap within that window proceeds. Returns true only on the second tap.
+// Two-tap confirm: an inline "tap again" state on the button itself. First
+// tap arms it and shows armedHtml for 3s; a second tap within that window
+// proceeds. Returns true only on the second tap. Book no longer uses it (JJ,
+// 2026-11-06: one tap books, and the Booked toast's Undo is the safety net);
+// destructive actions use confirmAction().
 function armTwoTap(btn, armedHtml){
   if(btn.dataset.armed === '1'){
     clearTimeout(btn._armTimer);
@@ -4505,6 +4485,17 @@ function armTwoTap(btn, armedHtml){
   }, 3000);
   return false;
 }
+
+// One tap books. While the insert is in flight the button is disabled and
+// says so, so a second tap can't book the slot twice. The re-render that
+// follows the result replaces the button.
+function markBooking(btn){
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  const label = btn.querySelector('.plus');
+  if(label) label.textContent = 'Booking...'; else btn.textContent = 'Booking...';
+}
+function isBooking(btn){ return btn.disabled || btn.getAttribute('aria-busy') === 'true'; }
 
 // ============ SEGMENTED CONTROL THUMB ============
 // Slides the pill behind whichever .mtab has .active, inside the given
@@ -4607,6 +4598,14 @@ function positionModeThumb(container){
     host.style.display = 'none';
     const kind = act.dataset.ctxAct;
     if(kind === 'directions'){ if(!await window.Native.openExternal(act.dataset.url)) window.open(act.dataset.url, '_blank', 'noopener'); }
+    else if(kind === 'favorite'){
+      toggleFavoriteField(act.dataset.fid);
+      haptic('success');
+      const name = FIELD_MAP[act.dataset.fid]?.name || 'Field';
+      flash(getFavoriteField() === act.dataset.fid ? `${name} is your favorite field.` : `${name} is no longer your favorite.`, 'ok');
+      buildFieldChips();
+      renderWelcome();
+    }
     else if(kind === 'ics'){ exportOneBookingICS(act.dataset.bid); }
     else if(kind === 'cancel'){ document.querySelector(`[data-cancel="${act.dataset.bid}"]`)?.click(); }
   });
@@ -5010,6 +5009,7 @@ async function loadProfileAndStartInner(){
   } else {
     scheduleGender = 'girls'; // admin: profile has no gender, default the schedule filter
   }
+  restoreBookAsTeam();
 
   noteVisit();
   renderChangesSinceLastVisit();
@@ -5044,6 +5044,7 @@ function teardown(){
   document.documentElement.classList.remove('role-assistant');
   // A shared phone: the next person doesn't inherit this one's Book team.
   writePref(BOOK_TEAM_KEY, null);
+  bookAsTeam = null;
   coachesShown = null;
   myProfile = null; teams = []; teamsById = {}; teamMembers = []; membersLoaded = false; bookingsCache = []; waitlistCache = []; waitlistNotified = new Set();
   el.signedInBar.style.display = 'none';
@@ -5606,9 +5607,12 @@ function switchView(view){
         document.querySelectorAll('.gtab').forEach(g => g.style.display = 'none');
         buildGradeGrid(true);
       } else {
+        // One team: the line under the Book title names it (setHeaderTitle),
+        // so there's no "Booking for" row (JJ, 2026-11-06). The banner stays
+        // only to say there's no team to book for yet.
         el.teamPicker.style.display = 'none';
-        el.lockedTeamBanner.style.display = 'block';
-        el.lockedTeamBanner.textContent = heads.length ? `Booking for: ${teamLabelOf(heads[0])}` : 'Booking for: No team yet';
+        el.lockedTeamBanner.style.display = heads.length ? 'none' : 'block';
+        el.lockedTeamBanner.textContent = heads.length ? '' : 'Booking for: No team yet';
       }
       el.pickTeamPrompt.style.display = 'none';
       buildFieldChips(); buildRecurringUI(); renderWeek();
@@ -5679,6 +5683,18 @@ function directorAwayTeams(){
   return myProfile && myProfile.role === 'director'
     ? teamsInOrder(headTeams().filter(t => t.gender !== myProfile.gender)) : [];
 }
+// Directors and admins come back to the team they last booked for on this
+// device, as coaches do, while they may still book for it (JJ, 2026-11-06).
+// Sign-out clears the saved team (teardown).
+function restoreBookAsTeam(){
+  if(!myProfile || (myProfile.role !== 'director' && myProfile.role !== 'admin')) return;
+  const saved = readPref(BOOK_TEAM_KEY), t = saved && teamsById[saved];
+  if(!t) return;
+  const bookable = myProfile.role === 'admin' || t.gender === myProfile.gender || directorAwayTeams().some(x => x.id === saved);
+  if(!bookable){ writePref(BOOK_TEAM_KEY, null); return; }
+  bookAsTeam = saved;
+  if(myProfile.role === 'admin') bookAsGender = t.gender;
+}
 function buildGradeGrid(forBooking){
   // A head coach of two or more teams picks among those, full names, and
   // always has one picked.
@@ -5717,7 +5733,7 @@ document.getElementById('genderTabs').addEventListener('click', e => {
     renderSchedule();
   } else if(currentView === 'book' && myProfile.role === 'admin'){
     bookAsGender = e.target.dataset.g;
-    if(bookAsTeam) bookAsTeam = sameTeamIn(bookAsGender, bookAsTeam);
+    if(bookAsTeam){ bookAsTeam = sameTeamIn(bookAsGender, bookAsTeam); writePref(BOOK_TEAM_KEY, bookAsTeam); }
     document.querySelectorAll('.gtab').forEach(t => t.classList.toggle('active', t===e.target));
     positionModeThumb(el.genderTabs);
     buildGradeGrid(true);
@@ -5740,6 +5756,7 @@ el.gradeGrid.addEventListener('change', e => {
     syncNativeContext();
   } else if(currentView === 'book' && (myProfile.role === 'director' || myProfile.role === 'admin')){
     bookAsTeam = id;
+    writePref(BOOK_TEAM_KEY, id);
     buildGradeGrid(true);
     applyBookTeamGate();
   }
@@ -6720,21 +6737,10 @@ function fieldDirectionsUrl(f){
   const apple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   return apple ? `https://maps.apple.com/?q=${q}` : `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
+// The field's note is a caption under the field row. Favorite and
+// Directions live in the row's More menu (fieldOptionsHTML).
 function fieldNoteHTML(f){
-  if(!f) return '';
-  const q = fieldMapQuery(f);
-  // On an iPhone the map is Apple Maps, one tap away; an embedded Google map
-  // inside the app read as a web page.
-  if(/iPhone|iPod/.test(navigator.userAgent) || window.__IS_NATIVE_APP){
-    return `${f.note ? `<p class="field-note-text" tabindex="0">${escSafe(f.note)}</p>` : ''}
-    <a class="field-map-toggle" href="${fieldDirectionsUrl(f)}" target="_blank" rel="noopener"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Directions</a>`;
-  }
-  return `${f.note ? `<p class="field-note-text" tabindex="0">${escSafe(f.note)}</p>` : ''}
-    <button class="field-map-toggle" data-mapfor="${f.id}" type="button"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Map</button>
-    <div class="field-map-box" id="mapbox-${f.id}" style="display:none">
-      <a class="field-map-directions" href="${fieldDirectionsUrl(f)}" target="_blank" rel="noopener">Get directions</a>
-      <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${q}&output=embed"></iframe>
-    </div>`;
+  return f && f.note ? `<p class="field-note-text" tabindex="0">${escSafe(f.note)}</p>` : '';
 }
 // A clamped note opens by Enter or Space too, not only by a tap.
 document.addEventListener('keydown', e => {
@@ -6744,18 +6750,31 @@ document.addEventListener('keydown', e => {
 });
 document.addEventListener('click', e => {
   const note = e.target.closest('#fieldNote .field-note-text');
-  if(note && note.scrollHeight > note.clientHeight + 1){ note.classList.add('full'); return; }
-  const btn = e.target.closest('.field-map-toggle');
-  if(!btn) return;
-  const box = document.getElementById('mapbox-' + btn.dataset.mapfor);
-  if(!box) return;
-  const showing = box.style.display !== 'none';
-  box.style.display = showing ? 'none' : 'block';
-  btn.classList.toggle('open', !showing);
+  if(note && note.scrollHeight > note.clientHeight + 1) note.classList.add('full');
 });
+// The field row's More: an action sheet, as the long-press menu on a practice.
+const MORE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M12 1.6a10.4 10.4 0 1 0 0 20.8 10.4 10.4 0 0 0 0-20.8ZM7.3 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm4.7 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm4.7 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"/></svg>';
+function fieldMoreButton(f){
+  return `<button type="button" class="field-more" data-field-more="${escSafe(f.id)}" aria-haspopup="dialog" aria-label="Field options">${MORE_ICON}</button>`;
+}
+function openFieldOptions(f){
+  const fav = getFavoriteField() === f.id;
+  const host = document.getElementById('ctxMenu');
+  haptic('light');
+  host.innerHTML = `<div class="share-backdrop" data-ctx-close></div>
+    <div class="share-sheet as-sheet" role="dialog" aria-modal="true" aria-label="Field options">
+      <div class="as-group"><div class="as-head"><h3>${escSafe(f.name)}</h3></div>
+        <button type="button" class="as-btn" data-ctx-act="favorite" data-fid="${escSafe(f.id)}">${fav ? 'Remove Favorite' : 'Make Favorite'}</button>
+        <button type="button" class="as-btn" data-ctx-act="directions" data-url="${escSafe(fieldDirectionsUrl(f))}">Directions</button>
+      </div>
+      <div class="as-group"><button type="button" class="as-btn as-cancel" data-ctx-close>Cancel</button></div>
+    </div>`;
+  host.style.display = 'flex';
+}
 
 function buildFieldChips(){
-  el.fieldChips.innerHTML = fieldMenuTrigger('book', selectedField);
+  const field = selectedField && FIELD_MAP[selectedField];
+  el.fieldChips.innerHTML = fieldMenuTrigger('book', selectedField) + (field ? fieldMoreButton(field) : '');
   el.fieldNote.innerHTML = selectedField
     ? fieldNoteHTML(FIELD_MAP[selectedField])
     : `<p class="field-note-text">${FIELDS.length} fields, each with its own days and times. Pick one to see what is open.</p>`;
@@ -6792,6 +6811,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 el.fieldChips.addEventListener('click', e => {
+  const more = e.target.closest('[data-field-more]');
+  if(more){ const f = FIELD_MAP[more.dataset.fieldMore]; if(f) openFieldOptions(f); return; }
   const starBtn = e.target.closest('.fav-star');
   if(starBtn){
     toggleFavoriteField(starBtn.dataset.favid);
@@ -6817,11 +6838,19 @@ el.nextWeek.addEventListener('click', () => {
   const next = addDays(currentWeekMonday, 7);
   if(next <= SEASON_END){ currentWeekMonday = next; renderWeek(); }
 });
+function setBookMode(mode){
+  bookViewMode = mode;
+  writePref(BOOK_MODE_KEY, mode);
+  syncBookModeToggle();
+}
+function syncBookModeToggle(){
+  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode === bookViewMode));
+  positionModeThumb(el.bookModeToggle);
+}
+syncBookModeToggle();
 el.bookModeToggle.addEventListener('click', e => {
   const btn = e.target.closest('.mtab'); if(!btn) return;
-  bookViewMode = btn.dataset.mode;
-  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
-  positionModeThumb(el.bookModeToggle);
+  setBookMode(btn.dataset.mode);
   renderWeek();
 });
 el.prevMonth.addEventListener('click', () => {
@@ -6835,16 +6864,24 @@ el.nextMonth.addEventListener('click', () => {
 attachSwipeNav(el.weekGrid,
   () => bookViewMode === 'month' ? el.prevMonth : el.prevWeek,
   () => bookViewMode === 'month' ? el.nextMonth : el.nextWeek);
-el.dateJumpInput.min = fmtDateISO(SEASON_START);
-el.dateJumpInput.max = fmtDateISO(SEASON_END);
-el.dateJumpInput.addEventListener('change', () => {
-  if(!el.dateJumpInput.value) return;
-  const picked = parseISO(el.dateJumpInput.value);
-  if(bookViewMode === 'month') currentMonthFirst = firstDayOfMonth(picked);
-  else currentWeekMonday = mondayOf(picked);
+// Today, as Calendar's: back to the week or month holding today (inside the
+// season), offered only when that isn't already showing.
+function todaysWeekMonday(){ return mondayOf(SEASON_TODAY); }
+function todaysMonthFirst(){ return firstDayOfMonth(SEASON_TODAY); }
+function syncBookToday(){
+  document.getElementById('weekToday').hidden = +currentWeekMonday === +todaysWeekMonday();
+  document.getElementById('monthToday').hidden = +firstDayOfMonth(currentMonthFirst) === +todaysMonthFirst();
+}
+document.getElementById('weekToday').addEventListener('click', () => {
+  currentWeekMonday = todaysWeekMonday();
+  bookSelectedDate = fmtDateISO(SEASON_TODAY);
   haptic('selection');
   renderWeek();
-  el.dateJumpInput.value = '';
+});
+document.getElementById('monthToday').addEventListener('click', () => {
+  currentMonthFirst = todaysMonthFirst();
+  haptic('selection');
+  renderWeek();
 });
 
 // The team the page is about: for a coach or assistant, the one My Team
@@ -6924,6 +6961,7 @@ function renderWeek(){
   }
   el.calendarSection.style.display = 'block';
   el.recurringCard.style.display = 'none';
+  syncBookToday();
 
   if(bookViewMode === 'month'){
     const start = firstDayOfMonth(currentMonthFirst) < SEASON_START ? SEASON_START : firstDayOfMonth(currentMonthFirst);
@@ -7236,9 +7274,7 @@ el.weekGrid.addEventListener('click', async e => {
     // Mobile month-grid cell tapped — jump into the normal weekly agenda for
     // that date. Reuses the exact same rendering/booking code path as the
     // Weekly tab; the grid is purely a navigation aid, never books directly.
-    bookViewMode = 'week';
-    document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode==='week'));
-    positionModeThumb(el.bookModeToggle);
+    setBookMode('week');
     currentWeekMonday = mondayOf(parseISO(jumpBtn.dataset.jumpdate));
     bookSelectedDate = jumpBtn.dataset.jumpdate;
     haptic('selection');
@@ -7278,11 +7314,11 @@ el.weekGrid.addEventListener('click', async e => {
   }
   if((bookBtn || cancelBtn) && scheduleLocked){ flash('The schedule is currently locked. No changes can be made right now.', 'err'); return; }
   if(bookBtn){
+    if(isBooking(bookBtn)) return;
     const teamId = myBookingTeamId();
     if(!teamId){ flash('Pick a team to book for first.', 'err'); return; }
-    if(!armTwoTap(bookBtn, bookBtn.classList.contains('get-pill') ? '<span class="plus">Confirm</span>' : '<span class="plus">Tap again to book</span>')) return;
     const payload = JSON.parse(bookBtn.dataset.book);
-    bookBtn.disabled = true;
+    markBooking(bookBtn);
     const { data: inserted, error } = await sb.from('bookings').insert({
       field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
       time: payload.time, team_id: teamId, booked_by: session.user.id,
@@ -7575,8 +7611,7 @@ function calEmptyText(which){
 function openBookAt(fieldId, dateISO, time){
   switchView('book');
   if(selectedField !== fieldId) selectBookField(fieldId);
-  bookViewMode = 'week';
-  document.querySelectorAll('#bookModeToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'week'));
+  setBookMode('week');
   currentWeekMonday = mondayOf(parseISO(dateISO));
   bookSelectedDate = dateISO;
   renderWeek();
@@ -7971,7 +8006,8 @@ function renderOpenWeek(){
   buildOpenWeekFieldChips();
   buildFinderChips();
   const teamId = myBookingTeamId();
-  if(teamId){
+  // A coach with one team sees it under the title already (as on Book).
+  if(teamId && !(myProfile.role === 'coach' && headTeams().length === 1)){
     el.openWeekBookingAs.textContent = teamsById[teamId] ? `Booking as: ${teamLabelById(teamId)}` : '';
   } else {
     el.openWeekBookingAs.textContent = '';
@@ -8170,7 +8206,7 @@ function clashingBooking(payload, teamId){
 }
 el.openWeekResults.addEventListener('click', async e => {
   const bookBtn = e.target.closest('[data-book]');
-  if(!bookBtn) return;
+  if(!bookBtn || isBooking(bookBtn)) return;
   if(scheduleLocked){ flash('The schedule is currently locked. No bookings can be made right now.', 'err'); return; }
   const payload = JSON.parse(bookBtn.dataset.book);
   const teamId = myBookingTeamId();
@@ -8182,9 +8218,8 @@ el.openWeekResults.addEventListener('click', async e => {
     flash('Your team already practices ' + formatSlotTime(clash.time) + ' at ' + where + ' that day. Tap Book again to add this one too.', 'warn');
     return;
   }
-  // The same two-step as Book (the App Store's GET, then Confirm).
-  if(bookBtn.classList.contains('get-pill') && !armTwoTap(bookBtn, '<span class="plus">Confirm</span>')) return;
-  bookBtn.disabled = true;
+  // One tap books, as on Book; the clash warning above is the only second tap.
+  markBooking(bookBtn);
   const { data: inserted, error } = await sb.from('bookings').insert({
     field_id: payload.fieldId, date: payload.date, subfield: payload.subfield,
     time: payload.time, team_id: teamId, booked_by: session.user.id,

@@ -1223,6 +1223,8 @@
   .ladder-row.done { opacity: .75; }
   .ladder-row.done .ladder-dot { background: var(--chip-bg); color: var(--text-strong); }
   .ladder-row.blocking { background: var(--card-2); font-weight: 600; }
+  /* The banner is --cell-bg too: a hairline keeps each row's edge. */
+  .priority-locked-banner .ladder-row { box-shadow: inset 0 0 0 1px var(--line); }
   /* Choosing now is not an error: red is for destructive actions only. */
   .ladder-row.blocking .ladder-dot { background: var(--ink); color: var(--chalk); }
   .ladder-row.blocking .ladder-note { color: var(--ink); }
@@ -6722,16 +6724,22 @@ function fieldNoteHTML(f){
   // On an iPhone the map is Apple Maps, one tap away; an embedded Google map
   // inside the app read as a web page.
   if(/iPhone|iPod/.test(navigator.userAgent) || window.__IS_NATIVE_APP){
-    return `${f.note ? `<p class="field-note-text">${escSafe(f.note)}</p>` : ''}
+    return `${f.note ? `<p class="field-note-text" tabindex="0">${escSafe(f.note)}</p>` : ''}
     <a class="field-map-toggle" href="${fieldDirectionsUrl(f)}" target="_blank" rel="noopener"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Directions</a>`;
   }
-  return `${f.note ? `<p class="field-note-text">${escSafe(f.note)}</p>` : ''}
+  return `${f.note ? `<p class="field-note-text" tabindex="0">${escSafe(f.note)}</p>` : ''}
     <button class="field-map-toggle" data-mapfor="${f.id}" type="button"><svg class="inline-icon"viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.8a7.4 7.4 0 0 0-7.4 7.4c0 5.2 6.1 11.9 6.36 12.18a1.4 1.4 0 0 0 2.08 0C13.3 21.1 19.4 14.4 19.4 9.2A7.4 7.4 0 0 0 12 1.8Zm0 4.9a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2Z"/></svg> Map</button>
     <div class="field-map-box" id="mapbox-${f.id}" style="display:none">
       <a class="field-map-directions" href="${fieldDirectionsUrl(f)}" target="_blank" rel="noopener">Get directions</a>
       <iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=${q}&output=embed"></iframe>
     </div>`;
 }
+// A clamped note opens by Enter or Space too, not only by a tap.
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  const note = e.target.closest && e.target.closest('#fieldNote .field-note-text');
+  if(note && note.scrollHeight > note.clientHeight + 1){ e.preventDefault(); note.classList.add('full'); }
+});
 document.addEventListener('click', e => {
   const note = e.target.closest('#fieldNote .field-note-text');
   if(note && note.scrollHeight > note.clientHeight + 1){ note.classList.add('full'); return; }

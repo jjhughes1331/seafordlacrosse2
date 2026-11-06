@@ -123,3 +123,10 @@ scratchpad; the rules it produced are below.
   tab; Calendar opens on the month on phones (it opened on a 16,000px list)
   with Taken / Open / Mine and a Fields sheet; the day list stacks start over
   end time in a fixed column so every title aligns.
+- 2026-11-06 — visual audit (docs/audits/2026-11-06-visual-audit.md, JJ
+  approved all 8): Book on a phone shows slots on the first screen (Get Set
+  Up folds below them), Admin panes sit in the page container, `--mine-text`
+  is the gold for text (4.5:1 in both themes; `--mine` stays for fills and
+  outlines), the priority gate is a neutral card (red is destructive only),
+  booking toasts name the site and day, the older Admin panes and the Season
+  card use the inset grouped grammar, and desktop tab labels match the phone.

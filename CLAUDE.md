@@ -192,7 +192,9 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
   pills (Book -> Confirm via `armTwoTap`). Desktop keeps the week agenda
 - The tab bar's shape, order and labels are JJ's — do not change them. The
   order is **Book, Find a Time, Calendar, My Team** (JJ, 2026-09-23: the order
-  a coach works in). First launch opens on Book, then the last tab is restored
+  a coach works in). First launch opens on Book, then the last tab is restored.
+  The labels are the same on phone and desktop (JJ, 2026-11-06): a tab's text
+  matches its `data-short`
 - **Calendar tab** = the month (Taken / Open / Mine, and a Fields sheet with
   any combination of fields); the list is its bar button. The Next Practice
   hero is on My Team, the setup checklist on Book

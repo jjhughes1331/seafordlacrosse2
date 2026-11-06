@@ -2796,11 +2796,11 @@
     <span class="view-tabs-thumb" id="viewTabsThumb"></span>
     <!-- JJ, 2026-09-23: the order a coach works in. Book and Find a Time
          are how they get practices; Calendar and My Team are how they check. -->
-    <button class="view-tab active" data-view="book" data-short="Book">Book A Practice Time</button>
-    <button class="view-tab" data-view="openweek" data-short="Find a Time">Find an Open Time</button>
+    <button class="view-tab active" data-view="book" data-short="Book">Book</button>
+    <button class="view-tab" data-view="openweek" data-short="Find a Time">Find a Time</button>
     <button class="view-tab" data-view="schedule" data-short="Calendar">Calendar</button>
-    <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team's Practices</button>
-    <button class="view-tab" data-view="league" id="leagueTab" data-short="League" style="display:none">League Overview</button>
+    <button class="view-tab" data-view="myteam" id="myTeamTab" data-short="My Team" style="display:none">My Team</button>
+    <button class="view-tab" data-view="league" id="leagueTab" data-short="League" style="display:none">League</button>
     <button class="view-tab" data-view="admin" id="adminTab" data-short="Admin" style="display:none">Admin</button>
   </nav>
 </header>
@@ -4885,7 +4885,7 @@ async function loadProfileAndStartInner(){
 
   if(onATeam()){
     // The Calendar tab opens on the whole program's calendar. A coach's own
-    // practices live in My Team's Practices, so narrowing this view to their
+    // practices live in My Team, so narrowing this view to their
     // team just duplicated that tab and made this one's name untrue.
     scheduleGender = myProfile.gender;
     scheduleTeam = null;

@@ -142,7 +142,8 @@
   window.__fixtureStore = store;
 
   const match = (row, filters) => filters.every(([k, op, v]) =>
-    op === 'eq' ? row[k] === v : op === 'neq' ? row[k] !== v : op === 'in' ? v.includes(row[k]) : true);
+    op === 'eq' ? row[k] === v : op === 'neq' ? row[k] !== v : op === 'in' ? v.includes(row[k])
+    : op === 'notis' ? !(v === null ? row[k] == null : row[k] === v) : true);
 
   function from(table){
     let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false, conflict = 'id';
@@ -203,6 +204,8 @@
       eq(k, v){ filters.push([k, 'eq', v]); return api; },
       neq(k, v){ filters.push([k, 'neq', v]); return api; },
       in(k, v){ filters.push([k, 'in', v]); return api; },
+      // .not(col, 'is', null): the priority reset's "every team" filter.
+      not(k, o, v){ if(o === 'is') filters.push([k, 'notis', v]); return api; },
       order(col, o){ orderBy = [col, !(o && o.ascending === false)]; return api; }, limit(n){ lim = n; return api; }, like(){ return api; },
       single(){ wantSingle = true; return api; },
       maybeSingle(){ wantSingle = true; maybe = true; return api; },
@@ -666,6 +669,9 @@
 
   body { font: -apple-system-body; font-family: var(--font-body); font-size: var(--fs-base); color: var(--ink); background: var(--chalk); line-height: 1.5; -webkit-font-smoothing: antialiased; }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 80px; }
+  /* Form controls don't inherit the font; without this Chromium draws every
+     button, menu and field in Arial. */
+  button, select, input, textarea { font-family: inherit; }
   a { color: var(--turf); }
   button, .fchip, .mtab, .gcard, .daytoggle, .cal-slot.empty, .book-slot, .allbtn, .btn-primary, .view-tab {
     transition: background-color .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease), transform .1s var(--ease), box-shadow .14s var(--ease);
@@ -737,7 +743,8 @@
     padding: 10px 12px; border-radius: var(--radius-chip); cursor: pointer; width: 100%;
   }
   .hamburger-menu button:hover { background: var(--chip-bg); }
-  .activity-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .activity-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0; border-bottom: .5px solid var(--sep); }
+  .activity-row:last-child { border-bottom: none; }
   .activity-what { font-weight: 600; color: var(--ink); font-size: var(--fs-sm); }
   .activity-who { color: var(--muted); font-size: var(--fs-xs); grid-column: 1; }
   .activity-when { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; grid-row: 1; grid-column: 2; }
@@ -810,7 +817,7 @@
   .field input { width: 100%; min-height: 44px; padding: 12px 14px; border: 1px solid transparent; background: var(--card-2); color: var(--ink); border-radius: var(--radius-chip); font-size: 16px; font-family: inherit; }
   .field input::placeholder, input::placeholder { color: var(--muted); opacity: 1; }
   .field input:focus { outline: none; border-color: var(--accent-fill); background: var(--card); }
-  .btn-primary { width: 100%; background: var(--accent-fill); color: var(--on-accent); border: none; padding: 12px; border-radius: var(--radius-chip); font-size: var(--fs-md); font-weight: 600; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
+  .btn-primary { width: 100%; min-height: 44px; background: var(--accent-fill); color: var(--on-accent); border: none; padding: 12px 20px; border-radius: var(--radius-pill); font-family: inherit; font-size: var(--ios-body); font-weight: 600; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
   .btn-primary:hover { background: var(--turf); }
   .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
   .link-btn { background: none; border: none; color: var(--turf); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; margin-top: 14px; text-decoration: underline; }
@@ -862,21 +869,15 @@
     display: inline-flex; align-items: center; gap: 6px; background: var(--chip-bg); color: var(--text-strong);
     font-weight: 600; font-size: var(--fs-sm); padding: 10px 16px; border-radius: var(--radius-chip);
   }
-  .priority-tier-status { display: flex; flex-direction: column; gap: 6px; }
-  .priority-tier-row {
-    display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;
-    border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 600; background: var(--chalk); color: var(--muted);
-  }
-  .priority-tier-row.active { background: var(--chip-bg); color: var(--text-strong); }
-  .priority-tier-row.done { background: var(--chip-bg); color: var(--text-strong); opacity: .75; }
-  .priority-tier-row.waiting { background: var(--chalk); color: var(--muted); }
-  .priority-tier-row.forced { background: var(--mine-bg); color: var(--mine-deep); }
+  .ios-row.priority-tier-row { cursor: default; }
+  .ios-row.priority-tier-row:active { background: none; }
+  .priority-tier-row.active .ios-value { color: var(--text-strong); font-weight: 600; }
 
   /* ===== Schedule view ===== */
   .toolbar { max-width: 1000px; margin: 20px auto 0; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); }
   .now-showing { font-size: var(--fs-lg); font-weight: 600; color: var(--ink); }
   .now-showing .tag { color: var(--text-strong); }
-  .allbtn { margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
+  .allbtn { margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line); background:var(--card); color: var(--muted); padding: 8px 16px; border-radius: var(--radius-pill); font-family: inherit; font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
   .allbtn:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .count { color: var(--muted); font-size: var(--fs-sm); margin: 12px 0 16px; }
   .count b { color: var(--ink); }
@@ -995,9 +996,15 @@
   }
   .mtab:hover, .gtab:hover { color: var(--hover-edge); }
   .mtab.active, .gtab.active, .mtab.active:hover, .gtab.active:hover { color: var(--ink); font-weight: 600; }
-  .recurring-card { max-width: 1000px; margin: 24px auto 0; padding: 18px 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
-  .recurring-card h3 { font-family: var(--font-body); color: var(--text-strong); font-size: var(--fs-md); margin-bottom: 4px; font-weight: 600; }
-  .recurring-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 14px; }
+  .recurring-card { max-width: 1000px; margin: 8px auto 0; }
+  .recurring-card .ios-group-footer b { font-weight: 600; color: var(--ink); }
+  /* Seven days across one row: no row inset, so each day keeps a 44pt width at 375. */
+  .ios-row.recurring-days-row { padding: 6px 8px; cursor: default; }
+  .ios-row.recurring-days-row:active { background: none; }
+  .recurring-card .recurring-days { flex: 1; display: flex; gap: 2px; flex-wrap: nowrap; margin: 0; }
+  .recurring-card .daytoggle { flex: 1 1 0; min-width: 0; padding: 8px 0; border-radius: var(--radius-pill); font-size: var(--ios-sub); }
+  .recurring-card .daytoggle:not(.active) { background: none; }
+  .ios-value.recurring-miss { color: var(--danger); }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   /* Compact month overview (mobile Book view) — a real calendar grid, never an
      agenda list, unlike .cal-grid which intentionally collapses to a list at
@@ -1357,7 +1364,7 @@
   .waitlist-btn.on { border-style: solid; background: var(--mine-bg); }
   .usage-section { margin-bottom: 20px; }
   .usage-section:last-child { margin-bottom: 0; }
-  .usage-section h4 { font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .5px; }
+  .usage-section h4 { font-size: var(--ios-sub); font-weight: 600; color: var(--text-strong); margin-bottom: 10px; }
   .usage-row { display: grid; grid-template-columns: 140px 1fr 110px; gap: 10px; align-items: center; margin-bottom: 6px; }
   .usage-label { font-size: var(--fs-xs); font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .usage-track { background: var(--line); border-radius: var(--radius-chip); height: 10px; overflow: hidden; }
@@ -1386,45 +1393,46 @@
   .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
 
   /* ===== Admin view ===== */
-  .admin-card { max-width: 1000px; margin: 20px auto 0; padding: 20px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); }
-  /* Section dividers between groups of admin cards — bigger/bolder than the
-     .section-label used inside a single card, so groups actually read as
-     distinct zones instead of one undifferentiated stack. */
+  /* Admin content that isn't a list (the people table, reports) sits on the
+     same inset grouped surface as the lists: no border, no shadow. */
+  .admin-card { margin: 0 0 24px; padding: 16px 20px 20px; background: var(--cell-bg); border: none; border-radius: var(--group-radius); box-shadow: none; }
+  /* A pane's title, title case like every other header in the app. */
   .admin-section-label {
-    max-width: 1000px; margin: 32px auto 10px; padding: 0 4px;
-    font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--muted);
+    max-width: 1000px; margin: 32px auto 12px; padding: 0 4px;
+    font-size: var(--ios-title3); font-weight: 600; color: var(--ink);
   }
   .admin-section-label:first-child { margin-top: 0; }
-  .admin-section-label.danger { color: var(--danger); }
-  .admin-card-danger { border-color: var(--danger); }
+  .pane-intro { margin: 0 4px 16px; color: var(--muted); font-size: var(--ios-sub); line-height: 1.4; }
+  .pane-intro:empty { display: none; }
+  /* A save or delete result under a group, in the footer's place. */
+  .admin-status { margin: -16px 20px 24px; font-size: var(--ios-foot); line-height: 1.35; color: var(--muted); }
+  .admin-status:empty { display: none; }
   .admin-card-collapsible summary {
-    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px;
   }
   .admin-card-collapsible summary::-webkit-details-marker { display: none; }
   .admin-card-collapsible summary h3 { margin: 0; }
-  .admin-card-collapsible summary::after {
-    content: ''; width: 9px; height: 9px; margin-left: auto; flex: none;
-    border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
-    transform: rotate(-45deg); transition: transform .2s var(--ease);
-  }
-  .admin-card-collapsible[open] summary::after { transform: rotate(45deg); }
-  .admin-card-collapsible .hint { margin-top: 12px; }
-  .admin-card h3 { font-family: var(--font-body); color: var(--text-strong); font-size: var(--fs-lg); margin-bottom: 4px; font-weight: 600; }
-  .admin-card-danger h3 { color: var(--danger); }
-  /* The danger card borrows .invite-form for its layout and so silently
-     inherited that form's green primary button, which made 'permanently
-     delete this team's bookings' look exactly like 'send invite'. On this
-     screen the only thing that should shout is the thing you can't undo. */
-  .admin-card-danger .invite-form button { background: var(--card); color: var(--danger); border: 1.5px solid var(--danger); }
-  .admin-card-danger .invite-form button:hover:not(:disabled) { background: var(--danger); color: #fff; }
-  .admin-card-danger .invite-form button.armed { background: var(--danger); color: #fff; border-color: var(--danger); }
-  .admin-card p.hint { color: var(--muted); font-size: var(--fs-sm); margin-bottom: 16px; }
+  .admin-card-collapsible summary .row-chevron { width: 14px; height: 14px; margin-left: auto; flex: none; color: var(--silver-deep); }
+  .admin-card-collapsible[open] summary .row-chevron { transform: rotate(90deg); }
+  .admin-card-collapsible .hint { margin-top: 8px; }
+  .admin-card h3 { font-family: var(--font-body); color: var(--ink); font-size: var(--ios-title3); margin-bottom: 4px; font-weight: 600; }
+  .admin-card p.hint { color: var(--muted); font-size: var(--ios-sub); margin-bottom: 16px; }
+  #activityFilter { margin: 4px 0 12px; }
+  #activityFilter .mtab { white-space: nowrap; }
+  /* Grouped rows over native pickers and fields (Danger, Invite, Season). */
+  .ios-select-row > span:first-child { flex: none; }
+  .ios-select-row .ios-value { min-width: 0; }
+  .ios-select-row .sel-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ios-select-row:has(select:focus-visible) { outline: 2px solid var(--accent-fill); outline-offset: -2px; }
+  .ios-row.ios-destructive:disabled { opacity: .5; cursor: default; }
+  .invite-pane .ios-field > span { width: 104px; }
+  .invite-pane .ios-field { padding-top: 4px; padding-bottom: 4px; }   /* a 52pt row with a 44pt field */
+  .invite-pane .ios-field input { min-height: 44px; }
   .invite-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
   .invite-form .field { margin-bottom: 0; flex: 1 1 220px; }
   .invite-form .bulk-file-field { flex-basis: 260px; }
   .invite-form select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: var(--fs-base); background: var(--card); }
-  .invite-form button { background: var(--accent-fill); color: var(--on-accent); border: none; padding: 12px 20px; border-radius: var(--radius-chip); font-size: var(--fs-base); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .invite-form button { background: var(--accent-fill); color: var(--on-accent); border: none; padding: 12px 20px; border-radius: var(--radius-pill); font-size: var(--fs-base); font-weight: 600; cursor: pointer; white-space: nowrap; }
   .invite-form button:hover { background: var(--turf); }
   .invite-form button:disabled { opacity: .5; cursor: not-allowed; }
   /* Per-user actions live in a row that opens *under* the user's row rather
@@ -2341,7 +2349,7 @@
     .league-filters #leagueGenderToggle { flex: 0 0 auto; width: auto !important; margin: 0; }
     .league-filters #leagueGenderToggle .mtab { flex: 0 0 auto; padding: 4px 12px; }
     .league-filters .league-team-pick { flex: 1; min-width: 0; margin: 0; padding: 0; max-width: none; }
-    .league-filters .grade-select { min-height: 36px; width: 100%; }
+    .league-filters .grade-select { min-height: 44px; width: 100%; }
   }
 
   @media (max-width: 700px) {
@@ -2942,15 +2950,18 @@
     <div id="weekGrid"></div>
   </div>
 
+  <!-- Season: Book's grouped-list grammar. Days, then a time, then one action. -->
   <div class="recurring-card" id="recurringCard" style="display:none">
-    <h3>Book for the season</h3>
-    <p class="hint">Pick one or more days of the week and a time slot at <b id="recurringFieldName"></b> every matching open date from now through the end of the season gets booked in one go.</p>
-    <div class="recurring-days" id="recurringDays"></div>
-    <div class="field" style="max-width:360px">
-      <label>Time slot</label>
-      <select id="recurringSlotSelect"><option value="">Pick day(s) first</option></select>
+    <p class="ios-group-header">Book for the Season</p>
+    <div class="ios-group">
+      <div class="ios-row recurring-days-row"><div class="recurring-days" id="recurringDays" role="group" aria-label="Days"></div></div>
+      <label class="ios-row ios-select-row"><span>Time</span>
+        <span class="ios-value"><span class="sel-text" data-select-text>Pick days first</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+        <select id="recurringSlotSelect" aria-label="Time"><option value="">Pick days first</option></select>
+      </label>
+      <button type="button" class="ios-row ios-action" id="recurringBookBtn" disabled>Book This Pattern</button>
     </div>
-    <button class="allbtn" style="width:auto;padding:12px 20px" id="recurringBookBtn" disabled>Book this pattern</button>
+    <p class="ios-group-footer">Pick one or more days and a time at <b id="recurringFieldName"></b>. Every matching open date from now through the end of the season gets booked in one go.</p>
     <div id="recurringResults"></div>
   </div>
   <!-- Book is where a coach lands first, so the setup checklist lives here,
@@ -3060,61 +3071,54 @@
 
       </table>
     </div></div></div>
-    <div data-peoplepane="invite" hidden><div class="admin-card">
-    <h3 id="adminHeading">Invite a coach</h3>
-    <p class="hint" id="adminHint"></p>
-    <div class="mode-toggle" id="inviteModeToggle" style="margin:0 0 14px">
-      <span class="mode-toggle-thumb"></span>
-      <button class="mtab active" data-mode="email">Email invite</button>
-      <button class="mtab" data-mode="password">Create with password</button>
-    </div>
-    <p class="hint" id="inviteModeHint">They'll get an email with a link to set their own password.</p>
-    <div class="invite-form">
-      <div class="field" id="inviteRoleField" style="display:none">
-        <label>Invite as</label>
-        <select id="inviteRoleSelect">
-          <option value="coach">Head coach</option>
-          <option value="assistant">Assistant coach (view only)</option>
+    <!-- One segmented control (Users / Invite / Bulk) under the pane's; how
+         the person signs in is a checkmark list, not a third control. -->
+    <div data-peoplepane="invite" hidden><div class="invite-pane">
+    <p class="pane-intro" id="adminHint"></p>
+    <p class="ios-group-header" id="adminHeading">Invite a Coach</p>
+    <div class="ios-group">
+      <label class="ios-row ios-select-row" id="inviteRoleField" style="display:none"><span>Invite As</span>
+        <span class="ios-value"><span class="sel-text" data-select-text>Head Coach</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+        <select id="inviteRoleSelect" aria-label="Invite as">
+          <option value="coach">Head Coach</option>
+          <option value="assistant">Assistant Coach (View Only)</option>
           <option value="director">Director</option>
         </select>
-      </div>
-      <div class="field">
-        <label>First name</label>
-        <input type="text" id="inviteFirstName" placeholder="Dana" autocomplete="given-name">
-      </div>
-      <div class="field">
-        <label>Last name</label>
-        <input type="text" id="inviteLastName" placeholder="Mcloughlin" autocomplete="family-name">
-      </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="inviteEmail" placeholder="name@example.com">
-      </div>
-      <div class="field" id="inviteGenderField" style="display:none">
-        <label>Gender</label>
-        <select id="inviteGenderSelect">
+      </label>
+      <label class="ios-row ios-field"><span>First Name</span><input type="text" id="inviteFirstName" placeholder="Dana" autocomplete="given-name"></label>
+      <label class="ios-row ios-field"><span>Last Name</span><input type="text" id="inviteLastName" placeholder="Mcloughlin" autocomplete="family-name"></label>
+      <label class="ios-row ios-field"><span>Email</span><input type="email" id="inviteEmail" placeholder="name@example.com" autocomplete="off"></label>
+      <label class="ios-row ios-select-row" id="inviteGenderField" style="display:none"><span>Program</span>
+        <span class="ios-value"><span class="sel-text" data-select-text>Girls</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+        <select id="inviteGenderSelect" aria-label="Program">
           <option value="girls">Girls</option>
           <option value="boys">Boys</option>
         </select>
-      </div>
-      <div class="field" id="inviteTeamField">
-        <label>Team</label>
-        <select id="inviteGrade"></select>
-      </div>
-      <div class="field" id="invitePasswordField" style="display:none">
-        <label>Password</label>
-        <div style="display:flex;gap:6px">
-          <input type="text" id="invitePassword" placeholder="At least 8 characters" autocomplete="new-password" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius-chip);font-size:var(--fs-base)">
-          <button type="button" id="inviteGenPasswordBtn" class="allbtn" style="white-space:nowrap">Generate</button>
-        </div>
-      </div>
-      <button id="inviteBtn">Send invite</button>
+      </label>
+      <label class="ios-row ios-select-row" id="inviteTeamField"><span>Team</span>
+        <span class="ios-value"><span class="sel-text" data-select-text></span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+        <select id="inviteGrade" aria-label="Team"></select>
+      </label>
     </div>
-    <div class="status" id="inviteStatus"></div>
-    
+    <p class="ios-group-header">How They Sign In</p>
+    <div class="ios-group" id="inviteModeToggle" role="radiogroup" aria-label="How they sign in">
+      <button type="button" class="ios-row nf-row" role="radio" aria-checked="true" data-mode="email"><span>Email Invite</span><span class="nf-check on" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m5.5 12.5 4.2 4.2L18.5 7.8"/></svg></span></button>
+      <button type="button" class="ios-row nf-row" role="radio" aria-checked="false" data-mode="password"><span>Create with Password</span><span class="nf-check" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m5.5 12.5 4.2 4.2L18.5 7.8"/></svg></span></button>
+    </div>
+    <p class="ios-group-footer" id="inviteModeHint">They&rsquo;ll get an email with a link to set their own password.</p>
+    <div id="invitePasswordField" style="display:none">
+      <div class="ios-group">
+        <label class="ios-row ios-field"><span>Password</span><input type="text" id="invitePassword" placeholder="At least 8 characters" autocomplete="new-password" spellcheck="false"></label>
+        <button type="button" id="inviteGenPasswordBtn" class="ios-row ios-action">Generate a New Password</button>
+      </div>
+    </div>
+    <div class="ios-group">
+      <button type="button" id="inviteBtn" class="ios-row ios-action">Send Invite</button>
+    </div>
+    <div class="admin-status" id="inviteStatus"></div>
   </div></div>
-    <div data-peoplepane="bulk" hidden><div class="admin-card" style="margin-top:16px">
-    <h3>Bulk invite from spreadsheet</h3>
+    <div data-peoplepane="bulk" hidden><div class="admin-card">
+    <h3>Bulk Invite from a Spreadsheet</h3>
     <p class="hint">Upload an Excel file with columns <b>Name, Email, Gender, Grade</b>. Name can be one column or separate <b>First Name</b> / <b>Last Name</b> columns. For a grade split into two teams, add a <b>Team</b> column (Green, White).
       <a href="coach-roster-template.xlsx" download class="template-link" style="color:var(--turf);font-weight:700">Download the template</a>.
       Directors can only upload coaches for their own gender; other rows are skipped.
@@ -3124,7 +3128,7 @@
         <label>Spreadsheet file</label>
         <input type="file" id="bulkFileInput" accept=".xlsx,.xls">
       </div>
-      <button id="bulkUploadBtn">Process file</button>
+      <button id="bulkUploadBtn">Process File</button>
     </div>
     <div id="bulkResults"></div>
   </div>
@@ -3143,60 +3147,73 @@
     <input type="file" id="leagueFile" accept=".xlsx" hidden>
   </div>
   <div class="admin-pane wrap" data-adminpane="booking" hidden>
-<p class="admin-section-label" id="bookingControlsLabel">Booking controls</p>
-  <div class="admin-card" id="scheduleLockCard">
-    <h3>Schedule lock</h3>
-    <p class="hint" id="lockHint">When locked, nobody (including admins and directors) can book or cancel anything until it's unlocked again.</p>
-    <button class="allbtn" id="lockToggleBtn" style="width:auto;padding:12px 20px"></button>
+<p class="admin-section-label" id="bookingControlsLabel">Booking Controls</p>
+  <p class="pane-intro" id="bookingAdminOnlyNote" hidden>Only an admin can lock the schedule or turn priority booking on and off.</p>
+  <!-- Settings grammar: each control is a switch row whose state reads at a
+       glance, with what it does in the footer. -->
+  <div id="scheduleLockCard">
+    <div class="ios-group">
+      <label class="ios-row switch-row">
+        <span class="switch-text">Schedule Locked</span>
+        <input type="checkbox" class="ios-switch" id="lockToggleBtn" role="switch">
+      </label>
+    </div>
+    <p class="ios-group-footer" id="lockHint">When locked, nobody (including admins and directors) can book or cancel anything until it is unlocked again.</p>
   </div>
 
-  <div class="admin-card" style="margin-top:16px" id="priorityBookingCard">
-    <h3>Priority booking (grade hierarchy)</h3>
-    <p class="hint">When on, teams can only book once every older grade has finished: 6th grade first, then 5th, and so on down to Kindergarten, combined across both genders (all 6th grade teams must finish before any 5th grade team unlocks). Each team's coach/director clicks "Finished booking" from the Book tab once their team is done for the season.</p>
-    <button class="allbtn" id="priorityToggleBtn" style="width:auto;padding:12px 20px"></button>
+  <div id="priorityBookingCard">
+    <div class="ios-group">
+      <label class="ios-row switch-row">
+        <span class="switch-text">Priority Booking<small>Oldest grade books first</small></span>
+        <input type="checkbox" class="ios-switch" id="priorityToggleBtn" role="switch">
+      </label>
+      <button type="button" class="ios-row ios-action" id="priorityResetBtn">Reset Finished Teams</button>
+    </div>
+    <p class="ios-group-footer">When on, teams can only book once every older grade has finished: 6th grade first, then 5th, and so on down to Kindergarten, across both programs (all 6th grade teams finish before any 5th grade team unlocks). Each team&rsquo;s coach or director taps Finished booking on Book once their team is done for the season. Reset Finished Teams starts the ladder over and clears any overrides.</p>
     <div id="priorityTierStatus" class="priority-tier-status"></div>
-    <button class="allbtn" id="priorityForceAdvanceBtn" style="margin-top:12px;display:none"></button>
-    <p class="hint" id="priorityForceHint" style="margin-top:8px"></p>
-    <button class="allbtn" id="priorityResetBtn" style="margin-top:12px">Reset all teams' finished &amp; overrides</button>
+    <div id="priorityForceGroup" hidden>
+      <div class="ios-group">
+        <button type="button" class="ios-row ios-action" id="priorityForceAdvanceBtn"></button>
+      </div>
+      <p class="ios-group-footer" id="priorityForceHint"></p>
+    </div>
   </div>
 
-  
+
   </div>
 
   <div class="admin-pane wrap" data-adminpane="danger" hidden>
-<p class="admin-section-label danger">Danger zone</p>
-  <div class="admin-card admin-card-danger">
-    <h3>Clear bookings</h3>
-    <p class="hint">This permanently deletes bookings and cannot be undone.</p>
-
-    <p class="section-label" style="margin-bottom:8px">Clear by team</p>
-    <div class="invite-form">
-      <div class="field" id="clearGenderField" style="display:none">
-        <label>Gender</label>
-        <select id="clearGenderSelect">
-          <option value="girls">Girls</option>
-          <option value="boys">Boys</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Team</label>
-        <select id="clearTeamSelect"></select>
-      </div>
-      <button id="clearTeamBtn">Clear this team</button>
-    </div>
-    <div id="clearTeamStatus" style="margin-bottom:20px"></div>
-
-    <p class="section-label" style="margin-bottom:8px">Clear by field</p>
-    <p class="hint" id="clearFieldHint" style="margin-top:-6px"></p>
-    <div class="invite-form">
-      <div class="field">
-        <label>Field</label>
-        <select id="clearFieldSelect"></select>
-      </div>
-      <button id="clearFieldBtn">Clear this field</button>
-    </div>
-    <div id="clearFieldStatus"></div>
+<p class="admin-section-label">Danger Zone</p>
+  <!-- Nothing is chosen until you choose it: a delete never starts on a real
+       team or field. Each Clear goes through confirmAction(). -->
+  <p class="ios-group-header">Clear by Team</p>
+  <div class="ios-group">
+    <label class="ios-row ios-select-row" id="clearGenderField" style="display:none"><span>Program</span>
+      <span class="ios-value"><span class="sel-text" data-select-text>Girls</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+      <select id="clearGenderSelect" aria-label="Program">
+        <option value="girls">Girls</option>
+        <option value="boys">Boys</option>
+      </select>
+    </label>
+    <label class="ios-row ios-select-row"><span>Team</span>
+      <span class="ios-value"><span class="sel-text" data-select-text>Choose a team</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+      <select id="clearTeamSelect" aria-label="Team"></select>
+    </label>
+    <button type="button" class="ios-row ios-destructive" id="clearTeamBtn" disabled>Clear This Team&rsquo;s Bookings</button>
   </div>
+  <p class="ios-group-footer">Deletes every booking the team has. This cannot be undone.</p>
+  <div class="admin-status" id="clearTeamStatus"></div>
+
+  <p class="ios-group-header">Clear by Field</p>
+  <div class="ios-group">
+    <label class="ios-row ios-select-row"><span>Field</span>
+      <span class="ios-value"><span class="sel-text" data-select-text>Choose a field</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+      <select id="clearFieldSelect" aria-label="Field"></select>
+    </label>
+    <button type="button" class="ios-row ios-destructive" id="clearFieldBtn" disabled>Clear This Field&rsquo;s Bookings</button>
+  </div>
+  <p class="ios-group-footer">Deletes every booking at the site, on all of its fields. This cannot be undone. <span id="clearFieldHint"></span></p>
+  <div class="admin-status" id="clearFieldStatus"></div>
 
   
   </div>
@@ -3204,13 +3221,19 @@
   <div class="admin-pane wrap" data-adminpane="reports" hidden>
 <p class="admin-section-label">Reports</p>
   <details class="admin-card admin-card-collapsible" id="activityCard" open>
-    <summary><h3>Activity</h3></summary>
+    <summary><h3>Activity</h3><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></summary>
     <p class="hint">Every booking, cancellation and waitlist change, recorded by the database itself rather than by the app.</p>
-    <div class="field-chips" id="activityFilter" style="margin-bottom:12px"></div>
+    <div class="mode-toggle" id="activityFilter" role="group" aria-label="Show">
+      <span class="mode-toggle-thumb"></span>
+      <button type="button" class="mtab active" data-activity="all">All</button>
+      <button type="button" class="mtab" data-activity="booked">Booked</button>
+      <button type="button" class="mtab" data-activity="cancelled">Cancelled</button>
+      <button type="button" class="mtab" data-activity="waitlist">Waitlist</button>
+    </div>
     <div id="activityList"></div>
   </details>
   <details class="admin-card admin-card-collapsible" id="usageDashboardCard">
-    <summary><h3>Usage &amp; analytics</h3></summary>
+    <summary><h3>Usage &amp; Analytics</h3><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></summary>
     <p class="hint" id="usageHint"></p>
     <div id="usageDashboard"></div>
   </details>
@@ -3454,6 +3477,14 @@ const el = {
 const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2a.8.8 0 0 1 .72.45l2.5 5.06 5.59.81a.8.8 0 0 1 .44 1.37l-4.04 3.94.95 5.57a.8.8 0 0 1-1.16.84L12 17.6l-5 2.63a.8.8 0 0 1-1.16-.84l.95-5.57-4.04-3.94a.8.8 0 0 1 .44-1.37l5.59-.81 2.5-5.06A.8.8 0 0 1 12 2.2Z"/></svg>';
 const CHEVRON_SVG = '<svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg>';
 const XMARK_CIRCLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm3.54 12.13a1 1 0 0 1-1.41 1.41L12 13.41l-2.13 2.13a1 1 0 0 1-1.41-1.41L10.59 12 8.46 9.87a1 1 0 0 1 1.41-1.41L12 10.59l2.13-2.13a1 1 0 0 1 1.41 1.41L13.41 12l2.13 2.13Z"/></svg>';
+// A grouped row over a native <select> (.ios-select-row) shows the chosen
+// option's text in its [data-select-text] value. Call after setting .value or
+// rebuilding the options in code; a person's own pick is caught below.
+function syncSelectRow(sel){
+  const v = sel && sel.closest('.ios-select-row')?.querySelector('[data-select-text]');
+  if(v) v.textContent = sel.selectedOptions && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '';
+}
+document.addEventListener('change', e => { if(e.target.matches && e.target.matches('.ios-select-row select')) syncSelectRow(e.target); });
 const CHECK_SMALL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="m5.5 12.5 4.2 4.2L18.5 7.8"/></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12.2a4.4 4.4 0 1 0 0-8.8 4.4 4.4 0 0 0 0 8.8Zm0 2.2c-4.6 0-8.2 2.4-8.2 5.2 0 .6.5 1 1 1h14.4c.5 0 1-.4 1-1 0-2.8-3.6-5.2-8.2-5.2Z"/></svg>';
 function initialsOf(p){
@@ -7103,8 +7134,9 @@ function updateRecurringSlotOptions(){
   const days = [...recurringSelectedDays];
   el.recurringResults.innerHTML = '';
   if(!days.length){
-    el.recurringSlotSelect.innerHTML = `<option value="">Pick day(s) first</option>`;
+    el.recurringSlotSelect.innerHTML = `<option value="">Pick days first</option>`;
     el.recurringBookBtn.disabled = true;
+    syncSelectRow(el.recurringSlotSelect);
     return;
   }
   let common = null;
@@ -7115,8 +7147,9 @@ function updateRecurringSlotOptions(){
     common = common === null ? set : new Set([...common].filter(x => set.has(x)));
   }
   if(!common || !common.size){
-    el.recurringSlotSelect.innerHTML = `<option value="">No common time slot across those days</option>`;
+    el.recurringSlotSelect.innerHTML = `<option value="">No time on all those days</option>`;
     el.recurringBookBtn.disabled = true;
+    syncSelectRow(el.recurringSlotSelect);
     return;
   }
   el.recurringSlotSelect.innerHTML = [...common].map(pair => {
@@ -7124,6 +7157,7 @@ function updateRecurringSlotOptions(){
     return `<option value="${escSafe(pair)}">${escSafe(sub)} at ${escSafe(time)}</option>`;
   }).join('');
   el.recurringBookBtn.disabled = false;
+  syncSelectRow(el.recurringSlotSelect);
 }
 
 el.recurringBookBtn.addEventListener('click', async () => {
@@ -7151,7 +7185,7 @@ el.recurringBookBtn.addEventListener('click', async () => {
   }
 
   el.recurringBookBtn.disabled = true;
-  el.recurringBookBtn.textContent = `Booking ${dates.length} date(s)…`;
+  el.recurringBookBtn.textContent = `Booking ${dates.length} ${dates.length === 1 ? 'Date' : 'Dates'}…`;
 
   const results = [];
   for(const dateStr of dates){
@@ -7166,19 +7200,15 @@ el.recurringBookBtn.addEventListener('click', async () => {
   }
 
   const succeeded = results.filter(r => r.ok).length;
-  let html = `<p style="margin-top:12px;font-size:13px;color:var(--muted)"><b>${succeeded}</b> of ${results.length} date(s) booked.</p>`;
-  html += `<table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px"><thead><tr>
-    <th style="text-align:left;padding:6px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Date</th>
-    <th style="text-align:left;padding:6px;border-bottom:1.5px solid var(--line);color:var(--muted);font-size:11.5px;text-transform:uppercase">Result</th>
-  </tr></thead><tbody>`;
+  let html = `<p class="ios-group-header">${succeeded} of ${results.length} ${results.length === 1 ? 'Date' : 'Dates'} Booked</p><div class="ios-group">`;
   results.forEach(r => {
-    html += `<tr><td style="padding:6px;border-bottom:1px solid var(--line)">${dowOfISO(r.dateStr)}, ${fmtDateLong(r.dateStr)}</td><td style="padding:6px;border-bottom:1px solid var(--line);color:${r.ok?'var(--text-strong)':'var(--danger)'};font-weight:${r.ok?400:700}">${escSafe(r.msg)}</td></tr>`;
+    html += `<div class="ios-row"><span>${dowOfISO(r.dateStr)}, ${fmtDateLong(r.dateStr)}</span><span class="ios-value${r.ok ? '' : ' recurring-miss'}">${escSafe(r.msg)}</span></div>`;
   });
-  html += `</tbody></table>`;
+  html += `</div>`;
   el.recurringResults.innerHTML = html;
 
   el.recurringBookBtn.disabled = false;
-  el.recurringBookBtn.textContent = 'Book this pattern';
+  el.recurringBookBtn.textContent = 'Book This Pattern';
 
   if(succeeded > 0){
     // A whole season in one tap deserves the big burst.
@@ -8170,9 +8200,9 @@ function renderAdmin(){
     positionModeThumb(document.getElementById('peoplePaneToggle'));
   });
   if(myProfile.role === 'admin'){
-    el.adminHeading.textContent = 'Invite a director or coach';
+    el.adminHeading.textContent = 'Invite a Director or Coach';
     el.adminHint.textContent = 'As admin you can invite directors (either gender), or head coaches and view-only assistant coaches (any team). A team has one head coach and up to 3 assistants: inviting a head coach to a team that has one makes the new person the head, and the current head comes off the team.';
-    el.inviteRoleField.style.display = 'block';
+    el.inviteRoleField.style.display = '';
     el.inviteRoleSelect.value = 'coach';
     syncInviteFormFields();
     populateTeamSelect(); // full 14, gender-labeled
@@ -8180,24 +8210,25 @@ function renderAdmin(){
     el.userListHead.innerHTML = '<tr><th>Name</th><th>Role</th><th>Team</th><th>Email</th><th>Last seen</th><th></th></tr>';
   } else {
     const genderLabel = myProfile.gender === 'girls' ? 'Girls' : 'Boys';
-    el.adminHeading.textContent = `Invite a ${genderLabel} coach`;
+    el.adminHeading.textContent = `Invite a ${genderLabel} Coach`;
     el.adminHint.textContent = `You can only invite coaches for ${genderLabel} teams. A team has one head coach and up to 3 assistants. Inviting a head coach to a team that already has one makes the new person the head, and the current head comes off the team. Assistant coaches can see the schedule but can't book.`;
-    el.inviteRoleField.style.display = 'block';
+    el.inviteRoleField.style.display = '';
     if(el.inviteRoleSelect.value === 'director') el.inviteRoleSelect.value = 'coach';
     syncInviteFormFields();
     el.inviteGenderField.style.display = 'none';
-    el.inviteTeamField.style.display = 'block';
+    el.inviteTeamField.style.display = '';
     el.inviteGrade.innerHTML = teamOptionsHTML(teamsOfProgram(myProfile.gender), false);
+    syncSelectRow(el.inviteGrade);
     el.userListLabel.textContent = 'Coaches on your teams';
     el.userListHead.innerHTML = '<tr><th>Name</th><th>Team</th><th>Coach email</th><th>Last seen</th><th></th></tr>';
   }
   loadUserList();
   renderTeamsList(); loadTeamPeople();
   const isAdminSettings = myProfile.role === 'admin';
-  const bookingControlsLabel = document.getElementById('bookingControlsLabel');
   const scheduleLockCard = document.getElementById('scheduleLockCard');
   const priorityBookingCard = document.getElementById('priorityBookingCard');
-  if(bookingControlsLabel) bookingControlsLabel.style.display = isAdminSettings ? '' : 'none';
+  // A director sees why the pane is empty instead of a blank page.
+  document.getElementById('bookingAdminOnlyNote').hidden = isAdminSettings;
   if(scheduleLockCard) scheduleLockCard.style.display = isAdminSettings ? '' : 'none';
   if(priorityBookingCard) priorityBookingCard.style.display = isAdminSettings ? '' : 'none';
   if(isAdminSettings){
@@ -8269,32 +8300,30 @@ function renderUsageDashboard(){
   bookingsCache.forEach(b => { const d = parseISO(b.date).getDay(); dowCounts[d]++; });
   const maxDow = Math.max(1, ...dowCounts);
 
-  let html = '<div class="usage-section"><h4>Field utilization</h4>';
+  let html = '<div class="usage-section"><h4>Field Utilization</h4>';
   html += fieldRows.map(r => usageBarRow(r.label, r.pct, `${r.booked}/${r.total} slots · ${r.pct}%`)).join('');
   html += '</div>';
 
-  html += `<div class="usage-section"><h4>Team bookings (least-booked first)</h4>`;
+  html += `<div class="usage-section"><h4>Team Bookings, Least Booked First</h4>`;
   html += teamRows.map(r => usageBarRow(r.label, (r.booked/maxTeamBooked)*100, `${r.booked} slot${r.booked!==1?'s':''}`)).join('');
   html += '</div>';
 
-  html += '<div class="usage-section"><h4>Busiest days of the week</h4>';
+  html += '<div class="usage-section"><h4>Busiest Days of the Week</h4>';
   html += DOW_FULL.map((name,i) => usageBarRow(name, (dowCounts[i]/maxDow)*100, `${dowCounts[i]} slot${dowCounts[i]!==1?'s':''}`)).join('');
   html += '</div>';
 
   el.usageDashboard.innerHTML = bookingsCache.length ? html : '<p class="hint">No bookings yet this season.</p>';
 }
 
+// The switch shows the saved state; while a change saves it is disabled, and
+// a refusal puts it back.
 function renderLockToggleButton(){
-  if(scheduleLocked){
-    el.lockToggleBtn.textContent = 'Unlock schedule';
-    el.lockToggleBtn.style.background = 'var(--danger)';
-  } else {
-    el.lockToggleBtn.textContent = 'Lock schedule';
-    el.lockToggleBtn.style.background = '';
-  }
+  el.lockToggleBtn.checked = scheduleLocked;
 }
-el.lockToggleBtn.addEventListener('click', async () => {
-  const goingTo = !scheduleLocked;
+el.lockToggleBtn.addEventListener('change', async () => {
+  const goingTo = el.lockToggleBtn.checked;
+  if(goingTo === scheduleLocked) return;
+  haptic('selection');
   el.lockToggleBtn.disabled = true;
   const { error } = await sb.from('app_settings').update({
     schedule_locked: goingTo,
@@ -8304,26 +8333,22 @@ el.lockToggleBtn.addEventListener('click', async () => {
   if(error){ flash('Could not change lock state: '+error.message, 'err'); }
   else { scheduleLocked = goingTo; renderLockBanner(); flash(goingTo ? 'Schedule locked.' : 'Schedule unlocked.', 'ok'); }
   el.lockToggleBtn.disabled = false;
+  renderLockToggleButton();
 });
 
 function renderPriorityToggleButton(){
-  if(priorityBookingEnabled){
-    el.priorityToggleBtn.textContent = 'Turn off priority booking';
-    el.priorityToggleBtn.style.background = 'var(--danger)';
-  } else {
-    el.priorityToggleBtn.textContent = 'Turn on priority booking';
-    el.priorityToggleBtn.style.background = '';
-  }
+  el.priorityToggleBtn.checked = priorityBookingEnabled;
   renderPriorityTierStatus();
 }
 function renderPriorityTierStatus(){
+  const forceGroup = document.getElementById('priorityForceGroup');
   if(!priorityBookingEnabled){
     el.priorityTierStatus.innerHTML = '';
-    el.priorityForceAdvanceBtn.style.display = 'none';
+    forceGroup.hidden = true;
     el.priorityForceHint.textContent = '';
     return;
   }
-  let html = '<p class="section-label" style="margin:16px 0 8px">Tier status (oldest first)</p>';
+  let html = '';
   for(let r = 6; r >= 0; r--){
     const grade = GRADES[r];
     const tierTeams = teamsAtGradeRank(r);
@@ -8332,38 +8357,41 @@ function renderPriorityTierStatus(){
     const unlocked = isTierUnlocked(grade);
     const allDone = doneCount === tierTeams.length;
     const forced = priorityForcedRanks.has(r) && !allDone;
-    const stateLabel = allDone ? 'Finished' : forced ? 'Forced through by director' : unlocked ? 'Booking now' : 'Waiting';
+    const stateLabel = allDone ? 'Finished' : forced ? 'Pushed Past' : unlocked ? 'Booking Now' : 'Waiting';
     const stateClass = allDone ? 'done' : forced ? 'forced' : unlocked ? 'active' : 'waiting';
-    html += `<div class="priority-tier-row ${stateClass}"><span>${escSafe(grade)}</span><span>${doneCount}/${tierTeams.length} teams &middot; ${stateLabel}</span></div>`;
+    html += `<div class="ios-row priority-tier-row ${stateClass}"><span class="cf-text">${escSafe(grade)}<small>${doneCount} of ${tierTeams.length} teams finished</small></span><span class="ios-value">${stateLabel}</span></div>`;
   }
-  el.priorityTierStatus.innerHTML = html;
+  el.priorityTierStatus.innerHTML = html ? `<p class="ios-group-header">Grades, Oldest First</p><div class="ios-group">${html}</div>` : '';
 
   const blockingRank = currentBlockingRank();
   if(blockingRank === null){
-    el.priorityForceAdvanceBtn.style.display = 'none';
+    forceGroup.hidden = true;
     el.priorityForceHint.textContent = '';
   } else {
     const blockingGrade = GRADES[blockingRank];
     const pending = teamsAtGradeRank(blockingRank).filter(t => !t.priority_finished_at);
     const nextGrade = blockingRank > 0 ? GRADES[blockingRank - 1] : null;
-    el.priorityForceAdvanceBtn.style.display = 'inline-block';
-    el.priorityForceAdvanceBtn.textContent = `Override: push past ${blockingGrade}${nextGrade ? ` so ${nextGrade} can book` : ''}`;
-    el.priorityForceHint.textContent = `Still waiting on: ${pending.map(teamLabelOf).join(', ')}. This doesn't mark them finished, it just stops them from blocking the next grade.`;
+    forceGroup.hidden = false;
+    el.priorityForceAdvanceBtn.textContent = `Push Past ${blockingGrade}`;
+    el.priorityForceHint.textContent = `${nextGrade ? `Lets ${nextGrade} book now. ` : ''}Still waiting on: ${pending.map(teamLabelOf).join(', ')}. This doesn't mark them finished, it just stops them from blocking the next grade.`;
   }
 }
-el.priorityToggleBtn.addEventListener('click', async () => {
-  const goingTo = !priorityBookingEnabled;
+el.priorityToggleBtn.addEventListener('change', async () => {
+  const goingTo = el.priorityToggleBtn.checked;
+  if(goingTo === priorityBookingEnabled) return;
+  haptic('selection');
   el.priorityToggleBtn.disabled = true;
   const { error } = await sb.from('app_settings').update({ priority_booking_enabled: goingTo }).eq('id', true);
   if(error){ flash('Could not change priority booking: '+error.message, 'err'); }
-  else { priorityBookingEnabled = goingTo; renderPriorityToggleButton(); flash(goingTo ? 'Priority booking turned on.' : 'Priority booking turned off.', 'ok'); }
+  else { priorityBookingEnabled = goingTo; flash(goingTo ? 'Priority booking turned on.' : 'Priority booking turned off.', 'ok'); }
   el.priorityToggleBtn.disabled = false;
+  renderPriorityToggleButton();
 });
 el.priorityResetBtn.addEventListener('click', async () => {
   if(!await confirmAction({
-    title: 'Reset every team to not finished?',
-    body: 'The priority ladder starts over from the most senior grade. Bookings already made are not touched.',
-    verb: 'Reset ladder',
+    title: 'Reset Finished Teams?',
+    body: 'Every team goes back to not finished and any overrides are cleared, so the ladder starts over from the oldest grade. Bookings already made are not touched.',
+    verb: 'Reset Finished Teams',
   })) return;
   el.priorityResetBtn.disabled = true;
   const [{ error: teamsErr }, { error: settingsErr }] = await Promise.all([
@@ -8398,23 +8426,34 @@ el.priorityForceAdvanceBtn.addEventListener('click', async () => {
 
 function renderClearControls(){
   // Clear by team: admin sees all 14, director sees only their own gender's 7
+  // Both menus open on a placeholder: a delete never starts on a real team.
+  const pick = label => `<option value="" disabled selected>${label}</option>`;
   if(myProfile.role === 'admin'){
     el.clearGenderField.style.display = 'none';
-    el.clearTeamSelect.innerHTML = teamOptionsHTML(teams, true);
+    el.clearTeamSelect.innerHTML = pick('Choose a team') + teamOptionsHTML(teams, true);
   } else {
     el.clearGenderField.style.display = 'none';
-    el.clearTeamSelect.innerHTML = teamOptionsHTML(teamsOfProgram(myProfile.gender), false);
+    el.clearTeamSelect.innerHTML = pick('Choose a team') + teamOptionsHTML(teamsOfProgram(myProfile.gender), false);
   }
 
   // Clear by field: same 6 fields for everyone with access to this tab
-  el.clearFieldSelect.innerHTML = FIELDS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  el.clearFieldSelect.innerHTML = pick('Choose a field') + FIELDS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  [el.clearTeamSelect, el.clearFieldSelect].forEach(syncSelectRow);
+  syncClearButtons();
   el.clearFieldHint.textContent = myProfile.role === 'director'
     ? `As a director, this only clears ${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} bookings at this field. Bookings for the other gender will remain.`
     : '';
 }
 
+function syncClearButtons(){
+  el.clearTeamBtn.disabled = !el.clearTeamSelect.value;
+  el.clearFieldBtn.disabled = !el.clearFieldSelect.value;
+}
+el.clearTeamSelect.addEventListener('change', () => { el.clearTeamStatus.innerHTML = ''; syncClearButtons(); });
+el.clearFieldSelect.addEventListener('change', () => { el.clearFieldStatus.innerHTML = ''; syncClearButtons(); });
 el.clearTeamBtn.addEventListener('click', async () => {
   const teamId = el.clearTeamSelect.value;
+  if(!teamId){ el.clearTeamStatus.innerHTML = '<span class="status">Choose a team first.</span>'; return; }
   const teamOpt = el.clearTeamSelect.selectedOptions ? el.clearTeamSelect.selectedOptions[0] : null;
   const teamName = teamOpt ? teamOpt.textContent : 'this team';
   const count = bookingsCache.filter(b => b.team_id === teamId).length;
@@ -8427,7 +8466,7 @@ el.clearTeamBtn.addEventListener('click', async () => {
 
   el.clearTeamBtn.disabled = true;
   const { data, error } = await sb.from('bookings').delete().eq('team_id', teamId).select();
-  el.clearTeamBtn.disabled = false;
+  syncClearButtons();
   if(error){ el.clearTeamStatus.innerHTML = `<span class="status err">Failed: ${escSafe(error.message)}</span>`; return; }
   const deleted = data ? data.length : 0;
   el.clearTeamStatus.innerHTML = `<span class="status ok">Deleted ${deleted} booking${deleted!==1?'s':''} for ${escSafe(teamName)}.</span>`;
@@ -8437,6 +8476,7 @@ el.clearTeamBtn.addEventListener('click', async () => {
 
 el.clearFieldBtn.addEventListener('click', async () => {
   const fieldId = el.clearFieldSelect.value;
+  if(!fieldId){ el.clearFieldStatus.innerHTML = '<span class="status">Choose a field first.</span>'; return; }
   const fieldName = FIELD_MAP[fieldId] ? FIELD_MAP[fieldId].name : fieldId;
   const count = bookingsCache.filter(b => b.field_id === fieldId).length;
   if(!count){ el.clearFieldStatus.innerHTML = `<span class="status">No bookings found at ${escSafe(fieldName)}.</span>`; return; }
@@ -8448,7 +8488,7 @@ el.clearFieldBtn.addEventListener('click', async () => {
 
   el.clearFieldBtn.disabled = true;
   const { data, error } = await sb.from('bookings').delete().eq('field_id', fieldId).select();
-  el.clearFieldBtn.disabled = false;
+  syncClearButtons();
   if(error){ el.clearFieldStatus.innerHTML = `<span class="status err">Failed: ${escSafe(error.message)}</span>`; return; }
   const deleted = data ? data.length : 0;
   el.clearFieldStatus.innerHTML = `<span class="status ok">Deleted ${deleted} booking${deleted!==1?'s':''} at ${escSafe(fieldName)}.</span>`;
@@ -8459,6 +8499,7 @@ el.clearFieldBtn.addEventListener('click', async () => {
 function populateTeamSelect(){
   // Full list of 14 teams, gender-labeled, for admin coach invites
   el.inviteGrade.innerHTML = teamOptionsHTML(teams, true);
+  syncSelectRow(el.inviteGrade);
 }
 
 function syncInviteFormFields(){
@@ -8467,8 +8508,9 @@ function syncInviteFormFields(){
   if(dirOpt) dirOpt.hidden = dirOpt.disabled = myProfile.role !== 'admin';
   if(myProfile.role !== 'admin' && el.inviteRoleSelect.value === 'director') el.inviteRoleSelect.value = 'coach';
   const isDirector = el.inviteRoleSelect.value === 'director';
-  el.inviteGenderField.style.display = isDirector ? 'block' : 'none';
-  el.inviteTeamField.style.display = isDirector ? 'none' : 'block';
+  el.inviteGenderField.style.display = isDirector ? '' : 'none';
+  el.inviteTeamField.style.display = isDirector ? 'none' : '';
+  [el.inviteRoleSelect, el.inviteGenderSelect, el.inviteGrade].forEach(syncSelectRow);
 }
 el.inviteRoleSelect.addEventListener('change', syncInviteFormFields);
 
@@ -8486,18 +8528,21 @@ function generatePassword(){
 }
 function syncInviteMode(){
   const isPw = inviteMode === 'password';
-  el.invitePasswordField.style.display = isPw ? 'block' : 'none';
+  el.invitePasswordField.style.display = isPw ? '' : 'none';
   el.inviteModeHint.textContent = isPw
     ? 'You set the password and share it with them yourself. No email is sent.'
     : "They'll get an email with a link to set their own password.";
-  el.inviteBtn.textContent = isPw ? 'Create account' : 'Send invite';
+  el.inviteBtn.textContent = isPw ? 'Create Account' : 'Send Invite';
   if(isPw && !el.invitePassword.value) el.invitePassword.value = generatePassword();
 }
 el.inviteModeToggle.addEventListener('click', e => {
-  const btn = e.target.closest('.mtab'); if(!btn) return;
+  const btn = e.target.closest('[data-mode]'); if(!btn) return;
+  if(inviteMode !== btn.dataset.mode) haptic('selection');
   inviteMode = btn.dataset.mode;
-  document.querySelectorAll('#inviteModeToggle .mtab').forEach(t => t.classList.toggle('active', t===btn));
-  positionModeThumb(el.inviteModeToggle);
+  el.inviteModeToggle.querySelectorAll('[data-mode]').forEach(t => {
+    t.setAttribute('aria-checked', String(t === btn));
+    t.querySelector('.nf-check').classList.toggle('on', t === btn);
+  });
   syncInviteMode();
 });
 el.inviteGenPasswordBtn.addEventListener('click', () => { el.invitePassword.value = generatePassword(); el.invitePassword.focus(); });
@@ -8539,13 +8584,13 @@ el.inviteBtn.addEventListener('click', async () => {
           <div class="credential-box">
             <div><span class="credential-label">Email</span><code>${escSafe(email)}</code></div>
             <div><span class="credential-label">Password</span><code>${escSafe(payload.password)}</code></div>
-            <button type="button" class="allbtn" id="copyCredentialsBtn" style="margin-top:8px">Copy both</button>
+            <button type="button" class="allbtn" id="copyCredentialsBtn" style="margin-top:8px">Copy Both</button>
           </div>`;
         document.getElementById('copyCredentialsBtn')?.addEventListener('click', async e => {
           try {
             await navigator.clipboard.writeText(`Seaford Lacrosse sign-in\nEmail: ${email}\nPassword: ${payload.password}`);
-            e.target.textContent = 'Copied ✓'; haptic('success');
-            setTimeout(() => { if(e.target) e.target.textContent = 'Copy both'; }, 2000);
+            e.target.textContent = 'Copied'; haptic('success');
+            setTimeout(() => { if(e.target) e.target.textContent = 'Copy Both'; }, 2000);
           } catch(err) { flash('Could not copy. Select the text manually.', 'err'); }
         });
         el.invitePassword.value = '';
@@ -8561,7 +8606,7 @@ el.inviteBtn.addEventListener('click', async () => {
   } catch(err) {
     el.inviteStatus.innerHTML = `<span class="status err">Could not reach the invite service: ${escSafe(err.message)}</span>`;
   }
-  el.inviteBtn.disabled = false; el.inviteBtn.textContent = usingPassword ? 'Create account' : 'Send invite';
+  el.inviteBtn.disabled = false; el.inviteBtn.textContent = usingPassword ? 'Create Account' : 'Send Invite';
 });
 
 // Fetched once, filtered in memory — typing shouldn't hit the network, and
@@ -9086,12 +9131,7 @@ $tid('addTeamGoBtn').addEventListener('click', async () => {
 // The rows come from triggers, so this only has to read and present them.
 let activityRows = [];
 let activityFilter = 'all';   // 'all' | 'booked' | 'cancelled' | 'waitlist'
-const ACTIVITY_FILTERS = [
-  { id: 'all', name: 'Everything' },
-  { id: 'booked', name: 'Booked' },
-  { id: 'cancelled', name: 'Cancelled' },
-  { id: 'waitlist', name: 'Waitlist' },
-];
+// The filter is the segmented control in #activityFilter (All, Booked, Cancelled, Waitlist).
 function relativeWhen(iso){
   const then = new Date(iso), mins = Math.round((Date.now() - then) / 60000);
   if(mins < 1) return 'just now';
@@ -9112,8 +9152,8 @@ async function loadActivity(){
   renderActivity();
 }
 function renderActivity(){
-  el.activityFilter.innerHTML = ACTIVITY_FILTERS.map(f =>
-    `<button type="button" class="fchip${activityFilter === f.id ? ' active' : ''}" data-activity="${f.id}">${escSafe(f.name)}</button>`).join('');
+  el.activityFilter.querySelectorAll('[data-activity]').forEach(b => b.classList.toggle('active', b.dataset.activity === activityFilter));
+  positionModeThumb(el.activityFilter);
   const rows = activityRows.filter(r =>
     activityFilter === 'all' ? true
     : activityFilter === 'waitlist' ? r.action.includes('waitlist')
@@ -9305,7 +9345,7 @@ el.coachListBody.addEventListener('click', async e => {
         <div class="credential-box">
           <div><span class="credential-label">Email</span><code>${escSafe(email)}</code></div>
           <div><span class="credential-label">Password</span><code>${escSafe(password)}</code></div>
-          <button type="button" class="allbtn" data-act="copy-creds" data-email="${escSafe(email)}" data-pw="${escSafe(password)}" style="margin-top:8px">Copy both</button>
+          <button type="button" class="allbtn" data-act="copy-creds" data-email="${escSafe(email)}" data-pw="${escSafe(password)}" style="margin-top:8px">Copy Both</button>
         </div>`);
       haptic('success');
     } else {
@@ -9318,8 +9358,8 @@ el.coachListBody.addEventListener('click', async e => {
   if(act === 'copy-creds'){
     try {
       await navigator.clipboard.writeText(`Seaford Lacrosse sign-in\nEmail: ${btn.dataset.email}\nPassword: ${btn.dataset.pw}`);
-      btn.textContent = 'Copied ✓'; haptic('success');
-      setTimeout(() => { if(btn) btn.textContent = 'Copy both'; }, 2000);
+      btn.textContent = 'Copied'; haptic('success');
+      setTimeout(() => { if(btn) btn.textContent = 'Copy Both'; }, 2000);
     } catch(err) { flash('Could not copy. Select the text manually.', 'err'); }
     return;
   }
@@ -9371,7 +9411,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
     rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
   } catch(err) {
     el.bulkResults.innerHTML = `<div class="status err">Could not read that file: ${escSafe(err.message)}</div>`;
-    el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process file';
+    el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process File';
     return;
   }
 
@@ -9407,7 +9447,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
 
   if(!validRows.length && !skipped.length){
     el.bulkResults.innerHTML = `<div class="status err">No rows found in that file.</div>`;
-    el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process file';
+    el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process File';
     return;
   }
 
@@ -9444,7 +9484,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
   html += `</tbody></table>`;
   el.bulkResults.innerHTML = html;
 
-  el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process file';
+  el.bulkUploadBtn.disabled = false; el.bulkUploadBtn.textContent = 'Process File';
   el.bulkFileInput.value = '';
   loadUserList();
 });

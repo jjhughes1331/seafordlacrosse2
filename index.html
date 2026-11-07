@@ -322,7 +322,6 @@
       if(!manages(team)) return fail("Only an admin or this program's director can assign coaches", '42501');
       const target = store.profiles.find(x => x.id === p.p_profile);
       if(!target) return fail('That person no longer has an account', 'P0002');
-      if(target.role === 'admin') return fail("Admins aren't assigned to teams", '22023');
       const old = p.p_role === 'head' ? store.team_members.find(m => m.team_id === team.id && m.role === 'head' && m.profile_id !== target.id) : null;
       const refusal = writeMember(team.id, target.id, p.p_role);
       if(refusal) return fail(refusal, '23514');
@@ -3492,7 +3491,7 @@ function accountRoleLines(){
   if(onATeam()) return perTeam.length ? perTeam : [Role];
   if(myProfile.role === 'director')
     return [`${myProfile.gender === 'girls' ? 'Girls' : 'Boys'} ${Role}`, ...perTeam.filter(l => l.startsWith('Head coach'))];
-  return [Role];
+  return [Role, ...perTeam.filter(l => l.startsWith('Head coach'))];
 }
 function rebuildAccountSheet(){
   const body = document.getElementById('accountBody');
@@ -4359,6 +4358,15 @@ function dowOfISO(s){ return DOW_FULL[parseISO(s).getDay()]; }
 // these keep the screens from offering buttons that would only fail.
 function canBook(){ return !!myProfile && myProfile.role !== 'assistant'; }
 function onATeam(){ return !!myProfile && (myProfile.role === 'coach' || myProfile.role === 'assistant'); }
+// My Team is for anyone on a team: every coach and assistant, plus a director
+// or admin who also coaches one (JJ, 2026-11-06), as in the app. onATeam()
+// stays role-only, because directors and admins book through their picker.
+function hasMyTeam(){ return onATeam() || myMemberships().length > 0; }
+function syncMyTeamTab(){
+  if(!myProfile) return;
+  el.myTeamTab.style.display = hasMyTeam() ? '' : 'none';
+  if(currentView === 'myteam' && !hasMyTeam()) switchView(startView());
+}
 const ROLE_LABEL = { admin: 'admin', director: 'director', coach: 'head coach', assistant: 'assistant coach' };
 // A profile's name if it has one, otherwise the role label the site used to
 // pass off as a name. Everything that shows a person goes through here so the
@@ -4990,7 +4998,7 @@ async function loadProfileAndStartInner(){
   // '' hands display back to the stylesheet. An inline 'inline-block' beat the
   // phone tab bar's flex column, so these tabs sat 3pt off the other icons.
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.adminTab.style.display = '';
-  if(onATeam()) el.myTeamTab.style.display = '';
+  syncMyTeamTab();
   if(myProfile.role === 'director' || myProfile.role === 'admin') el.leagueTab.style.display = '';
   // Assistants don't book, so Book and Find a Time aren't theirs to see.
   document.querySelectorAll('.view-tab[data-view="book"], .view-tab[data-view="openweek"]')
@@ -5022,14 +5030,14 @@ async function loadProfileAndStartInner(){
 // assistant has no Book) falls back instead of opening on nothing.
 function viewAvailable(v){
   if(v === 'book' || v === 'openweek') return canBook();
-  if(v === 'myteam') return onATeam();
+  if(v === 'myteam') return hasMyTeam();
   if(v === 'league' || v === 'admin') return myProfile.role === 'director' || myProfile.role === 'admin';
   return v === 'schedule';
 }
 function startView(){
   let v = null; try { v = localStorage.getItem(LAST_VIEW_KEY); } catch(e){}
   if(v && viewAvailable(v)) return v;
-  return canBook() ? 'book' : onATeam() ? 'myteam' : 'schedule';
+  return canBook() ? 'book' : hasMyTeam() ? 'myteam' : 'schedule';
 }
 
 function teardown(){
@@ -5091,6 +5099,7 @@ async function loadMembers(){
   if(error) return; // the profile's own team stands in (myMemberships)
   teamMembers = data || [];
   membersLoaded = true;
+  syncMyTeamTab();
   if(bookingsCache.length) writeCache();
 }
 
@@ -5518,7 +5527,8 @@ function setHeaderTitle(view){
   if(!myProfile){ sub.textContent = ''; return; }
   // Book and Find a Time name the team being booked for; the rest, the team
   // My Team shows (a coach can head one team and assist on another).
-  const teamId = onATeam() && (view === 'book' || view === 'openweek') ? myBookingTeamId() : chosenTeamId();
+  const teamId = view === 'myteam' && hasMyTeam() ? shownTeamId()
+    : onATeam() && (view === 'book' || view === 'openweek') ? myBookingTeamId() : chosenTeamId();
   const t2 = teamId && teamsById[teamId];
   sub.textContent = t2 ? teamLabelOf(t2)
     : view === 'book' ? 'Choose a team to book for'
@@ -6889,7 +6899,8 @@ document.getElementById('monthToday').addEventListener('click', () => {
 // the one picked on Book, if any.
 function chosenTeamId(){
   if(!myProfile) return null;
-  if(onATeam()) return shownTeamId();
+  // On My Team, a director or admin who coaches sees their own team.
+  if(onATeam() || (currentView === 'myteam' && hasMyTeam())) return shownTeamId();
   return bookAsTeam && teamsById[bookAsTeam] ? bookAsTeam : null;
 }
 // The team a booking, cancel or waitlist is made for.
@@ -8674,7 +8685,7 @@ const $tid = id => document.getElementById(id);
 async function loadTeamPeople(){
   if(!myProfile || !['admin', 'director'].includes(myProfile.role)) return;
   const { data, error } = await sb.from('profiles').select('id, email, role, gender, team_id, first_name, last_name')
-    .in('role', ['director', 'coach', 'assistant']);
+    .in('role', ['admin', 'director', 'coach', 'assistant']);
   if(error){ teamPeopleError = "Couldn't load the coaches. " + rpcText(error); }
   else {
     teamPeople = (data || []).slice().sort((a, b) => whoName(a).localeCompare(whoName(b), undefined, { sensitivity: 'base', numeric: true }));
@@ -9083,8 +9094,10 @@ function personLine(p){
   const parts = memberTeamParts(p);
   const teamsText = p.role === 'director'
     ? [`All ${p.gender === 'girls' ? 'Girls' : 'Boys'} teams`, ...parts.filter(m => m.role === 'head').map(m => `${teamLabelOf(m.team)} (Head)`)].join(', ')
+    : p.role === 'admin'
+    ? ['All teams', ...parts.filter(m => m.role === 'head').map(m => `${teamLabelOf(m.team)} (Head)`)].join(', ')
     : parts.length ? parts.map(m => `${teamLabelOf(m.team)} (${m.role === 'head' ? 'Head' : 'Assistant'})`).join(', ') : 'No team';
-  return p.role === 'director' ? `Director · ${teamsText}` : teamsText;
+  return p.role === 'director' ? `Director · ${teamsText}` : p.role === 'admin' ? `Admin · ${teamsText}` : teamsText;
 }
 function renderPersonList(){
   const box = $tid('personList');

@@ -5262,8 +5262,10 @@ async function loadWeather(){
 // 16-day forecast window; empty string otherwise (past the window, or low risk).
 function weatherBadge(dateStr){
   const w = weatherCache[dateStr];
-  if(!w || w.precip == null || w.precip < 50) return '';
-  return ` <span class="weather-badge" title="Open-Meteo forecast: ${w.precip}% chance of precipitation"><svg class="inline-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.2 14.6a5.4 5.4 0 0 1-.5-10.78 6.2 6.2 0 0 1 11.6 1.9 4.45 4.45 0 0 1-.9 8.88H7.2Z"/><path d="M8.1 16.6a1 1 0 0 1 .87 1.5l-1.2 2.1a1 1 0 1 1-1.74-1l1.2-2.1a1 1 0 0 1 .87-.5Zm4.4 0a1 1 0 0 1 .87 1.5l-1.2 2.1a1 1 0 1 1-1.74-1l1.2-2.1a1 1 0 0 1 .87-.5Zm4.4 0a1 1 0 0 1 .87 1.5l-1.2 2.1a1 1 0 1 1-1.74-1l1.2-2.1a1 1 0 0 1 .87-.5Z"/></svg> ${w.precip}%</span>`;
+  // It goes into markup and it came from someone else's API: a number or nothing.
+  const precip = w && w.precip != null ? Number(w.precip) : NaN;
+  if(!Number.isFinite(precip) || precip < 50) return '';
+  return ` <span class="weather-badge" title="Open-Meteo forecast: ${precip}% chance of precipitation"><svg class="inline-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.2 14.6a5.4 5.4 0 0 1-.5-10.78 6.2 6.2 0 0 1 11.6 1.9 4.45 4.45 0 0 1-.9 8.88H7.2Z"/><path d="M8.1 16.6a1 1 0 0 1 .87 1.5l-1.2 2.1a1 1 0 1 1-1.74-1l1.2-2.1a1 1 0 0 1 .87-.5Zm4.4 0a1 1 0 0 1 .87 1.5l-1.2 2.1a1 1 0 1 1-1.74-1l1.2-2.1a1 1 0 0 1 .87-.5Zm4.4 0a1 1 0 0 1 .87 1.5l-1.2 2.1a1 1 0 1 1-1.74-1l1.2-2.1a1 1 0 0 1 .87-.5Z"/></svg> ${precip}%</span>`;
 }
 
 
@@ -6068,8 +6070,8 @@ function exportOneBookingICS(bookingId){
   const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Seaford Lacrosse//Schedule//EN','BEGIN:VEVENT',
     'UID:' + b.id + '@seafordlax.com','DTSTAMP:' + stamp,
     'DTSTART:' + dt(t.startHour24, t.startMin),'DTEND:' + dt(t.endHour24, t.endMin),
-    'SUMMARY:Practice - ' + label,
-    'LOCATION:' + fieldLabel(b.field_id, b.subfield),
+    'SUMMARY:' + icsEscape('Practice - ' + label),
+    'LOCATION:' + icsEscape(fieldLabel(b.field_id, b.subfield)),
     'END:VEVENT','END:VCALENDAR'].join('\r\n');
   const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
   const a = document.createElement('a');
@@ -8627,7 +8629,7 @@ function renderClearControls(){
   }
 
   // Clear by field: same 6 fields for everyone with access to this tab
-  el.clearFieldSelect.innerHTML = pick('Choose a field') + FIELDS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  el.clearFieldSelect.innerHTML = pick('Choose a field') + FIELDS.map(f => `<option value="${escSafe(f.id)}">${escSafe(f.name)}</option>`).join('');
   [el.clearTeamSelect, el.clearFieldSelect].forEach(syncSelectRow);
   syncClearButtons();
   el.clearFieldHint.textContent = myProfile.role === 'director'

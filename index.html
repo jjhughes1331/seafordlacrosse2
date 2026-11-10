@@ -5965,10 +5965,12 @@ function parseTimeRangeForExport(range){
   };
 }
 
+// By start time, not by its text: as text "10:00" sorts before "9:00".
+function bySlotTime(a, b){ return slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.time.localeCompare(b.time); }
 function getTeamBookingsSorted(teamId){
   return bookingsCache
     .filter(b => b.team_id === teamId)
-    .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    .sort((a,b) => a.date.localeCompare(b.date) || bySlotTime(a, b));
 }
 
 function exportTeamScheduleCSV(teamId, teamLabelText){
@@ -6178,7 +6180,7 @@ function renderGroupedByFieldDate(filtered, highlight, oneTeam){
     if(field.note) html += `<div class="venue-note">${escSafe(field.note)}</div>`;
     html += '<div class="rows">';
     dates.forEach(date => {
-      const slots = byField[field.id][date].sort((a,b) => a.time.localeCompare(b.time));
+      const slots = byField[field.id][date].sort(bySlotTime);
       html += `<div class="row"><div class="date"><span class="dow">${dowOfISO(date)}</span>${fmtDateLong(date)}${weatherBadge(date)}</div><div class="slots">`;
       slots.forEach(s => {
         const mine = !!(highlight && highlight(s.team_id));
@@ -8172,7 +8174,7 @@ function renderOpenWeek(){
 
   let html = '';
   Object.keys(byDay).sort().forEach(dateStr => {
-    const slots = byDay[dateStr].sort((a,b) => a.fieldName.localeCompare(b.fieldName) || a.time.localeCompare(b.time));
+    const slots = byDay[dateStr].sort((a,b) => a.fieldName.localeCompare(b.fieldName) || bySlotTime(a, b));
     const byField = {};
     slots.forEach(s => { (byField[s.fieldName] = byField[s.fieldName] || []).push(s); });
     html += `<section class="venue"><div class="venue-head"><h3>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</h3><span class="n">${slots.length} open</span></div><div class="rows">`;

@@ -4759,6 +4759,17 @@ async function init(){
   const hash = window.location.hash;
   const isInviteOrRecovery = hash.includes('type=invite') || hash.includes('type=recovery');
 
+  // Registered once, before anything below can return: someone who arrives by
+  // an invite or reset link leaves init() early, and Sign Out still has to
+  // take them back to the sign-in screen.
+  sb.auth.onAuthStateChange((event, newSession) => {
+    session = newSession;
+    if (event === 'SIGNED_OUT') {
+      teardown();
+      showLoginScreen();
+    }
+  });
+
   const { data: { session: existingSession } } = await sb.auth.getSession();
   session = existingSession;
 
@@ -4772,14 +4783,6 @@ async function init(){
   } else {
     showLoginScreen();
   }
-
-  sb.auth.onAuthStateChange((event, newSession) => {
-    session = newSession;
-    if (event === 'SIGNED_OUT') {
-      teardown();
-      showLoginScreen();
-    }
-  });
 }
 
 function showLoginScreen(msg){

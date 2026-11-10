@@ -74,8 +74,17 @@ different project** — drive the dashboard in the browser instead.
 - `bookings.booked_by → auth.users` is **ON DELETE NO ACTION**. Removing a coach
   reassigns their bookings to the remover (in `manage-user`). Never make this
   CASCADE — it would silently erase a team's season
-- RLS pins `booked_by` to `auth.uid()` on insert *and* update, so you cannot
-  create or move a booking on someone else's behalf
+- RLS pins `booked_by` to `auth.uid()` on insert, and **bookings has no UPDATE
+  policy at all** (checked live 2026-11-10): a booking can be made or deleted,
+  never moved or re-attributed. Lock, ladder, logging and alerts hang off
+  insert and delete only, so adding an UPDATE policy would bypass all four
+- A team's **Finished is set once, by the server's clock**: for anyone but an
+  admin or that program's director, `priority_finished_at` only goes from
+  empty to `now()`, whatever time the client sends, and cannot be cleared
+  (`audit_fixes_2026_11_10.sql`)
+- `app_settings.locked_by` is ON DELETE SET NULL, and the settings trigger lets
+  a session with no signed-in user (the service role) clear `locked_by` and
+  nothing else, so removing the person who locked the schedule works
 - Reads require a `profiles` row, not just a session (`harden_2026_09_18.sql`);
   `anon` has no table grants and `log_activity()` is not API-callable
 - **Public sign-up must stay OFF** (Auth → Sign In / Providers). Accounts come

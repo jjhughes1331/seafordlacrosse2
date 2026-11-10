@@ -4668,6 +4668,7 @@ const ICON_WARN = '<svg class="toast-icon"viewBox="0 0 24 24" fill="currentColor
 
 // action: optional { label, onClick } — renders a pill button inside the
 // toast (e.g. Undo). It lives exactly as long as the toast does.
+// background: see flash().
 // What a coach reads when something fails: what didn't happen, and what to
 // do. Raw database text ("violates row-level security...") never reaches them.
 function friendlyError(error, lead){
@@ -4678,7 +4679,16 @@ function friendlyError(error, lead){
   if(error && error.code === '23505') return `${lead} Someone else just changed that slot.`;
   return `${lead} Try again in a moment.`;
 }
-function flash(msg, type, action){
+function flash(msg, type, action, background){
+  // A toast with a button (Undo) keeps its place until it times out or is
+  // used. background = news nobody tapped for ("A slot opened up", straight
+  // after the refresh that follows a booking): it waits and shows next. It
+  // used to take the Undo away a moment after it appeared.
+  if(background && flash._held && el.actionsBar.classList.contains('show')){
+    flash._next = [msg, type];
+    return;
+  }
+  flash._held = !!action;
   // 'warn' looks like an error but feels like iOS's warning: nothing broke,
   // something just changed under you (another coach took the slot).
   const warn = type === 'warn';
@@ -4703,12 +4713,16 @@ function flash(msg, type, action){
   const base = type === 'err' ? 5500 : action ? 6000 : 4000;
   const perChar = 60;
   const duration = Math.min(base + msg.length * perChar, 12000);
-  flash._t = setTimeout(()=>{ el.actionsBar.classList.remove('show'); }, duration);
+  flash._t = setTimeout(endToast, duration);
 }
-document.getElementById('statusClose').addEventListener('click', () => {
+// The toast leaves (timed out, closed or swiped away); one that waited shows.
+function endToast(){
   clearTimeout(flash._t);
   el.actionsBar.classList.remove('show');
-});
+  const next = flash._next; flash._next = null;
+  if(next) flash(next[0], next[1]);
+}
+document.getElementById('statusClose').addEventListener('click', endToast);
 // "Booked · Undo" — one tap to take it back for a few seconds. Cold thumbs at
 // a field hit the wrong slot; an undo beats making them find the × and
 // two-tap a cancel. Needs the new row's id, so callers insert with .select().
@@ -4727,11 +4741,14 @@ function flashBooked(payload, insertedId, message){
   const msg = message || slotToastMsg('Booked', payload);
   if(!insertedId){ flash(msg, 'ok'); return; }
   flash(msg, 'ok', { label: 'Undo', onClick: async () => {
-    const { error } = await sb.from('bookings').delete().eq('id', insertedId);
+    // .select() returns what was removed: a delete the database refuses (the
+    // schedule was locked meanwhile) is no error, just no rows.
+    const { data, error } = await sb.from('bookings').delete().eq('id', insertedId).select();
     if(error){ flash(friendlyError(error, 'That couldn\'t be undone.'), 'err'); return; }
     await refreshBookings();
     rerenderCurrentView();
-    flash('Booking undone', 'ok');
+    if(data && data.length) flash('Booking undone', 'ok');
+    else flash('That couldn\'t be undone. You may not have permission.', 'err');
   }});
 }
 
@@ -4747,10 +4764,7 @@ function flashBooked(payload, insertedId, message){
     bar.style.opacity = Math.max(0.15, 1 - Math.abs(dx) / 140);
   }, { passive: true });
   bar.addEventListener('touchend', () => {
-    if(Math.abs(dx) > 80){
-      clearTimeout(flash._t);
-      bar.classList.remove('show');
-    }
+    if(Math.abs(dx) > 80) endToast();
     bar.classList.remove('swiping'); bar.style.transform = ''; bar.style.opacity = '';
     startX = null;
   });
@@ -5085,6 +5099,7 @@ function teardown(){
   document.getElementById('largeTitle').style.display = 'none';
   document.getElementById('nextPracticeCard').style.display = 'none';
   el.actionsBar.classList.remove('show');
+  clearTimeout(flash._t); flash._next = null;
   clearSignedInTraces();
 }
 // A shared phone, part two: nothing this person loaded or typed is left for
@@ -5274,7 +5289,7 @@ function checkWaitlistOpenings(){
     if(!stillBooked){
       waitlistNotified.add(w.id);
       const fieldName = FIELD_MAP[w.field_id] ? FIELD_MAP[w.field_id].name : w.field_id;
-      flash(`A slot opened up: ${w.subfield} at ${w.time}, ${fmtDateLong(w.date)} at ${fieldName}. Book it now.`, 'ok');
+      flash(`A slot opened up: ${w.subfield} at ${w.time}, ${fmtDateLong(w.date)} at ${fieldName}. Book it now.`, 'ok', null, true);
     }
   });
 }

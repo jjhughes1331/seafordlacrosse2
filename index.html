@@ -5048,6 +5048,7 @@ function startView(){
 
 function teardown(){
   if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+  Object.keys(realtimeTimers).forEach(t => { clearTimeout(realtimeTimers[t]); delete realtimeTimers[t]; });
   // Detach this browser's push subscription from the signed-out user's id —
   // otherwise a shared/reused device would keep getting that person's
   // targeted notifications after someone else signs in on it.
@@ -5109,19 +5110,35 @@ async function selectAllRows(table){
     if(page.length < PAGE_ROWS) return { data: all, error: null };
   }
 }
+// Two reads of one table can land out of order (a realtime refetch racing the
+// one that follows a booking), and the older answer would overwrite the newer.
+// Only the newest read of a table is applied. An older one is dropped and its
+// caller waits for the newer read instead, so "await refreshBookings()" still
+// means the cache is current.
+const readSeq = {}, readLatest = {};
+function latestRead(key, read, apply){
+  const mine = readSeq[key] = (readSeq[key] || 0) + 1;
+  return (readLatest[key] = Promise.resolve(read()).then(res => {
+    if(mine !== readSeq[key]) return readLatest[key];
+    if(!myProfile) return;   // signed out while the answer was on its way
+    return apply(res);
+  }));
+}
 async function loadTeams(){
-  const { data, error } = await selectAllRows('teams');
-  if(error){ flash(friendlyError(error, 'Teams didn\'t load.'), 'err'); return; }
-  indexTeams(data);
+  return latestRead('teams', () => selectAllRows('teams'), ({ data, error }) => {
+    if(error){ flash(friendlyError(error, 'Teams didn\'t load.'), 'err'); return; }
+    indexTeams(data);
+  });
 }
 // Everyone signed in may read team_members (RLS members_read).
 async function loadMembers(){
-  const { data, error } = await sb.from('team_members').select('team_id, profile_id, role');
-  if(error) return; // the profile's own team stands in (myMemberships)
-  teamMembers = data || [];
-  membersLoaded = true;
-  syncMyTeamTab();
-  if(bookingsCache.length) writeCache();
+  return latestRead('team_members', () => sb.from('team_members').select('team_id, profile_id, role'), ({ data, error }) => {
+    if(error) return; // the profile's own team stands in (myMemberships)
+    teamMembers = data || [];
+    membersLoaded = true;
+    syncMyTeamTab();
+    if(bookingsCache.length) writeCache();
+  });
 }
 
 const CACHE_KEY = 'seaford-cache-v1';
@@ -5146,16 +5163,17 @@ function paintSyncedLabel(){
 setInterval(paintSyncedLabel, 30000);
 
 async function refreshBookings(){
-  const { data, error } = await selectAllRows('bookings');
-  if(error){ flash(friendlyError(error, 'The schedule didn\'t load.'), 'err'); return; }
-  bookingsCache = data;
-  lastSyncedAt = Date.now();
-  writeCache();
-  paintSyncedLabel();
-  checkWaitlistOpenings();
-  // The Lock Screen, widgets and Watch follow every refresh, not only a visit
-  // to Schedule (a booking made on Book used to wait for one).
-  syncNativeContext();
+  return latestRead('bookings', () => selectAllRows('bookings'), ({ data, error }) => {
+    if(error){ flash(friendlyError(error, 'The schedule didn\'t load.'), 'err'); return; }
+    bookingsCache = data;
+    lastSyncedAt = Date.now();
+    writeCache();
+    paintSyncedLabel();
+    checkWaitlistOpenings();
+    // The Lock Screen, widgets and Watch follow every refresh, not only a visit
+    // to Schedule (a booking made on Book used to wait for one).
+    syncNativeContext();
+  });
 }
 
 // ============ WEATHER (rainout risk) ============
@@ -5192,10 +5210,11 @@ function weatherBadge(dateStr){
 
 
 async function refreshWaitlist(){
-  const { data, error } = await selectAllRows('waitlist');
-  if(error){ return; } // waitlist table may not exist yet if the migration hasn't been run — fail quiet
-  waitlistCache = data;
-  checkWaitlistOpenings();
+  return latestRead('waitlist', () => selectAllRows('waitlist'), ({ data, error }) => {
+    if(error){ return; } // waitlist table may not exist yet if the migration hasn't been run — fail quiet
+    waitlistCache = data;
+    checkWaitlistOpenings();
+  });
 }
 
 // If a slot my team is waitlisted for is no longer booked, flash it once per session.
@@ -5221,12 +5240,13 @@ let scheduleLocked = false;
 let priorityBookingEnabled = false;
 let priorityForcedRanks = new Set(); // grade ranks a director/admin has manually pushed through
 async function refreshLockState(){
-  const { data, error } = await sb.from('app_settings').select('schedule_locked, priority_booking_enabled, priority_forced_ranks').eq('id', true).single();
-  if(error){ return; } // non-fatal — banner just won't show if this fails
-  scheduleLocked = !!data.schedule_locked;
-  priorityBookingEnabled = !!data.priority_booking_enabled;
-  priorityForcedRanks = new Set(data.priority_forced_ranks || []);
-  renderLockBanner();
+  return latestRead('app_settings', () => sb.from('app_settings').select('schedule_locked, priority_booking_enabled, priority_forced_ranks').eq('id', true).single(), ({ data, error }) => {
+    if(error){ return; } // non-fatal — banner just won't show if this fails
+    scheduleLocked = !!data.schedule_locked;
+    priorityBookingEnabled = !!data.priority_booking_enabled;
+    priorityForcedRanks = new Set(data.priority_forced_ranks || []);
+    renderLockBanner();
+  });
 }
 
 // ============ PRIORITY BOOKING (grade hierarchy) ============
@@ -5437,41 +5457,92 @@ function rerenderCurrentView(){
   else if(currentView === 'admin'){ renderTeamsList(); if(teamSheetId) renderTeamSheet(); if(userListRows.length) renderUserList(); }
 }
 
+// A burst of realtime events is one refetch, not one per row: booking a
+// season pattern is an insert per practice and Clear Bookings a delete per
+// booking. Each table refetches once, 250ms after its last event.
+const realtimeTimers = {};
+function coalesced(table, run){
+  return () => {
+    clearTimeout(realtimeTimers[table]);
+    realtimeTimers[table] = setTimeout(() => { delete realtimeTimers[table]; if(myProfile) run(); }, 250);
+  };
+}
 function setupRealtime(){
-  realtimeChannel = sb.channel('bookings-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, async () => {
+  let dropped = false;
+  const channel = realtimeChannel = sb.channel('bookings-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, coalesced('bookings', async () => {
       const before = bookingsCache;
       await refreshBookings();
       rerenderCurrentView();
       noteLiveChanges(before, bookingsCache);
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, async () => {
+    }))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, coalesced('app_settings', async () => {
       await refreshLockState();
       if(currentView === 'book') renderPriorityBookingGate();
       if(currentView === 'admin') renderPriorityTierStatus();
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist' }, async () => {
+    }))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist' }, coalesced('waitlist', async () => {
       await refreshWaitlist();
       rerenderCurrentView();
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, async () => {
+    }))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, coalesced('teams', async () => {
       await loadTeams();
       rerenderCurrentView();
       if(currentView === 'book') renderPriorityBookingGate();
       if(currentView === 'admin') renderPriorityTierStatus();
-    })
+    }))
     // A director assigning or moving a coach changes which teams this person
     // books for and sees on My Team, while the app is open.
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, async () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, coalesced('team_members', async () => {
       await loadMembers();
       // Only these tabs depend on which teams this person books for or sees.
       // switchView on Admin would rerun renderAdmin() and reset the invite form.
       if(['book', 'openweek', 'myteam'].includes(currentView)) switchView(currentView);
       else rerenderCurrentView();
       syncNativeContext();
-    })
-    .subscribe();
+    }))
+    // The channel rejoins by itself after a drop, but whatever changed while
+    // it was down never arrives as an event: read it all again.
+    .subscribe(status => {
+      if(channel !== realtimeChannel) return;   // a channel teardown() already removed
+      if(status === 'SUBSCRIBED'){ if(dropped){ dropped = false; resync(true); } }
+      else dropped = true;                      // CHANNEL_ERROR, TIMED_OUT, CLOSED
+    });
 }
+
+// ---- Catching up after sleep or a lost connection ----
+// Realtime only delivers what happens while the socket is up. A phone that
+// slept in a pocket, or lost signal at a field, comes back showing the
+// schedule as it was. Three things say "you may have missed something": the
+// page coming back after 30s or more hidden, the browser going online, and
+// the channel re-subscribing after a drop. Waking a phone fires all three
+// within seconds, so there is one resync at a time and the first two share
+// one per 5s. The re-subscribe always gets its own (queued behind one that is
+// running), because only a read made after it is sure to have missed nothing.
+let resyncBusy = false, resyncQueued = false, lastResyncAt = 0, hiddenAt = 0;
+async function resync(force){
+  if(!myProfile || !navigator.onLine) return;
+  if(resyncBusy){ if(force) resyncQueued = true; return; }
+  if(!force && Date.now() - lastResyncAt < 5000) return;
+  resyncBusy = true; lastResyncAt = Date.now();
+  try {
+    // appRefresh is the pull-to-refresh; teams and memberships are the other
+    // two tables the channel listens to.
+    await Promise.all([loadTeams(), loadMembers()]);
+    await window.appRefresh();
+    if(myProfile && currentView === 'book') renderPriorityBookingGate();
+    if(myProfile && currentView === 'admin') renderPriorityTierStatus();
+  } catch(e){ /* each read reports its own failure */ }
+  resyncBusy = false;
+  if(resyncQueued){ resyncQueued = false; resync(true); }
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){ hiddenAt = Date.now(); return; }
+  const away = hiddenAt ? Date.now() - hiddenAt : 0;
+  hiddenAt = 0;
+  if(away > 30000) resync();
+});
+window.addEventListener('online', () => resync());
 
 // ============ VIEW SWITCHING ============
 document.getElementById('viewTabs').addEventListener('click', e => {

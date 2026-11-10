@@ -5448,13 +5448,15 @@ function renderLockBanner(){
   if(canUseBookingSwitches()){ renderLockToggleButton(); renderPriorityToggleButton(); }
 }
 
-function rerenderCurrentView(){
+// keepUserTable: for a change that can't alter who is listed on Admin (a
+// booking, the waitlist), so the user table is not rebuilt for it.
+function rerenderCurrentView(keepUserTable){
   if(currentView === 'schedule') renderScheduleMode();
   else if(currentView === 'book'){ renderWelcome(); renderWeek(); }
   else if(currentView === 'openweek') renderOpenWeek();
   else if(currentView === 'myteam') renderMyTeam();
   else if(currentView === 'league') renderLeague();
-  else if(currentView === 'admin'){ renderTeamsList(); if(teamSheetId) renderTeamSheet(); if(userListRows.length) renderUserList(); }
+  else if(currentView === 'admin'){ renderTeamsList(); if(teamSheetId) renderTeamSheet(); if(userListRows.length && !keepUserTable) renderUserList(); }
 }
 
 // A burst of realtime events is one refetch, not one per row: booking a
@@ -5473,7 +5475,7 @@ function setupRealtime(){
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, coalesced('bookings', async () => {
       const before = bookingsCache;
       await refreshBookings();
-      rerenderCurrentView();
+      rerenderCurrentView(true);
       noteLiveChanges(before, bookingsCache);
     }))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, coalesced('app_settings', async () => {
@@ -5483,7 +5485,7 @@ function setupRealtime(){
     }))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'waitlist' }, coalesced('waitlist', async () => {
       await refreshWaitlist();
-      rerenderCurrentView();
+      rerenderCurrentView(true);
     }))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'teams' }, coalesced('teams', async () => {
       await loadTeams();
@@ -9386,6 +9388,13 @@ function renderUserList(){
     el.coachListBody.innerHTML = `<tr class="empty-row"><td colspan="${colspan}">${q ? 'Nobody matches “' + escSafe(q) + '”.' : 'No one invited yet.'}</td></tr>`;
     return;
   }
+  // A rebuild (the last-seen column arriving, a team or membership change
+  // from someone else) must not take a Manage row that is in use with it: its
+  // status line can hold a password that was just set and is shown once, and
+  // a request still on its way writes its answer into that same row. Those
+  // rows are carried over as they are, into the rebuilt table.
+  const inUse = [...el.coachListBody.querySelectorAll('.user-actions')]
+    .filter(r => !r.hidden || r.querySelector('.credential-box, button:disabled'));
   if(myProfile.role === 'admin'){
     el.coachListBody.innerHTML = rows.map(u => {
       const roleLabel = userRoleLabel(u);
@@ -9396,6 +9405,12 @@ function renderUserList(){
       return `<tr><td>${escSafe(personName(c))}</td><td>${escSafe(userRowTeamText(c))}</td><td class="email-cell">${escSafe(c.email)}</td><td class="seen-cell">${escSafe(lastSeenText(c.id))}</td>${manageCell(c, colspan)}`;
     }).join('');
   }
+  inUse.forEach(old => {
+    const fresh = el.coachListBody.querySelector(`.user-actions[data-actions="${old.dataset.actions}"]`);
+    if(!fresh) return;   // that person is no longer listed
+    fresh.replaceWith(old);
+    if(!old.hidden) el.coachListBody.querySelector(`[data-manage="${old.dataset.actions}"]`)?.setAttribute('aria-expanded', 'true');
+  });
 }
 el.userSearch?.addEventListener('input', () => renderUserList());
 

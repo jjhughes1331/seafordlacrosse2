@@ -147,7 +147,7 @@
 
   function from(table){
     let filters = [], op = 'select', payload = null, wantSingle = false, maybe = false, conflict = 'id';
-    let orderBy = null, lim = null, wantCount = false, headOnly = false;
+    let orderBy = null, lim = null, rng = null, wantCount = false, headOnly = false;
     const rows = () => (store[table] = store[table] || []);
     async function exec(){
       seedBookings();
@@ -161,6 +161,7 @@
       if(op === 'select'){
         data = hit.map(r => ({ ...r }));
         if(orderBy) data.sort((a, b) => (a[orderBy[0]] > b[orderBy[0]] ? 1 : a[orderBy[0]] < b[orderBy[0]] ? -1 : 0) * (orderBy[1] ? 1 : -1));
+        if(rng) data = data.slice(rng[0], rng[1] + 1);
         if(lim != null) data = data.slice(0, lim);
         if(wantCount || headOnly) return { data: headOnly ? null : data, count: hit.length, error: null };
       }
@@ -207,6 +208,8 @@
       // .not(col, 'is', null): the priority reset's "every team" filter.
       not(k, o, v){ if(o === 'is') filters.push([k, 'notis', v]); return api; },
       order(col, o){ orderBy = [col, !(o && o.ascending === false)]; return api; }, limit(n){ lim = n; return api; }, like(){ return api; },
+      // .range(from, to), both ends included, as PostgREST counts them (selectAllRows pages with it).
+      range(a, b){ rng = [a, b]; return api; },
       single(){ wantSingle = true; return api; },
       maybeSingle(){ wantSingle = true; maybe = true; return api; },
       then(res, rej){ return exec().then(res, rej); },
@@ -5091,8 +5094,23 @@ function indexTeams(rows){
   teamsById = {};
   teams.forEach(t => { teamsById[t.id] = t; });
 }
+// The Data API returns at most 1000 rows a request and drops the rest without
+// an error, so a whole-table read goes a page at a time, in primary-key order
+// so pages neither overlap nor skip. A failed page fails the whole read: the
+// caller gets an error, never part of a table.
+const PAGE_ROWS = 1000;
+async function selectAllRows(table){
+  const all = [];
+  for(let from = 0; ; from += PAGE_ROWS){
+    const { data, error } = await sb.from(table).select('*').order('id', { ascending: true }).range(from, from + PAGE_ROWS - 1);
+    if(error) return { data: null, error };
+    const page = data || [];
+    all.push(...page);
+    if(page.length < PAGE_ROWS) return { data: all, error: null };
+  }
+}
 async function loadTeams(){
-  const { data, error } = await sb.from('teams').select('*');
+  const { data, error } = await selectAllRows('teams');
   if(error){ flash(friendlyError(error, 'Teams didn\'t load.'), 'err'); return; }
   indexTeams(data);
 }
@@ -5128,7 +5146,7 @@ function paintSyncedLabel(){
 setInterval(paintSyncedLabel, 30000);
 
 async function refreshBookings(){
-  const { data, error } = await sb.from('bookings').select('*');
+  const { data, error } = await selectAllRows('bookings');
   if(error){ flash(friendlyError(error, 'The schedule didn\'t load.'), 'err'); return; }
   bookingsCache = data;
   lastSyncedAt = Date.now();
@@ -5174,7 +5192,7 @@ function weatherBadge(dateStr){
 
 
 async function refreshWaitlist(){
-  const { data, error } = await sb.from('waitlist').select('*');
+  const { data, error } = await selectAllRows('waitlist');
   if(error){ return; } // waitlist table may not exist yet if the migration hasn't been run — fail quiet
   waitlistCache = data;
   checkWaitlistOpenings();

@@ -76,6 +76,9 @@ different project** — drive the dashboard in the browser instead.
   `anon` has no table grants and `log_activity()` is not API-callable
 - **Public sign-up must stay OFF** (Auth → Sign In / Providers). Accounts come
   only from `invite-coach` via the admin API
+- **The Data API returns at most 1000 rows** and drops the rest with no
+  error. Whole-table reads (`bookings`, `teams`, `waitlist`) go through
+  `selectAllRows`, which pages by `id`; a new unbounded read needs it too
 - **Roles:** admin, director, coach (a *head* coach, who books), assistant
   (JJ, 2026-09-22: view-only, one team). Every write policy names the roles
   that may write, so assistants are refused by RLS, not by hidden buttons.

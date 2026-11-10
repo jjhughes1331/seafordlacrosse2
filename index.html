@@ -5085,6 +5085,49 @@ function teardown(){
   document.getElementById('largeTitle').style.display = 'none';
   document.getElementById('nextPracticeCard').style.display = 'none';
   el.actionsBar.classList.remove('show');
+  clearSignedInTraces();
+}
+// A shared phone, part two: nothing this person loaded or typed is left for
+// whoever signs in next, or for anyone who picks the phone up at the sign-in
+// screen. Per-device choices that say nothing about a person stay (theme,
+// Book's Week/Month/Season, the favourite field).
+function clearSignedInTraces(){
+  // Saved for offline and for "since you were here": the whole profile row,
+  // every booking and membership. (myProfile is already null, so nothing
+  // writes them back: saveSeen and latestRead both check it.)
+  try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(SEEN_KEY); } catch(e){}
+  lastSyncedAt = null;
+  // The two banners sit above the sign-in screen.
+  scheduleLocked = false; priorityBookingEnabled = false; priorityForcedRanks = new Set();
+  renderLockBanner();
+  liveChangeParts = [];
+  document.getElementById('changesStrip').style.display = 'none';
+  document.getElementById('changesBody').innerHTML = '';
+  // Every sheet, through its own close so its state goes too (a waiting
+  // confirm answers "no"); then whatever is left.
+  closeFieldsSheet(); closeCalendarSheet(); closeShareCard(); closeConfirm(false);
+  ['teamSheet', 'addTeamSheet', 'personSheet'].forEach(closeTSheet);
+  document.getElementById('ctxMenu').innerHTML = '';
+  document.querySelectorAll('.share-modal').forEach(m => { m.style.display = 'none'; });
+  document.getElementById('accountBody').innerHTML = '';
+  el.whoName.textContent = ''; el.rolePill.textContent = '';
+  // Admin keeps names, emails and, once, a password that was just set.
+  ['coachListBody', 'activityList', 'teamsList', 'leagueSched', 'inviteStatus', 'bulkResults', 'clearTeamStatus',
+    'clearFieldStatus', 'priorityTierStatus', 'usageDashboard'].forEach(id => { const n = document.getElementById(id); if(n) n.innerHTML = ''; });
+  ['userSearch', 'inviteFirstName', 'inviteLastName', 'inviteEmail', 'invitePassword', 'bulkFileInput'].forEach(id => { const n = document.getElementById(id); if(n) n.value = ''; });
+  // Admin opens on People > Users again, as on a fresh load. The other panes
+  // fill themselves when their tab is tapped, so none is left showing empty.
+  document.querySelectorAll('#adminPaneToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.pane === 'people'));
+  document.querySelectorAll('[data-adminpane]').forEach(pane => { pane.hidden = pane.dataset.adminpane !== 'people'; });
+  document.querySelectorAll('#peoplePaneToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.people === 'users'));
+  document.querySelectorAll('[data-peoplepane]').forEach(pane => { pane.hidden = pane.dataset.peoplepane !== 'users'; });
+  userListRows = []; lastSeenById = {};
+  teamPeople = []; teamPeopleError = ''; teamPeopleLoaded = false;
+  activityRows = []; activityFilter = 'all';
+  // Filters that were this person's: Find a Time (prefilled from their
+  // team's usual days), and the team picked on Calendar and League.
+  openWeekField = null; finderDays = new Set(); finderTime = 'any'; finderLimit = 40; finderPrefilled = false;
+  scheduleTeam = null; scheduleGradeTouched = false; leagueTeamFilter = 'all';
 }
 
 el.signOutBtn.addEventListener('click', () => sb.auth.signOut());

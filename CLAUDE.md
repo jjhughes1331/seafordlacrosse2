@@ -266,3 +266,7 @@ rendered output is what a coach sees.**
   at 550, not at its own 700
 - The dev simulator (iPhone 17 Pro) is shared with JJ's other project's
   session; `dev-sim.sh` takes `DEV=<udid>` to use another
+- Sign-out is for a shared phone: `teardown()` ends in
+  `clearSignedInTraces()`, which removes `seaford-cache-v1` and
+  `seaford-seen`, closes every sheet, empties Admin's lists and resets
+  per-person module state. New state that holds a person's data goes there

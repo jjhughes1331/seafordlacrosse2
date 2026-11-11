@@ -5427,7 +5427,25 @@ function closureFor(fieldId, date, time){
   }
   return null;
 }
-// "Closed" plus why, for a slot's second line.
+// How many slots a field can offer on one day: every time times every part of
+// the field, less the times that are closed. A closed time still counts the
+// practices booked there before it closed, so "booked of capacity" never
+// passes 100%. Every capacity figure (league bars, the calendar's fullness
+// bar, the usage dashboard) goes through here.
+function fieldDayCapacity(field, dateObj){
+  const avail = field.availability.find(a => a.days.includes(dateObj.getDay()));
+  if(!avail) return 0;
+  const per = avail.subfields.length;
+  if(!closuresCache.length) return avail.times.length * per;
+  const iso = fmtDateISO(dateObj);
+  let n = 0;
+  avail.times.forEach(t => {
+    if(!closureFor(field.id, iso, t)) { n += per; return; }
+    const held = bookingsCache.filter(b => b.field_id === field.id && b.date === iso && b.time === t).length;
+    n += Math.min(per, held);
+  });
+  return n;
+}
 
 // If a slot my team is waitlisted for is no longer booked, flash it once per session.
 function checkWaitlistOpenings(){
@@ -7011,10 +7029,7 @@ function renderLeague(){
 function fieldSlotCapacity(field, start, end){
   let n = 0, cursor = new Date(start);
   while(cursor <= end){
-    if(cursor >= SEASON_START && cursor <= SEASON_END){
-      const avail = field.availability.find(a => a.days.includes(cursor.getDay()));
-      if(avail) n += avail.times.length * avail.subfields.length;
-    }
+    if(cursor >= SEASON_START && cursor <= SEASON_END) n += fieldDayCapacity(field, cursor);
     cursor = addDays(cursor, 1);
   }
   return n;
@@ -7852,10 +7867,7 @@ function calDefaultSelected(which){
 function calDayCapacity(which, dateObj){
   const fields = calFieldsShown(which);
   let n = 0;
-  fields.forEach(fl => {
-    const avail = fl.availability.find(a => a.days.includes(dateObj.getDay()));
-    if(avail) n += avail.times.length * avail.subfields.length;
-  });
+  fields.forEach(fl => { n += fieldDayCapacity(fl, dateObj); });
   return n;
 }
 function renderMonthCalendar(which, host){
@@ -8834,18 +8846,15 @@ document.getElementById('closeSaveBtn').addEventListener('click', async () => {
 
 // ============ USAGE & ANALYTICS DASHBOARD (admin/director) ============
 // Total bookable slots per field across the whole season, used as the
-// denominator for utilization % — computed from FIELDS' availability rules,
-// not stored anywhere, so it always matches what booking actually allows.
+// denominator for utilization % — computed from FIELDS' availability rules
+// less closed dates, not stored anywhere, so it always matches what booking
+// actually allows.
 function computeFieldSeasonCapacity(){
   const cap = {};
   FIELDS.forEach(f => cap[f.id] = 0);
   let cursor = new Date(SEASON_START);
   while(cursor <= SEASON_END){
-    const dow = cursor.getDay();
-    FIELDS.forEach(f => {
-      const avail = f.availability.find(a => a.days.includes(dow));
-      if(avail) cap[f.id] += avail.times.length * avail.subfields.length;
-    });
+    FIELDS.forEach(f => { cap[f.id] += fieldDayCapacity(f, cursor); });
     cursor = addDays(cursor, 1);
   }
   return cap;

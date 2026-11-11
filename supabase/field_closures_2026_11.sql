@@ -1,7 +1,9 @@
 -- Closed dates (2026-11). Seaford project only (ref gjpqwmcdejpvffdimddk);
 -- do NOT run on Snowleopard.
 --
--- NOT YET APPLIED. Run once in the SQL editor after JJ approves it.
+-- APPLIED to the live database on 2026-11-11 (run once in the SQL editor,
+-- after a trial that ran every rule and rolled itself back; all six checks
+-- at the end were true, and bookings were untouched).
 --
 -- A field can be closed for a date or a run of dates, all day or for some of
 -- its times: no permit, a school game. `field_slots` only knows weekdays, so

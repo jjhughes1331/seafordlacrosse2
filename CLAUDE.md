@@ -215,8 +215,13 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
 - **Book on a phone** is a week strip plus one day as a grouped list with GET
   pills. Desktop keeps the week agenda. The field is one row (switcher, then a
   More menu with Favorite and Directions) and Today replaces Jump to Date.
-  Week/Month/Season is remembered per device (`seaford-book-mode`, first
-  default Month). Matches the app: spec in
+  Week/Month/Season/Sheet is remembered per device (`seaford-book-mode`, first
+  default Month). **Sheet** (`renderBookSheet`) is the coaches' Google sheet:
+  the Book field, a row per date it runs from today to the season's end, a
+  column per time, each cell its parts (team, Open, or grey Closed); a row
+  closed throughout for one reason is one grey bar. Open is a `data-book`
+  button, so it books through the same weekGrid handler as the day list. It
+  scrolls sideways inside `.sh-scroll`, never the page. Matches the app: spec in
   `../seaford-lax-app/docs/superpowers/specs/2026-11-06-book-one-tap-design.md`
 - The tab bar's shape, order and labels are JJ's — do not change them. The
   order is **Book, Find a Time, Calendar, My Team** (JJ, 2026-09-23: the order

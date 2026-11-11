@@ -104,8 +104,9 @@
         avail.times.forEach((time, ti) => avail.subfields.forEach((sub, si) => {
           if((d * 7 + fi * 3 + ti * 2 + si) % 3 !== 0) return;
           const t = teams[(d + fi + ti + si) % teams.length];
-          bookings.push({ id: uuid(++id), field_id: f.id, date:
-            day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0'),
+          const dateISO = day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0');
+          if(closureOf(f.id, dateISO, time)) return;   // a closed slot holds no practice
+          bookings.push({ id: uuid(++id), field_id: f.id, date: dateISO,
             subfield: sub, time, team_id: t.id, booked_by: ADMIN_ID });
         }));
       });
@@ -137,9 +138,19 @@
     notification_prefs: [], notification_teams: [],
     games: [],
     waitlist: [],
+    // closed_dates_2026_11_11.sql: one closure so a closed slot shows with no
+    // clicking. Seamans Neck on a Thursday early in the season, one time only.
+    field_closures: [{ id: uuid(900), field_id: 'seamans', start_date: '2027-03-04', end_date: '2027-03-04', times: ['5:00-6:30 PM'],
+      reason: 'School game', created_by: uuid(2), created_at: '2026-11-11T12:00:00Z' }],
     app_settings: [{ id: true, schedule_locked: false, priority_booking_enabled: false, priority_forced_ranks: [], locked_by: null }],
   };
   window.__fixtureStore = store;
+
+  // The closure covering a slot, if any (the contract's closed(slot)).
+  function closureOf(field, date, time){
+    return (store.field_closures || []).find(c => c.field_id === field && c.start_date <= date && date <= c.end_date
+      && (c.times == null || c.times.includes(time))) || null;
+  }
 
   const match = (row, filters) => filters.every(([k, op, v]) =>
     op === 'eq' ? row[k] === v : op === 'neq' ? row[k] !== v : op === 'in' ? v.includes(row[k])
@@ -156,6 +167,9 @@
       const own = table === 'notification_prefs' || table === 'notification_teams';
       if(table === 'notification_teams' && op !== 'select')
         return { data: null, error: { code: '42501', message: 'permission denied for table notification_teams' } };
+      // field_closures has no write policy: close_field / reopen_field are the only way in.
+      if(table === 'field_closures' && op !== 'select')
+        return { data: null, error: { code: '42501', message: 'permission denied for table field_closures' } };
       const hit = rows().filter(r => match(r, filters) && (!own || r.profile_id === who.id));
       let data;
       if(op === 'select'){
@@ -182,6 +196,11 @@
         const list = (Array.isArray(payload) ? payload : [payload]).map(r => ({ id: crypto.randomUUID(), ...r }));
         // mirror the real unique constraint on a slot
         for(const r of list){
+          // enforce_allowed_slot(): a closed slot refuses a booking or a waitlist entry.
+          if(table === 'bookings' || table === 'waitlist'){
+            const c = closureOf(r.field_id, r.date, r.time);
+            if(c) return { data: null, error: { code: '23514', message: 'Field closed: ' + c.reason } };
+          }
           if(table === 'bookings' && rows().some(x => x.field_id===r.field_id && x.date===r.date && x.subfield===r.subfield && x.time===r.time))
             return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
         }
@@ -399,6 +418,43 @@
         odd_times: season.filter(g => g.start_time && (g.start_time < '07:00' || g.start_time > '20:00'))
           .sort((a, b) => (a.game_date + a.game_number).localeCompare(b.game_date + b.game_number))
           .map(g => ({ game: g.gender[0].toUpperCase() + g.gender.slice(1) + ' ' + g.game_number, date: g.game_date, time: clock12(g.start_time), teams: g.home + ' v ' + g.away })) });
+    }
+    if(name === 'close_field'){
+      // closed_dates_2026_11_11.sql: admins and directors; either director, any field.
+      if(!['admin', 'director'].includes(who.role)) return fail('Only an admin or a director can close a field', '42501');
+      let slots;
+      try { slots = (FIELDS.find(f => f.id === p.p_field) || {}).availability; } catch(e){ slots = null; }
+      if(!slots) return fail('Unknown field: ' + p.p_field, '22023');
+      const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const isoOk = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
+      if(!isoOk(p.p_start) || !isoOk(p.p_end)) return fail('Give a start and an end date', '22023');
+      if(p.p_end < p.p_start) return fail('The end date is before the start date', '22023');
+      if(p.p_end < iso(new Date())) return fail('That run of dates is already over', '22023');
+      if((Date.parse(p.p_end) - Date.parse(p.p_start)) / 86400000 + 1 > 366) return fail('A closure can run at most 366 days', '22023');
+      if(p.p_times != null){
+        if(!Array.isArray(p.p_times) || !p.p_times.length) return fail('Choose at least one time, or close the field all day', '22023');
+        const have = new Set(slots.flatMap(a => a.times));
+        const bad = p.p_times.find(t => !have.has(t));
+        if(bad) return fail('That field has no ' + bad + ' time', '22023');
+      }
+      const reason = String(p.p_reason == null ? '' : p.p_reason).trim();
+      if(reason.length < 1 || reason.length > 40) return fail('The reason needs 1 to 40 characters', '22023');
+      const closure = { id: crypto.randomUUID(), field_id: p.p_field, start_date: p.p_start, end_date: p.p_end,
+        times: p.p_times == null ? null : [...new Set(p.p_times)], reason, created_by: who.id, created_at: new Date().toISOString() };
+      store.field_closures.push(closure);
+      // Waitlist entries first, then the practices, for closed slots dated today or later. Past practices stay.
+      const today = iso(new Date());
+      const gone = r => r.date >= today && r.field_id === closure.field_id && r.date >= closure.start_date && r.date <= closure.end_date
+        && (closure.times == null || closure.times.includes(r.time));
+      store.waitlist = store.waitlist.filter(r => !gone(r));
+      const before = store.bookings.length;
+      store.bookings = store.bookings.filter(r => !gone(r));
+      return ok({ closure: { ...closure }, cancelled: before - store.bookings.length });
+    }
+    if(name === 'reopen_field'){
+      if(!['admin', 'director'].includes(who.role)) return fail('Only an admin or a director can reopen a field', '42501');
+      store.field_closures = store.field_closures.filter(c => c.id !== p.p_id);
+      return ok(null);
     }
     return fail('Unknown function ' + name, '42883');
   }
@@ -1002,6 +1058,28 @@
   .recurring-card .daytoggle { flex: 1 1 0; min-width: 0; padding: 8px 0; border-radius: var(--radius-pill); font-size: var(--ios-sub); }
   .recurring-card .daytoggle:not(.active) { background: none; }
   .ios-value.recurring-miss { color: var(--danger); }
+  /* Closed dates: a closed slot is grey and has no control. */
+  .shut-pill { flex: none; margin-left: auto; padding: 3px 11px; border-radius: 999px; background: var(--chip-bg); color: var(--muted);
+    font-size: var(--ios-sub); font-weight: 600; white-space: nowrap; }
+  .book-slot.shut, .book-slot.shut:hover { border-style: solid; border-color: var(--line); background: var(--chip-bg); color: var(--muted); cursor: default; }
+  .book-slot.shut .sub, .book-slot.shut .team { color: var(--muted); }
+  .book-slot.shut.past { opacity: .6; }
+  .bd-row.shut .bd-sub, .bd-row.shut .bd-sub small { color: var(--muted); }
+  .bd-row.shut.past { opacity: .6; }
+  .book-month-badge.shut { background: var(--chip-bg); color: var(--muted); }
+  .cal-item.shut { align-items: center; }
+  .cal-item.shut .cal-team, .cal-item.shut .cal-where, .cal-item.shut .cal-time { color: var(--muted); }
+  /* Admin > Booking > Closed Dates */
+  .closure-row { cursor: default; }
+  .closure-row:active { background: none; }
+  .ios-row.close-picks { flex-wrap: wrap; justify-content: flex-start; gap: 8px; cursor: default; padding-top: 8px; padding-bottom: 8px; }
+  .ios-row.close-picks[hidden] { display: none; }
+  .ios-row.close-picks:active { background: none; }
+  .close-picks .fchip { flex: none; }
+  .close-picks .fchip[aria-pressed="true"] { border-color: var(--accent-fill); color: var(--accent-fill); background: color-mix(in srgb, var(--accent-fill) 14%, transparent); }
+  .closure-row .bd-sub small { white-space: normal; overflow: visible; }
+  #closedDatesCard .ios-field { padding-top: 4px; padding-bottom: 4px; }
+  #closedDatesCard .ios-field input { min-height: 44px; font-size: max(16px, var(--ios-body)); }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
   /* Compact month overview (mobile Book view) — a real calendar grid, never an
      agenda list, unlike .cal-grid which intentionally collapses to a list at
@@ -1790,6 +1868,7 @@
   .book-month-badge { font-size: 11px; font-weight: 600; padding: 0; background: none !important; letter-spacing: -.2px; font-variant-numeric: tabular-nums; }
   .book-month-badge.open { color: var(--accent-fill); }
   .book-month-badge.full { color: var(--muted); } /* full is a fact, not an error */
+  .book-month-badge.shut { color: var(--muted); }
   .book-month-badge.mine { color: var(--mine-text); }
   .book-month-badge.past { color: var(--silver-deep); }
   .book-month-dow { font-size: 11px; letter-spacing: .2px; }
@@ -3161,6 +3240,34 @@
     </div>
   </div>
 
+  <!-- Closed dates (admins and directors): a field shut on a date or a run of
+       dates, all day or at chosen times. Written only through the close_field
+       and reopen_field functions. -->
+  <div id="closedDatesCard" hidden>
+    <p class="admin-section-label" style="margin-top:32px">Closed Dates</p>
+    <p class="ios-group-header">Not Over Yet</p>
+    <div class="ios-group" id="closureList"></div>
+    <p class="ios-group-header">Close a Field</p>
+    <div class="ios-group">
+      <label class="ios-row ios-select-row"><span>Field</span>
+        <span class="ios-value"><span class="sel-text" data-select-text>Choose a field</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
+        <select id="closeFieldSelect" aria-label="Field"></select>
+      </label>
+      <label class="ios-row ios-field"><span>From</span><input type="date" id="closeFrom" aria-label="From"></label>
+      <label class="ios-row ios-field"><span>To</span><input type="date" id="closeTo" aria-label="To"></label>
+      <label class="ios-row switch-row">
+        <span class="switch-text">All Day</span>
+        <input type="checkbox" class="ios-switch" id="closeAllDay" role="switch" checked>
+      </label>
+      <div class="ios-row close-picks" id="closeTimes" role="group" aria-label="Times to close" hidden></div>
+      <label class="ios-row ios-field"><span>Reason</span><input type="text" id="closeReason" maxlength="40" placeholder="No permit" autocomplete="off" enterkeyhint="done"></label>
+      <div class="ios-row close-picks" id="closeQuick" role="group" aria-label="Quick reasons"></div>
+      <button type="button" class="ios-row ios-action" id="closeSaveBtn">Close Field</button>
+    </div>
+    <p class="ios-group-footer">Closes every sub-field. Practices already booked in the closed time are cancelled and their coaches are told. To is the same day if you leave it.</p>
+    <div class="admin-status" id="closeStatus"></div>
+  </div>
+
 
   </div>
 
@@ -3275,6 +3382,9 @@ let waitlistCache = [];          // in-memory copy of all waitlist entries, refr
 let waitlistNotified = new Set(); // waitlist entry ids we've already flashed "it opened up!" for, this session
 let weatherCache = {};           // dateStr -> { precip: number 0-100, code: number } — populated once on load, best-effort
 let realtimeChannel = null;
+let closuresChannel = null;   // field_closures has its own channel: see setupClosuresRealtime
+let closeTimesPicked = new Set(), closeToTouched = false;   // Admin > Closed Dates form
+let closuresCache = [];       // field_closures rows; empty when the table is missing or unreadable
 // What the native app was last told (see syncNativeContext); declared up here
 // because showLoginScreen resets it and can run before that section loads.
 let lastNativeContext = '';
@@ -3946,7 +4056,7 @@ document.addEventListener('keydown', e => {
 // two JS versions racing, and one repainted Schedule whatever tab was open.
 window.appRefresh = async function(){
   if(!myProfile) return;
-  await Promise.all([refreshBookings(), refreshWaitlist(), refreshLockState()]);
+  await Promise.all([refreshBookings(), refreshWaitlist(), refreshLockState(), loadClosures()]);
   rerenderCurrentView();
 };
 
@@ -4677,7 +4787,15 @@ function friendlyError(error, lead){
     return `${lead} You're offline. Try again when you have signal.`;
   if(error && error.code === '42501') return `${lead} Your account doesn't have permission for that.`;
   if(error && error.code === '23505') return `${lead} Someone else just changed that slot.`;
+  const closed = closedRefusal(error);
+  if(closed) return `${lead} That field is closed then (${closed}).`;
   return `${lead} Try again in a moment.`;
+}
+// The database refuses a booking or waitlist entry on a closed slot with
+// 23514 and 'Field closed: <reason>'. Returns the reason, or null.
+function closedRefusal(error){
+  const m = error && error.code === '23514' && /^Field closed: (.+)$/s.exec(String(error.message || ''));
+  return m ? m[1].trim() : null;
 }
 function flash(msg, type, action, background){
   // A toast with a button (Undo) keeps its place until it times out or is
@@ -4996,10 +5114,12 @@ async function loadProfileAndStartInner(){
     if(Array.isArray(cached.teams) && cached.teams.length){ indexTeams(cached.teams); warm = true; }
     // Saved memberships stand in until the fresh ones land (myMemberships).
     if(Array.isArray(cached.members)) teamMembers = cached.members;
+    // A copy saved before closed dates has no closures key: none, as then.
+    if(Array.isArray(cached.closures)) closuresCache = cached.closures;
     lastSyncedAt = cached.at;
   }
   // The reads are independent: one round of requests, not one after another.
-  const fresh = Promise.all([loadCatalog(), loadTeams(), loadMembers(), refreshBookings(), refreshWaitlist(), refreshLockState()]);
+  const fresh = Promise.all([loadCatalog(), loadTeams(), loadMembers(), refreshBookings(), refreshWaitlist(), refreshLockState(), loadClosures()]);
   if(warm) fresh.then(() => { if(myProfile) rerenderCurrentView(); });
   else await fresh;
   autoAdvanceOverdueTier(); // fire-and-forget; no-op unless an admin and a tier is past its deadline
@@ -5062,6 +5182,8 @@ function startView(){
 
 function teardown(){
   if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel = null; }
+  if(closuresChannel){ sb.removeChannel(closuresChannel); closuresChannel = null; }
+  closuresCache = [];
   Object.keys(realtimeTimers).forEach(t => { clearTimeout(realtimeTimers[t]); delete realtimeTimers[t]; });
   // Detach this browser's push subscription from the signed-out user's id —
   // otherwise a shared/reused device would keep getting that person's
@@ -5128,8 +5250,8 @@ function clearSignedInTraces(){
   el.whoName.textContent = ''; el.rolePill.textContent = '';
   // Admin keeps names, emails and, once, a password that was just set.
   ['coachListBody', 'activityList', 'teamsList', 'leagueSched', 'inviteStatus', 'bulkResults', 'clearTeamStatus',
-    'clearFieldStatus', 'priorityTierStatus', 'usageDashboard'].forEach(id => { const n = document.getElementById(id); if(n) n.innerHTML = ''; });
-  ['userSearch', 'inviteFirstName', 'inviteLastName', 'inviteEmail', 'invitePassword', 'bulkFileInput'].forEach(id => { const n = document.getElementById(id); if(n) n.value = ''; });
+    'clearFieldStatus', 'priorityTierStatus', 'usageDashboard', 'closureList', 'closeStatus'].forEach(id => { const n = document.getElementById(id); if(n) n.innerHTML = ''; });
+  ['userSearch', 'inviteFirstName', 'inviteLastName', 'inviteEmail', 'invitePassword', 'bulkFileInput', 'closeFrom', 'closeTo', 'closeReason'].forEach(id => { const n = document.getElementById(id); if(n) n.value = ''; });
   // Admin opens on People > Users again, as on a fresh load. The other panes
   // fill themselves when their tab is tapped, so none is left showing empty.
   document.querySelectorAll('#adminPaneToggle .mtab').forEach(t => t.classList.toggle('active', t.dataset.pane === 'people'));
@@ -5139,6 +5261,7 @@ function clearSignedInTraces(){
   userListRows = []; lastSeenById = {};
   teamPeople = []; teamPeopleError = ''; teamPeopleLoaded = false;
   activityRows = []; activityFilter = 'all';
+  closeTimesPicked = new Set(); closeToTouched = false;
   // Filters that were this person's: Find a Time (prefilled from their
   // team's usual days), and the team picked on Calendar and League.
   openWeekField = null; finderDays = new Set(); finderTime = 'any'; finderLimit = 40; finderPrefilled = false;
@@ -5203,7 +5326,7 @@ const CACHE_KEY = 'seaford-cache-v1';
 let lastSyncedAt = null;
 function readCache(){ try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e){ return null; } }
 function writeCache(){
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams, members: teamMembers, profile: myProfile })); }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), bookings: bookingsCache, teams, members: teamMembers, closures: closuresCache, profile: myProfile })); }
   catch(e){ /* quota or private mode: the app is fine without it */ }
 }
 // "Updated 2 min ago" is the honest version of a spinner: it says how stale
@@ -5277,6 +5400,36 @@ async function refreshWaitlist(){
   });
 }
 
+// ============ CLOSED DATES ============
+// field_closures (closed_dates_2026_11_11.sql): a field, a run of dates, and
+// all day (times null) or chosen times. Everyone signed in reads it; writes go
+// only through close_field / reopen_field. The table may not exist yet, or the
+// read may fail: then there are no closures and the page is exactly as it was
+// before them (one warning in the console, nothing on screen). A failed read
+// keeps the closures already loaded rather than reopening every closed slot.
+let closuresWarned = false;
+async function loadClosures(){
+  return latestRead('field_closures', () => selectAllRows('field_closures'), ({ data, error }) => {
+    if(error){
+      if(!closuresWarned){ closuresWarned = true; console.warn('closed dates: not loaded, treating every slot as open', error.message || error); }
+      return;
+    }
+    closuresCache = (data || []).filter(c => c && c.field_id && c.start_date && c.end_date);
+    if(bookingsCache.length) writeCache();
+  });
+}
+// THE closed-slot rule, used by every place that draws, counts or books a
+// slot: the closure covering this field on this date at this time, or null.
+// date is 'YYYY-MM-DD' (they sort as text); time is a field_slots.time string.
+function closureFor(fieldId, date, time){
+  for(const c of closuresCache){
+    if(c.field_id === fieldId && c.start_date <= date && date <= c.end_date && (!c.times || c.times.includes(time))) return c;
+  }
+  return null;
+}
+// "Closed" plus why, for a slot's second line.
+function closedText(c){ return c && c.reason ? `Closed: ${c.reason}` : 'Closed'; }
+
 // If a slot my team is waitlisted for is no longer booked, flash it once per session.
 function checkWaitlistOpenings(){
   if(!myProfile || !waitlistCache.length) return;
@@ -5288,7 +5441,7 @@ function checkWaitlistOpenings(){
   waitlistCache.forEach(w => {
     if(!mine.has(w.team_id) || waitlistNotified.has(w.id)) return;
     const stillBooked = bookingsCache.some(b => b.field_id===w.field_id && b.date===w.date && b.subfield===w.subfield && b.time===w.time);
-    if(!stillBooked){
+    if(!stillBooked && !closureFor(w.field_id, w.date, w.time)){   // a closed slot did not "open up"
       waitlistNotified.add(w.id);
       const fieldName = FIELD_MAP[w.field_id] ? FIELD_MAP[w.field_id].name : w.field_id;
       flash(`A slot opened up: ${w.subfield} at ${w.time}, ${fmtDateLong(w.date)} at ${fieldName}. Book it now.`, 'ok', null, true);
@@ -5534,6 +5687,8 @@ function setupRealtime(){
   const channel = realtimeChannel = sb.channel('bookings-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, coalesced('bookings', async () => {
       const before = bookingsCache;
+      // Closing a field deletes its bookings: know why before saying a slot opened up.
+      await loadClosures();
       await refreshBookings();
       rerenderCurrentView(true);
       noteLiveChanges(before, bookingsCache);
@@ -5569,6 +5724,32 @@ function setupRealtime(){
       if(channel !== realtimeChannel) return;   // a channel teardown() already removed
       if(status === 'SUBSCRIBED'){ if(dropped){ dropped = false; resync(true); } }
       else dropped = true;                      // CHANNEL_ERROR, TIMED_OUT, CLOSED
+    });
+  setupClosuresRealtime();
+}
+
+// field_closures listens on a channel of its own: if the table is missing, or
+// not yet in the realtime publication, that channel errors and the bookings
+// channel above never notices. A channel that fails before it ever joined is
+// removed after one warning (it would retry for ever); one that joined and
+// dropped rejoins by itself, and a rejoin reads the table again.
+function setupClosuresRealtime(){
+  let joined = false, dropped = false;
+  const channel = closuresChannel = sb.channel('closures-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'field_closures' }, coalesced('field_closures', async () => {
+      await loadClosures();
+      rerenderCurrentView(true);
+      if(currentView === 'admin') renderClosedDates();
+    }))
+    .subscribe(status => {
+      if(channel !== closuresChannel) return;
+      if(status === 'SUBSCRIBED'){
+        joined = true;
+        if(dropped){ dropped = false; loadClosures().then(() => { if(myProfile){ rerenderCurrentView(true); if(currentView === 'admin') renderClosedDates(); } }); }
+      } else if(!joined){
+        console.warn('closed dates: live updates unavailable', status);
+        sb.removeChannel(channel); closuresChannel = null;
+      } else dropped = true;
     });
 }
 
@@ -7099,17 +7280,19 @@ function renderBookMonthGridMobile(monthFirst){
     if(!avail){
       html += `<div class="book-month-cell closed"><span class="book-month-daynum">${cursor.getDate()}</span></div>`;
     } else {
-      let bookedCount = 0, mineCount = 0, totalSlots = 0;
+      let bookedCount = 0, mineCount = 0, totalSlots = 0, closedCount = 0;
       avail.times.forEach(time => avail.subfields.forEach(sub => {
         totalSlots++;
         const existing = bookingsCache.find(b => b.field_id===selectedField && b.date===dateStr && b.subfield===sub && b.time===time);
         if(existing){ bookedCount++; if(myTeamId && existing.team_id===myTeamId) mineCount++; }
+        else if(closureFor(selectedField, dateStr, time)) closedCount++;   // closed and unbooked: not open
       }));
-      const openCount = totalSlots - bookedCount;
+      const openCount = totalSlots - bookedCount - closedCount;
       const isPast = cursor < today;
       let badgeHtml;
       if(isPast) badgeHtml = `<span class="book-month-badge past">past</span>`;
       else if(mineCount > 0) badgeHtml = `<span class="book-month-badge mine">${mineCount} mine</span>`;
+      else if(closedCount === totalSlots) badgeHtml = `<span class="book-month-badge shut">Closed</span>`;
       else if(openCount <= 0) badgeHtml = `<span class="book-month-badge full">Full</span>`;
       else badgeHtml = `<span class="book-month-badge open">${openCount} open</span>`;
       html += `<button class="book-month-cell${isPast?' past':''}" data-jumpdate="${dateStr}"><span class="book-month-daynum">${cursor.getDate()}</span>${badgeHtml}</button>`;
@@ -7169,12 +7352,15 @@ let bookSelectedDate = null;   // ISO date the strip has selected
 function bookDayCounts(field, dateStr, myTeamId){
   const avail = field.availability.find(a => a.days.includes(parseISO(dateStr).getDay()));
   if(!avail) return null;
-  let open = 0, mine = 0;
+  let open = 0, mine = 0, closed = 0, total = 0;
   avail.times.forEach(time => avail.subfields.forEach(sub => {
+    total++;
     const b = bookingsCache.find(x => x.field_id === field.id && x.date === dateStr && x.subfield === sub && x.time === time);
-    if(!b) open++; else if(myTeamId && b.team_id === myTeamId) mine++;
+    if(b){ if(myTeamId && b.team_id === myTeamId) mine++; }
+    else if(closureFor(field.id, dateStr, time)) closed++;
+    else open++;
   }));
-  return { open, mine };
+  return { open, mine, closed, allClosed: total > 0 && closed === total };
 }
 function renderBookDayMobile(monday){
   const field = FIELD_MAP[selectedField];
@@ -7193,7 +7379,7 @@ function renderBookDayMobile(monday){
     const c = isOpenDay(d) ? bookDayCounts(field, iso, myTeamId) : null;
     const on = iso === bookSelectedDate, past = d < today;
     const dot = !c ? '' : c.mine ? 'mine' : (c.open && !past) ? 'open' : '';
-    const said = !c ? 'closed' : past ? 'past' : c.mine ? `${c.mine} yours` : c.open ? `${c.open} open` : 'full';
+    const said = !c ? 'closed' : past ? 'past' : c.mine ? `${c.mine} yours` : c.allClosed ? 'closed' : c.open ? `${c.open} open` : 'full';
     html += `<button type="button" role="tab" class="wk-day${on ? ' sel' : ''}${+d === +today ? ' today' : ''}${!c ? ' closed' : ''}"
       aria-selected="${on}" aria-label="${DOW_FULL[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${said}"
       ${c ? `data-bookday="${iso}"` : 'disabled'}><span class="wk-dow" aria-hidden="true">${'SMTWTFS'[d.getDay()]}</span>
@@ -7225,7 +7411,7 @@ function renderBookDayMobile(monday){
           </div>`;
         } else {
           let wait = '';
-          if(!isPast && myTeamId){
+          if(!isPast && myTeamId && !closureFor(selectedField, dateStr, time)){
             const waiters = waitlistCache.filter(w => w.field_id === selectedField && w.date === dateStr && w.subfield === sub && w.time === time);
             const mineW = waiters.find(w => w.team_id === myTeamId);
             wait = mineW
@@ -7235,6 +7421,10 @@ function renderBookDayMobile(monday){
           html += `<div class="ios-row bd-row taken" data-flip-id="${fid}">
             <span class="bd-sub">${escSafe(sub)}<small>${escSafe(teamText)}</small></span>${wait}</div>`;
         }
+      } else if(closureFor(selectedField, dateStr, time)){
+        const why = closureFor(selectedField, dateStr, time);
+        html += `<div class="ios-row bd-row shut${isPast ? ' past' : ''}" data-flip-id="${fid}">
+          <span class="bd-sub">${escSafe(sub)}<small>${escSafe(why.reason)}</small></span><span class="shut-pill">Closed</span></div>`;
       } else if(isPast){
         html += `<div class="ios-row bd-row past"><span class="bd-sub">${escSafe(sub)}<small>Not booked</small></span></div>`;
       } else {
@@ -7283,7 +7473,7 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
           const isMine = existing.team_id === myTeamId;
           const teamText = teamLabelById(existing.team_id, '(unknown team)');
           let waitHtml = '';
-          if(!isMine && !isPast && myTeamId){
+          if(!isMine && !isPast && myTeamId && !closureFor(selectedField, dateStr, time)){
             const slotWaiters = waitlistCache.filter(w => w.field_id===selectedField && w.date===dateStr && w.subfield===sub && w.time===time);
             const myWait = slotWaiters.find(w => w.team_id===myTeamId);
             waitHtml = myWait
@@ -7291,6 +7481,9 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
               : ` <button class="waitlist-btn" data-joinwait='${JSON.stringify({fieldId:selectedField,date:dateStr,subfield:sub,time}).replace(/'/g,"&#39;")}'>Waitlist${slotWaiters.length?` (${slotWaiters.length})`:''}</button>`;
           }
           html += `<span class="book-slot ${isMine?'mine':'booked'}" data-flip-id="${escSafe(slotFlipId(selectedField, dateStr, sub, time))}"><span class="sub">${escSafe(sub)}</span><span class="team">${escSafe(teamText)}</span>${isMine?` <button class="cancel" data-cancel="${existing.id}" title="Cancel booking">&times;</button>`:waitHtml}</span>`;
+        } else if(closureFor(selectedField, dateStr, time)){
+          const why = closureFor(selectedField, dateStr, time);
+          html += `<span class="book-slot shut${isPast ? ' past' : ''}" data-flip-id="${escSafe(slotFlipId(selectedField, dateStr, sub, time))}"><span class="sub">${escSafe(sub)}</span><span class="team">Closed: ${escSafe(why.reason)}</span></span>`;
         } else if(isPast){
           html += `<span class="book-slot booked past"><span class="sub">${escSafe(sub)}</span><span class="team">Passed</span></span>`;
         } else {
@@ -7388,15 +7581,21 @@ el.recurringBookBtn.addEventListener('click', async () => {
   const today = new Date(); today.setHours(0,0,0,0);
   const start = today < SEASON_START ? SEASON_START : today;
 
-  const dates = [];
+  const dates = [], skipped = [];
   let d = new Date(start);
   while(d <= SEASON_END){
-    if(days.includes(d.getDay())) dates.push(fmtDateISO(d));
+    if(days.includes(d.getDay())){
+      // A closed date is skipped, not tried: the count below is what gets booked.
+      const iso = fmtDateISO(d), why = closureFor(selectedField, iso, time);
+      if(why) skipped.push({ dateStr: iso, reason: why.reason }); else dates.push(iso);
+    }
     d = addDays(d, 1);
   }
 
   if(!dates.length){
-    el.recurringResults.innerHTML = `<div class="status err">No matching dates remain in the season for those days.</div>`;
+    el.recurringResults.innerHTML = skipped.length
+      ? `<div class="status err">Every matching date is closed (${escSafe(skipped[0].reason)}${skipped.length > 1 || new Set(skipped.map(x => x.reason)).size > 1 ? ', and more' : ''}). Nothing was booked.</div>`
+      : `<div class="status err">No matching dates remain in the season for those days.</div>`;
     return;
   }
 
@@ -7409,7 +7608,7 @@ el.recurringBookBtn.addEventListener('click', async () => {
       field_id: selectedField, date: dateStr, subfield: sub, time, team_id: teamId, booked_by: session.user.id,
     });
     if(error){
-      results.push({ dateStr, ok: false, msg: error.code === '23505' ? 'Already booked' : error.message });
+      results.push({ dateStr, ok: false, msg: error.code === '23505' ? 'Already booked' : closedRefusal(error) ? 'Closed: ' + closedRefusal(error) : error.message });
     } else {
       results.push({ dateStr, ok: true, msg: 'Booked' });
     }
@@ -7421,6 +7620,13 @@ el.recurringBookBtn.addEventListener('click', async () => {
     html += `<div class="ios-row"><span>${dowOfISO(r.dateStr)}, ${fmtDateLong(r.dateStr)}</span><span class="ios-value${r.ok ? '' : ' recurring-miss'}">${escSafe(r.msg)}</span></div>`;
   });
   html += `</div>`;
+  if(skipped.length){
+    html += `<p class="ios-group-header">${skipped.length} Closed ${skipped.length === 1 ? 'Date' : 'Dates'} Skipped</p><div class="ios-group">`;
+    skipped.forEach(r => {
+      html += `<div class="ios-row"><span>${dowOfISO(r.dateStr)}, ${fmtDateLong(r.dateStr)}</span><span class="ios-value">${escSafe(r.reason)}</span></div>`;
+    });
+    html += `</div>`;
+  }
   el.recurringResults.innerHTML = html;
 
   el.recurringBookBtn.disabled = false;
@@ -7432,6 +7638,7 @@ el.recurringBookBtn.addEventListener('click', async () => {
     landed(r.left + r.width / 2, r.top + r.height / 2, selectedField);
   }
 
+  if(results.some(r => !r.ok && /^Closed: /.test(r.msg))) await loadClosures();
   await refreshBookings();
   renderWeek();
 });
@@ -7465,6 +7672,7 @@ el.weekGrid.addEventListener('click', async e => {
     if(error){
       if(error.code === '23505') flash('Already on the waitlist for that slot.', 'err');
       else flash(friendlyError(error, 'You weren\'t added to the waitlist.'), 'err');
+      if(closedRefusal(error)) await loadClosures();
     } else {
       flash('Added to the waitlist. You\'ll get a heads-up here if it opens up.', 'ok');
     }
@@ -7496,6 +7704,7 @@ el.weekGrid.addEventListener('click', async e => {
       if(error.code === '23505') flash('Another coach just booked that time. Pick another slot.', 'warn');
       else if(error.code === '42501') flash('Your team can\'t book this slot yet. Earlier grades are still choosing.', 'warn');
       else flash(friendlyError(error, 'The practice wasn\'t booked.'), 'err');
+      if(closedRefusal(error)) await loadClosures();   // the closure isn't on this page yet
     } else {
       flashBooked(payload, inserted?.id);
       // Capture the "+ Book" chip's geometry now; after the re-render, Flip
@@ -7588,11 +7797,29 @@ function calOpenAt(fields, dateStr, taken){
     const avail = f.availability.find(a => a.days.includes(d.getDay()));
     if(!avail) return;
     avail.times.forEach(time => {
+      if(closureFor(f.id, dateStr, time)) return;   // closed: listed by calClosedAt, never open
       const subs = avail.subfields.filter(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time));
       if(subs.length) out.push({ field: f, time, subs });
     });
   });
   return out.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time));
+}
+// The times a closure shuts that day, across the fields shown: what Open
+// shows in grey in place of a Book button. Only times with a free sub-field
+// (one nobody booked), as calOpenAt would have offered.
+function calClosedAt(fields, dateStr, taken){
+  const d = parseISO(dateStr), today = new Date(); today.setHours(0,0,0,0);
+  if(d < today || d < SEASON_START || d > SEASON_END) return [];
+  const out = [];
+  fields.forEach(f => {
+    const avail = f.availability.find(a => a.days.includes(d.getDay()));
+    if(!avail) return;
+    avail.times.forEach(time => {
+      const why = closureFor(f.id, dateStr, time);
+      if(why && avail.subfields.some(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time))) out.push({ field: f, time, why });
+    });
+  });
+  return out.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.field.name.localeCompare(b.field.name));
 }
 function calFieldsShown(which){
   const h = calState[which].hidden;
@@ -7714,8 +7941,12 @@ function renderMonthCalendar(which, host){
   }).join('') : `<p class="cal-empty">${calEmptyText(which)}</p>`;
   const openList = show !== 'open' ? '' : (() => {
     const groups = calOpenAt(shownFields, st.selected, taken);
-    if(!groups.length) return `<p class="cal-empty">${calEmptyText(which)}</p>`;
-    return groups.map(g => `<div class="cal-item open" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.subs.join(', '))} open</div></span><button type="button" class="get-pill" data-bookat="${g.field.id}|${st.selected}|${escSafe(g.time)}" aria-label="Book ${escSafe(g.field.name)}, ${escSafe(formatSlotTime(g.time))}">Book</button></div>`).join('');
+    const shut = calClosedAt(shownFields, st.selected, taken);
+    if(!groups.length && !shut.length) return `<p class="cal-empty">${calEmptyText(which)}</p>`;
+    const rows = groups.map(g => ({ time: g.time, html: `<div class="cal-item open" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.subs.join(', '))} open</div></span><button type="button" class="get-pill" data-bookat="${g.field.id}|${st.selected}|${escSafe(g.time)}" aria-label="Book ${escSafe(g.field.name)}, ${escSafe(formatSlotTime(g.time))}">Book</button></div>` }))
+      .concat(shut.map(g => ({ time: g.time, html: `<div class="cal-item shut" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.why.reason)}</div></span><span class="shut-pill">Closed</span></div>` })));
+    // One list in time order: what is open, and what is shut, side by side.
+    return rows.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time)).map(r => r.html).join('');
   })();
 
   host.innerHTML = `<div class="cal">
@@ -8160,7 +8391,7 @@ function findOpenSlots(){
         avail.times.forEach(time => {
           if(!finderTimeMatches(time)) return;
           avail.subfields.forEach(sub => {
-            if(!taken.has(field.id + '|' + dateStr + '|' + sub + '|' + time)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
+            if(!taken.has(field.id + '|' + dateStr + '|' + sub + '|' + time) && !closureFor(field.id, dateStr, time)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
           });
         });
       });
@@ -8374,6 +8605,7 @@ el.openWeekResults.addEventListener('click', async e => {
     if(error.code === '23505') flash('Another coach just booked that time. Pick another slot.', 'warn');
     else if(error.code === '42501') flash('Your team can\'t book this slot yet. Earlier grades are still choosing.', 'warn');
     else flash(friendlyError(error, 'The practice wasn\'t booked.'), 'err');
+    if(closedRefusal(error)) await loadClosures();
   } else {
     flashBooked(payload, inserted && inserted.id, 'Booked ' + formatSlotTime(payload.time) + ' on ' + fmtDateLong(payload.date) + '.');
   }
@@ -8429,8 +8661,177 @@ function renderAdmin(){
     renderPriorityToggleButton();
   }
   renderClearControls();
+  renderClosedDates();
   renderUsageDashboard();
 }
+
+// ============ ADMIN: CLOSED DATES (admin and director) ============
+// Writes go only through close_field / reopen_field (the table has no write
+// policy). The confirmation counts the practices it will cancel from the
+// page's own bookings; the toast afterwards uses the server's count.
+const CLOSE_REASONS = ['No permit', 'School game', 'Field closed'];
+function shortDate(iso){ const d = parseISO(iso); return `${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}`; }
+// "Thu, Mar 4" for one day, "Mar 4 to Mar 18" for a run.
+function closureDatesText(start, end){
+  if(start === end) return `${DOW_FULL[parseISO(start).getDay()].slice(0, 3)}, ${shortDate(start)}`;
+  return `${shortDate(start)} to ${shortDate(end)}`;
+}
+function closureTimesText(times){ return times && times.length ? times.map(formatSlotTime).join(', ') : 'All day'; }
+function todayISO(){ return fmtDateISO(new Date()); }
+function canManageClosures(){ return !!myProfile && (myProfile.role === 'admin' || myProfile.role === 'director'); }
+// The times a field runs on the weekdays inside a date range, earliest first.
+function fieldTimesInRange(field, startISO, endISO){
+  if(!field || !startISO || !endISO || endISO < startISO) return [];
+  const seen = new Set(), dows = new Set();
+  for(let d = parseISO(startISO), end = parseISO(endISO), n = 0; d <= end && n < 7; d = addDays(d, 1), n++) dows.add(d.getDay());
+  field.availability.forEach(a => { if(a.days.some(x => dows.has(x))) a.times.forEach(t => seen.add(t)); });
+  return [...seen].sort((a, b) => slotStartMinutes(a) - slotStartMinutes(b));
+}
+// Practices a closure would cancel: booked, dated today or later, inside it.
+function practicesClosureCancels(fieldId, startISO, endISO, times){
+  const from = startISO > todayISO() ? startISO : todayISO();
+  return bookingsCache.filter(b => b.field_id === fieldId && b.date >= from && b.date <= endISO && (!times || times.includes(b.time)));
+}
+// "Girls 6th Grade (2), Boys 4th Grade (1)", biggest first.
+function practicesByTeamText(list){
+  const by = new Map();
+  list.forEach(b => by.set(b.team_id, (by.get(b.team_id) || 0) + 1));
+  return [...by.entries()].sort((a, b) => b[1] - a[1] || teamLabelById(a[0], 'Unknown team').localeCompare(teamLabelById(b[0], 'Unknown team')))
+    .map(([id, n]) => `${teamLabelById(id, 'Unknown team')} (${n})`).join(', ');
+}
+function closeFormState(){
+  const f = document.getElementById('closeFieldSelect');
+  return {
+    field: f ? f.value : '', start: document.getElementById('closeFrom').value, end: document.getElementById('closeTo').value,
+    allDay: document.getElementById('closeAllDay').checked, reason: document.getElementById('closeReason').value.trim(),
+  };
+}
+function renderClosedDates(){
+  const card = document.getElementById('closedDatesCard');
+  if(!card) return;
+  card.hidden = !canManageClosures();
+  if(card.hidden) return;
+  const today = todayISO();
+  const live = closuresCache.filter(c => c.end_date >= today).sort((a, b) => a.start_date.localeCompare(b.start_date)
+    || (FIELD_MAP[a.field_id] ? FIELD_MAP[a.field_id].name : a.field_id).localeCompare(FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id));
+  document.getElementById('closureList').innerHTML = live.length ? live.map(c => {
+    const f = FIELD_MAP[c.field_id];
+    return `<div class="ios-row bd-row closure-row"><span class="bd-sub">${escSafe(f ? f.name : c.field_id)}<small>${escSafe(closureDatesText(c.start_date, c.end_date))} &middot; ${escSafe(closureTimesText(c.times))} &middot; ${escSafe(c.reason)}</small></span>
+      <button type="button" class="get-pill quiet" data-reopen="${escSafe(c.id)}" aria-label="Reopen ${escSafe(f ? f.name : c.field_id)}, ${escSafe(closureDatesText(c.start_date, c.end_date))}">Reopen</button></div>`;
+  }).join('') : `<div class="ios-row closure-row"><span class="ios-value">No closed dates.</span></div>`;
+  // The field menu keeps its pick across a redraw.
+  const sel = document.getElementById('closeFieldSelect');
+  if(sel){
+    const keep = sel.value;
+    sel.innerHTML = `<option value="" disabled>Choose a field</option>` + FIELDS.map(f => `<option value="${escSafe(f.id)}">${escSafe(f.name)}</option>`).join('');
+    sel.value = FIELD_MAP[keep] ? keep : '';
+    if(!sel.value) sel.selectedIndex = 0;
+    syncSelectRow(sel);
+  }
+  const q = document.getElementById('closeQuick'), reason = document.getElementById('closeReason').value.trim();
+  q.innerHTML = CLOSE_REASONS.map(r => `<button type="button" class="fchip" data-closequick="${escSafe(r)}" aria-pressed="${reason === r}">${escSafe(r)}</button>`).join('');
+  renderCloseTimes();
+}
+function renderCloseTimes(){
+  const host = document.getElementById('closeTimes'), st = closeFormState();
+  host.hidden = st.allDay;
+  if(st.allDay) return;
+  const times = fieldTimesInRange(FIELD_MAP[st.field], st.start, st.end || st.start);
+  closeTimesPicked = new Set([...closeTimesPicked].filter(t => times.includes(t)));
+  host.innerHTML = times.length ? times.map(t => `<button type="button" class="fchip" data-closetime="${escSafe(t)}" aria-pressed="${closeTimesPicked.has(t)}">${escSafe(formatSlotTime(t))}</button>`).join('')
+    : `<span class="ios-value">${st.field && st.start ? 'This field has no times on those days.' : 'Choose a field and dates to see its times.'}</span>`;
+}
+function closeStatusMsg(text, kind){
+  document.getElementById('closeStatus').innerHTML = text ? `<span class="status${kind ? ' ' + kind : ''}">${escSafe(text)}</span>` : '';
+}
+// What stops a save before the server is asked; '' when the form is fine.
+function closeFormProblem(st){
+  if(!st.field) return 'Choose a field first.';
+  if(!st.start) return 'Choose the first date.';
+  if(!st.end) return 'Choose the last date.';
+  if(st.end < st.start) return 'The last date is before the first.';
+  if(st.end < todayISO()) return 'Those dates are already over.';
+  if((Date.parse(st.end) - Date.parse(st.start)) / 86400000 + 1 > 366) return 'A closure can run at most a year.';
+  if(!st.allDay && !closeTimesPicked.size) return 'Tick at least one time, or switch on All Day.';
+  if(!st.reason) return 'Give a reason, such as No permit.';
+  if(st.reason.length > 40) return 'Keep the reason to 40 characters.';
+  return '';
+}
+document.getElementById('closedDatesCard').addEventListener('click', async e => {
+  const quick = e.target.closest('[data-closequick]');
+  if(quick){
+    document.getElementById('closeReason').value = quick.dataset.closequick;
+    haptic('selection'); closeStatusMsg('');
+    document.querySelectorAll('#closeQuick .fchip').forEach(b => b.setAttribute('aria-pressed', String(b === quick)));
+    return;
+  }
+  const tm = e.target.closest('[data-closetime]');
+  if(tm){
+    const t = tm.dataset.closetime;
+    if(closeTimesPicked.has(t)) closeTimesPicked.delete(t); else closeTimesPicked.add(t);
+    tm.setAttribute('aria-pressed', String(closeTimesPicked.has(t)));
+    haptic('selection'); closeStatusMsg('');
+    return;
+  }
+  const re = e.target.closest('[data-reopen]');
+  if(re){
+    const c = closuresCache.find(x => x.id === re.dataset.reopen);
+    if(!c) return;
+    const f = FIELD_MAP[c.field_id], name = f ? f.name : c.field_id;
+    if(!await confirmAction({
+      title: `Reopen ${name}?`,
+      body: `${closureDatesText(c.start_date, c.end_date)}, ${closureTimesText(c.times)} (${c.reason}) opens for booking again. Practices cancelled by the closure do not come back.`,
+      verb: 'Reopen',
+    })) return;
+    re.disabled = true;
+    const { error } = await sb.rpc('reopen_field', { p_id: c.id });
+    if(error){ re.disabled = false; closeStatusMsg(closeErrorText(error, 'The field wasn\'t reopened.'), 'err'); return; }
+    closeStatusMsg(`${name} is open again for ${closureDatesText(c.start_date, c.end_date)}.`, 'ok');
+    flash(`${name} reopened`, 'ok');
+    await Promise.all([loadClosures(), refreshBookings(), refreshWaitlist()]);
+    renderClosedDates(); rerenderCurrentView(true);
+  }
+});
+function closeErrorText(error, lead){
+  if(error && (error.code === 'PGRST202' || error.code === '42883' || error.code === '42P01')) return `${lead} Closed dates aren't set up on the server yet.`;
+  if(error && (error.code === '22023' || error.code === '42501') && error.message) return `${lead} ${error.message}.`.replace(/\.\.$/, '.');
+  return friendlyError(error, lead);
+}
+['closeFieldSelect', 'closeAllDay'].forEach(id => document.getElementById(id).addEventListener('change', () => { closeStatusMsg(''); renderCloseTimes(); }));
+document.getElementById('closeFrom').addEventListener('change', e => {
+  const to = document.getElementById('closeTo');
+  if(!closeToTouched || !to.value || to.value < e.target.value) to.value = e.target.value;   // To follows From until it is chosen
+  closeStatusMsg(''); renderCloseTimes();
+});
+document.getElementById('closeTo').addEventListener('change', () => { closeToTouched = true; closeStatusMsg(''); renderCloseTimes(); });
+document.getElementById('closeReason').addEventListener('input', e => {
+  closeStatusMsg('');
+  document.querySelectorAll('#closeQuick .fchip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.closequick === e.target.value.trim())));
+});
+document.getElementById('closeSaveBtn').addEventListener('click', async () => {
+  const st = closeFormState(), problem = closeFormProblem(st);
+  if(problem){ closeStatusMsg(problem, 'err'); return; }
+  const f = FIELD_MAP[st.field], name = f ? f.name : st.field;
+  const times = st.allDay ? null : fieldTimesInRange(f, st.start, st.end).filter(t => closeTimesPicked.has(t));
+  const lost = practicesClosureCancels(st.field, st.start, st.end, times);
+  const what = `${closureDatesText(st.start, st.end)}, ${closureTimesText(times)}. Reason: ${st.reason}.`;
+  const effect = lost.length
+    ? `This cancels ${lost.length} ${lost.length === 1 ? 'practice' : 'practices'}: ${practicesByTeamText(lost)}. Their coaches will be told.`
+    : 'No practices are booked then.';
+  if(!await confirmAction({ title: `Close ${name}?`, body: `${what} ${effect}`, verb: 'Close field' })) return;
+  const btn = document.getElementById('closeSaveBtn');
+  btn.disabled = true;
+  const { data, error } = await sb.rpc('close_field', { p_field: st.field, p_start: st.start, p_end: st.end, p_times: times, p_reason: st.reason });
+  btn.disabled = false;
+  if(error){ closeStatusMsg(closeErrorText(error, 'The field wasn\'t closed.'), 'err'); return; }
+  const n = data && Number.isFinite(Number(data.cancelled)) ? Number(data.cancelled) : 0;
+  const msg = `${name} closed ${closureDatesText(st.start, st.end)}. ${n ? `${n} ${n === 1 ? 'practice' : 'practices'} cancelled and their coaches told.` : 'No practices were cancelled.'}`;
+  closeStatusMsg(msg, 'ok'); flash(msg, 'ok');
+  document.getElementById('closeReason').value = '';
+  closeTimesPicked = new Set();
+  await Promise.all([loadClosures(), refreshBookings(), refreshWaitlist()]);
+  renderClosedDates(); rerenderCurrentView(true);
+});
 
 // ============ USAGE & ANALYTICS DASHBOARD (admin/director) ============
 // Total bookable slots per field across the whole season, used as the

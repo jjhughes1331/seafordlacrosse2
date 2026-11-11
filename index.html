@@ -105,7 +105,7 @@
           if((d * 7 + fi * 3 + ti * 2 + si) % 3 !== 0) return;
           const t = teams[(d + fi + ti + si) % teams.length];
           const dateISO = day.getFullYear() + '-' + String(day.getMonth()+1).padStart(2,'0') + '-' + String(day.getDate()).padStart(2,'0');
-          if(closureOf(f.id, dateISO, time)) return;   // a closed slot holds no practice
+          if(closureOf(f.id, dateISO, time, sub)) return;   // a closed slot holds no practice
           bookings.push({ id: uuid(++id), field_id: f.id, date: dateISO,
             subfield: sub, time, team_id: t.id, booked_by: ADMIN_ID });
         }));
@@ -138,18 +138,33 @@
     notification_prefs: [], notification_teams: [],
     games: [],
     waitlist: [],
-    // closed_dates_2026_11_11.sql: one closure so a closed slot shows with no
-    // clicking. Seamans Neck on a Thursday early in the season, one time only.
-    field_closures: [{ id: uuid(900), field_id: 'seamans', start_date: '2027-03-04', end_date: '2027-03-04', times: ['5:00-6:30 PM'],
-      reason: 'School game', created_by: uuid(2), created_at: '2026-11-11T12:00:00Z' }],
+    // Closures that show with no clicking, early in the season: Seamans Neck
+    // on a Thursday at one time; Field B there for a week, all day (a part
+    // closure); and Seaford HS on Fridays through March (a weekday closure).
+    field_closures: [
+      { id: uuid(900), field_id: 'seamans', start_date: '2027-03-04', end_date: '2027-03-04', times: ['5:00-6:30 PM'], subfields: null, weekdays: null,
+        reason: 'School game', created_by: uuid(2), created_at: '2026-11-11T12:00:00Z' },
+      { id: uuid(901), field_id: 'seamans', start_date: '2027-03-08', end_date: '2027-03-13', times: null, subfields: ['Field B'], weekdays: null,
+        reason: 'Field repairs', created_by: uuid(2), created_at: '2026-11-11T12:00:00Z' },
+      { id: uuid(902), field_id: 'seafordhs', start_date: '2027-03-01', end_date: '2027-03-31', times: null, subfields: null, weekdays: [5],
+        reason: 'No permit', created_by: uuid(2), created_at: '2026-11-11T12:00:00Z' },
+    ],
     app_settings: [{ id: true, schedule_locked: false, priority_booking_enabled: false, priority_forced_ranks: [], locked_by: null }],
   };
   window.__fixtureStore = store;
 
   // The closure covering a slot, if any (the contract's closed(slot)).
-  function closureOf(field, date, time){
-    return (store.field_closures || []).find(c => c.field_id === field && c.start_date <= date && date <= c.end_date
-      && (c.times == null || c.times.includes(time))) || null;
+  // The full rule (field_closures_part2_2026_11.sql, closure_covers): field,
+  // dates, and each list present holding the slot's weekday, time and part.
+  const dowOf = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).getDay(); };
+  function covers(c, field, date, time, sub){
+    return c.field_id === field && c.start_date <= date && date <= c.end_date
+      && (c.weekdays == null || c.weekdays.includes(dowOf(date)))
+      && (c.times == null || c.times.includes(time))
+      && (c.subfields == null || c.subfields.includes(sub));
+  }
+  function closureOf(field, date, time, sub){
+    return (store.field_closures || []).find(c => covers(c, field, date, time, sub)) || null;
   }
 
   const match = (row, filters) => filters.every(([k, op, v]) =>
@@ -198,7 +213,7 @@
         for(const r of list){
           // enforce_allowed_slot(): a closed slot refuses a booking or a waitlist entry.
           if(table === 'bookings' || table === 'waitlist'){
-            const c = closureOf(r.field_id, r.date, r.time);
+            const c = closureOf(r.field_id, r.date, r.time, r.subfield);
             if(c) return { data: null, error: { code: '23514', message: 'Field closed: ' + c.reason } };
           }
           if(table === 'bookings' && rows().some(x => x.field_id===r.field_id && x.date===r.date && x.subfield===r.subfield && x.time===r.time))
@@ -419,37 +434,70 @@
           .sort((a, b) => (a.game_date + a.game_number).localeCompare(b.game_date + b.game_number))
           .map(g => ({ game: g.gender[0].toUpperCase() + g.gender.slice(1) + ' ' + g.game_number, date: g.game_date, time: clock12(g.start_time), teams: g.home + ' v ' + g.away })) });
     }
-    if(name === 'close_field'){
-      // closed_dates_2026_11_11.sql: admins and directors; either director, any field.
-      if(!['admin', 'director'].includes(who.role)) return fail('Only an admin or a director can close a field', '42501');
-      let slots;
-      try { slots = (FIELDS.find(f => f.id === p.p_field) || {}).availability; } catch(e){ slots = null; }
-      if(!slots) return fail('Unknown field: ' + p.p_field, '22023');
-      const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    // field_closures_part2_2026_11.sql: closure_input's checks, with its
+    // refusal text, on what a close or an edit sends; the lists come back
+    // tidied (distinct, sorted) or null.
+    const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    function closureInput(fieldId, q){
+      const slots = (FIELDS.find(f => f.id === fieldId) || {}).availability || [];
       const isoOk = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v));
-      if(!isoOk(p.p_start) || !isoOk(p.p_end)) return fail('Give a start and an end date', '22023');
-      if(p.p_end < p.p_start) return fail('The end date is before the start date', '22023');
-      if(p.p_end < iso(new Date())) return fail('That run of dates is already over', '22023');
-      if((Date.parse(p.p_end) - Date.parse(p.p_start)) / 86400000 + 1 > 366) return fail('A closure can run at most 366 days', '22023');
-      if(p.p_times != null){
-        if(!Array.isArray(p.p_times) || !p.p_times.length) return fail('Choose at least one time, or close the field all day', '22023');
+      if(!isoOk(q.p_start) || !isoOk(q.p_end) || q.p_end < q.p_start) return { error: 'The last day is before the first' };
+      if(q.p_end < iso(new Date())) return { error: 'Those dates have passed' };
+      if((Date.parse(q.p_end) - Date.parse(q.p_start)) / 86400000 > 366) return { error: 'A closure can run for a year at most' };
+      const reason = String(q.p_reason == null ? '' : q.p_reason).trim();
+      if(reason.length < 1 || reason.length > 40) return { error: 'The reason needs 1 to 40 characters' };
+      const tidy = (v, num) => v == null ? null : [...new Set(v.filter(x => x != null))].sort(num ? (a, b) => a - b : undefined);
+      const times = tidy(q.p_times), subfields = tidy(q.p_subfields), weekdays = tidy(q.p_weekdays, true);
+      if(times){
+        if(!times.length) return { error: 'Pick at least one time, or close the whole day' };
         const have = new Set(slots.flatMap(a => a.times));
-        const bad = p.p_times.find(t => !have.has(t));
-        if(bad) return fail('That field has no ' + bad + ' time', '22023');
+        if(times.some(t => !have.has(t))) return { error: 'That field has no such time' };
       }
-      const reason = String(p.p_reason == null ? '' : p.p_reason).trim();
-      if(reason.length < 1 || reason.length > 40) return fail('The reason needs 1 to 40 characters', '22023');
-      const closure = { id: crypto.randomUUID(), field_id: p.p_field, start_date: p.p_start, end_date: p.p_end,
-        times: p.p_times == null ? null : [...new Set(p.p_times)], reason, created_by: who.id, created_at: new Date().toISOString() };
-      store.field_closures.push(closure);
-      // Waitlist entries first, then the practices, for closed slots dated today or later. Past practices stay.
+      if(subfields){
+        if(!subfields.length) return { error: 'Pick at least one part, or close every part' };
+        const have = new Set(slots.flatMap(a => a.subfields));
+        if(subfields.some(t => !have.has(t))) return { error: 'That field has no such part' };
+      }
+      if(weekdays){
+        if(!weekdays.length) return { error: 'Pick at least one day of the week, or close every day' };
+        if(weekdays.some(d => !Number.isInteger(d) || d < 0 || d > 6)) return { error: 'That is not a day of the week' };
+        let falls = false;
+        for(let d = new Date(q.p_start + 'T00:00'), end = new Date(q.p_end + 'T00:00'); d <= end && !falls; d.setDate(d.getDate() + 1)) falls = weekdays.includes(d.getDay());
+        if(!falls) return { error: 'None of those days fall in the dates' };
+      }
+      return { times, subfields, weekdays, reason };
+    }
+    // apply_closure: what the closure covers from today on goes, waitlist
+    // first, then the practices. Returns the practices cancelled.
+    function applyClosure(c){
       const today = iso(new Date());
-      const gone = r => r.date >= today && r.field_id === closure.field_id && r.date >= closure.start_date && r.date <= closure.end_date
-        && (closure.times == null || closure.times.includes(r.time));
+      const gone = r => r.date >= today && covers(c, r.field_id, r.date, r.time, r.subfield);
       store.waitlist = store.waitlist.filter(r => !gone(r));
       const before = store.bookings.length;
       store.bookings = store.bookings.filter(r => !gone(r));
-      return ok({ closure: { ...closure }, cancelled: before - store.bookings.length });
+      return before - store.bookings.length;
+    }
+    if(name === 'close_field'){
+      // Admins and directors; either director, any field.
+      if(!['admin', 'director'].includes(who.role)) return fail('Only an admin or a director can close a field', '42501');
+      if(!FIELDS.some(f => f.id === p.p_field)) return fail('That field does not exist', '22023');
+      const v = closureInput(p.p_field, p);
+      if(v.error) return fail(v.error, '22023');
+      const closure = { id: crypto.randomUUID(), field_id: p.p_field, start_date: p.p_start, end_date: p.p_end,
+        times: v.times, subfields: v.subfields, weekdays: v.weekdays, reason: v.reason, created_by: who.id, created_at: new Date().toISOString() };
+      store.field_closures.push(closure);
+      return ok({ closure: { ...closure }, cancelled: applyClosure(closure) });
+    }
+    if(name === 'edit_closure'){
+      // Same field, new everything else; what it newly covers is cancelled.
+      if(!['admin', 'director'].includes(who.role)) return fail('Only an admin or a director can change a closure', '42501');
+      const old = store.field_closures.find(c => c.id === p.p_id);
+      if(!old) return fail('That closure no longer exists', '22023');
+      if(old.end_date < iso(new Date())) return fail('That closure has ended', '22023');
+      const v = closureInput(old.field_id, p);
+      if(v.error) return fail(v.error, '22023');
+      Object.assign(old, { start_date: p.p_start, end_date: p.p_end, times: v.times, subfields: v.subfields, weekdays: v.weekdays, reason: v.reason });
+      return ok({ closure: { ...old }, cancelled: applyClosure(old) });
     }
     if(name === 'reopen_field'){
       if(!['admin', 'director'].includes(who.role)) return fail('Only an admin or a director can reopen a field', '42501');
@@ -1078,6 +1126,10 @@
   .close-picks .fchip { flex: none; }
   .close-picks .fchip[aria-pressed="true"] { border-color: var(--accent-fill); color: var(--accent-fill); background: color-mix(in srgb, var(--accent-fill) 14%, transparent); }
   .closure-row .bd-sub small { white-space: normal; overflow: visible; }
+  .closure-acts { flex: none; display: flex; gap: 8px; margin-left: auto; }
+  .closure-row.editing { background: color-mix(in srgb, var(--accent-fill) 8%, transparent); }
+  .close-picks .fchip.off:not([aria-pressed="true"]) { opacity: .45; }
+  .ios-select-row.locked { cursor: default; opacity: .6; }
   #closedDatesCard .ios-field { padding-top: 4px; padding-bottom: 4px; }
   #closedDatesCard .ios-field input { min-height: 44px; font-size: max(16px, var(--ios-body)); }
   .recurring-days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -3241,14 +3293,15 @@
   </div>
 
   <!-- Closed dates (admins and directors): a field shut on a date or a run of
-       dates, all day or at chosen times. Written only through the close_field
-       and reopen_field functions. -->
+       dates, all day or at chosen times, every part or some, every day or
+       chosen weekdays. Written only through the close_field, edit_closure and
+       reopen_field functions. -->
   <div id="closedDatesCard" hidden>
     <p class="admin-section-label" style="margin-top:32px">Closed Dates</p>
     <p class="ios-group-header">Not Over Yet</p>
     <div class="ios-group" id="closureList"></div>
-    <p class="ios-group-header">Close a Field</p>
-    <div class="ios-group">
+    <p class="ios-group-header" id="closeFormHeader">Close a Field</p>
+    <div class="ios-group" id="closeForm">
       <label class="ios-row ios-select-row"><span>Field</span>
         <span class="ios-value"><span class="sel-text" data-select-text>Choose a field</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
         <select id="closeFieldSelect" aria-label="Field"></select>
@@ -3256,15 +3309,26 @@
       <label class="ios-row ios-field"><span>From</span><input type="date" id="closeFrom" aria-label="From"></label>
       <label class="ios-row ios-field"><span>To</span><input type="date" id="closeTo" aria-label="To"></label>
       <label class="ios-row switch-row">
+        <span class="switch-text">Every Day<small>Off to repeat on chosen weekdays</small></span>
+        <input type="checkbox" class="ios-switch" id="closeEveryDay" role="switch" checked>
+      </label>
+      <div class="ios-row close-picks" id="closeDays" role="group" aria-label="Days of the week to close" hidden></div>
+      <label class="ios-row switch-row">
         <span class="switch-text">All Day</span>
         <input type="checkbox" class="ios-switch" id="closeAllDay" role="switch" checked>
       </label>
       <div class="ios-row close-picks" id="closeTimes" role="group" aria-label="Times to close" hidden></div>
+      <label class="ios-row switch-row" id="closeAllPartsRow" hidden>
+        <span class="switch-text">All Parts<small>Off to close only some parts</small></span>
+        <input type="checkbox" class="ios-switch" id="closeAllParts" role="switch" checked>
+      </label>
+      <div class="ios-row close-picks" id="closeParts" role="group" aria-label="Parts to close" hidden></div>
       <label class="ios-row ios-field"><span>Reason</span><input type="text" id="closeReason" maxlength="40" placeholder="No permit" autocomplete="off" enterkeyhint="done"></label>
       <div class="ios-row close-picks" id="closeQuick" role="group" aria-label="Quick reasons"></div>
       <button type="button" class="ios-row ios-action" id="closeSaveBtn">Close Field</button>
+      <button type="button" class="ios-row ios-action" id="closeEditCancel" hidden>Don't Change It</button>
     </div>
-    <p class="ios-group-footer">Closes every sub-field. Practices already booked in the closed time are cancelled and their coaches are told. To is the same day if you leave it.</p>
+    <p class="ios-group-footer" id="closeFormFooter">Every Day, All Day and All Parts close the whole field from From to To; switch one off to pick weekdays, times or parts. Practices already booked in what it closes are cancelled and their coaches are told. To is the same day if you leave it.</p>
     <div class="admin-status" id="closeStatus"></div>
   </div>
 
@@ -3383,7 +3447,8 @@ let waitlistNotified = new Set(); // waitlist entry ids we've already flashed "i
 let weatherCache = {};           // dateStr -> { precip: number 0-100, code: number } — populated once on load, best-effort
 let realtimeChannel = null;
 let closuresChannel = null;   // field_closures has its own channel: see setupClosuresRealtime
-let closeTimesPicked = new Set(), closeToTouched = false;   // Admin > Closed Dates form
+let closeTimesPicked = new Set(), closePartsPicked = new Set(), closeDaysPicked = new Set(), closeToTouched = false;   // Admin > Closed Dates form
+let closeEditingId = null;    // the closure the form is changing (Edit), or null when it closes a field
 let closuresCache = [];       // field_closures rows; empty when the table is missing or unreadable
 // What the native app was last told (see syncNativeContext); declared up here
 // because showLoginScreen resets it and can run before that section loads.
@@ -5261,7 +5326,7 @@ function clearSignedInTraces(){
   userListRows = []; lastSeenById = {};
   teamPeople = []; teamPeopleError = ''; teamPeopleLoaded = false;
   activityRows = []; activityFilter = 'all';
-  closeTimesPicked = new Set(); closeToTouched = false;
+  closeTimesPicked = new Set(); closePartsPicked = new Set(); closeDaysPicked = new Set(); closeToTouched = false; closeEditingId = null;
   // Filters that were this person's: Find a Time (prefilled from their
   // team's usual days), and the team picked on Calendar and League.
   openWeekField = null; finderDays = new Set(); finderTime = 'any'; finderLimit = 40; finderPrefilled = false;
@@ -5418,18 +5483,32 @@ async function loadClosures(){
     if(bookingsCache.length) writeCache();
   });
 }
-// THE closed-slot rule, used by every place that draws, counts or books a
-// slot: the closure covering this field on this date at this time, or null.
-// date is 'YYYY-MM-DD' (they sort as text); time is a field_slots.time string.
-function closureFor(fieldId, date, time){
+// THE closed-slot rule (closure_covers in field_closures_part2_2026_11.sql):
+// a closure covers a slot when the field matches, the date is inside its
+// dates, and each list it has (weekdays, times, subfields) holds the slot's
+// weekday, time and part. null lists mean every day / time / part.
+function closureCovers(c, fieldId, date, time, subfield){
+  return c.field_id === fieldId && c.start_date <= date && date <= c.end_date
+    && (!c.weekdays || c.weekdays.includes(parseISO(date).getDay()))
+    && (!c.times || c.times.includes(time))
+    && (!c.subfields || (subfield != null && c.subfields.includes(subfield)));
+}
+// Used by every place that draws, counts or books a slot: the closure
+// covering this part of this field on this date at this time, or null.
+// date is 'YYYY-MM-DD' (they sort as text); time and subfield are
+// field_slots strings. Leave subfield out only to ask whether the time is
+// closed for EVERY part: then only a closure that names no parts counts. A
+// view that asks about a time across parts asks part by part, because a
+// closure may name only some of them and the rest stay open.
+function closureFor(fieldId, date, time, subfield){
   for(const c of closuresCache){
-    if(c.field_id === fieldId && c.start_date <= date && date <= c.end_date && (!c.times || c.times.includes(time))) return c;
+    if(closureCovers(c, fieldId, date, time, subfield)) return c;
   }
   return null;
 }
 // How many slots a field can offer on one day: every time times every part of
-// the field, less the times that are closed. A closed time still counts the
-// practices booked there before it closed, so "booked of capacity" never
+// the field, less the parts closed at each time. A closed part still counts
+// the practice booked there before it closed, so "booked of capacity" never
 // passes 100%. Every capacity figure (league bars, the calendar's fullness
 // bar, the usage dashboard) goes through here.
 function fieldDayCapacity(field, dateObj){
@@ -5439,11 +5518,10 @@ function fieldDayCapacity(field, dateObj){
   if(!closuresCache.length) return avail.times.length * per;
   const iso = fmtDateISO(dateObj);
   let n = 0;
-  avail.times.forEach(t => {
-    if(!closureFor(field.id, iso, t)) { n += per; return; }
-    const held = bookingsCache.filter(b => b.field_id === field.id && b.date === iso && b.time === t).length;
-    n += Math.min(per, held);
-  });
+  avail.times.forEach(t => avail.subfields.forEach(sub => {
+    if(!closureFor(field.id, iso, t, sub)) { n++; return; }
+    if(bookingsCache.some(b => b.field_id === field.id && b.date === iso && b.time === t && b.subfield === sub)) n++;
+  }));
   return n;
 }
 
@@ -5458,7 +5536,7 @@ function checkWaitlistOpenings(){
   waitlistCache.forEach(w => {
     if(!mine.has(w.team_id) || waitlistNotified.has(w.id)) return;
     const stillBooked = bookingsCache.some(b => b.field_id===w.field_id && b.date===w.date && b.subfield===w.subfield && b.time===w.time);
-    if(!stillBooked && !closureFor(w.field_id, w.date, w.time)){   // a closed slot did not "open up"
+    if(!stillBooked && !closureFor(w.field_id, w.date, w.time, w.subfield)){   // a closed slot did not "open up"
       waitlistNotified.add(w.id);
       const fieldName = FIELD_MAP[w.field_id] ? FIELD_MAP[w.field_id].name : w.field_id;
       flash(`A slot opened up: ${w.subfield} at ${w.time}, ${fmtDateLong(w.date)} at ${fieldName}. Book it now.`, 'ok', null, true);
@@ -7299,7 +7377,7 @@ function renderBookMonthGridMobile(monthFirst){
         totalSlots++;
         const existing = bookingsCache.find(b => b.field_id===selectedField && b.date===dateStr && b.subfield===sub && b.time===time);
         if(existing){ bookedCount++; if(myTeamId && existing.team_id===myTeamId) mineCount++; }
-        else if(closureFor(selectedField, dateStr, time)) closedCount++;   // closed and unbooked: not open
+        else if(closureFor(selectedField, dateStr, time, sub)) closedCount++;   // closed and unbooked: not open
       }));
       const openCount = totalSlots - bookedCount - closedCount;
       const isPast = cursor < today;
@@ -7371,7 +7449,7 @@ function bookDayCounts(field, dateStr, myTeamId){
     total++;
     const b = bookingsCache.find(x => x.field_id === field.id && x.date === dateStr && x.subfield === sub && x.time === time);
     if(b){ if(myTeamId && b.team_id === myTeamId) mine++; }
-    else if(closureFor(field.id, dateStr, time)) closed++;
+    else if(closureFor(field.id, dateStr, time, sub)) closed++;
     else open++;
   }));
   return { open, mine, closed, allClosed: total > 0 && closed === total };
@@ -7425,7 +7503,7 @@ function renderBookDayMobile(monday){
           </div>`;
         } else {
           let wait = '';
-          if(!isPast && myTeamId && !closureFor(selectedField, dateStr, time)){
+          if(!isPast && myTeamId && !closureFor(selectedField, dateStr, time, sub)){
             const waiters = waitlistCache.filter(w => w.field_id === selectedField && w.date === dateStr && w.subfield === sub && w.time === time);
             const mineW = waiters.find(w => w.team_id === myTeamId);
             wait = mineW
@@ -7435,8 +7513,8 @@ function renderBookDayMobile(monday){
           html += `<div class="ios-row bd-row taken" data-flip-id="${fid}">
             <span class="bd-sub">${escSafe(sub)}<small>${escSafe(teamText)}</small></span>${wait}</div>`;
         }
-      } else if(closureFor(selectedField, dateStr, time)){
-        const why = closureFor(selectedField, dateStr, time);
+      } else if(closureFor(selectedField, dateStr, time, sub)){
+        const why = closureFor(selectedField, dateStr, time, sub);
         html += `<div class="ios-row bd-row shut${isPast ? ' past' : ''}" data-flip-id="${fid}">
           <span class="bd-sub">${escSafe(sub)}<small>${escSafe(why.reason)}</small></span><span class="shut-pill">Closed</span></div>`;
       } else if(isPast){
@@ -7487,7 +7565,7 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
           const isMine = existing.team_id === myTeamId;
           const teamText = teamLabelById(existing.team_id, '(unknown team)');
           let waitHtml = '';
-          if(!isMine && !isPast && myTeamId && !closureFor(selectedField, dateStr, time)){
+          if(!isMine && !isPast && myTeamId && !closureFor(selectedField, dateStr, time, sub)){
             const slotWaiters = waitlistCache.filter(w => w.field_id===selectedField && w.date===dateStr && w.subfield===sub && w.time===time);
             const myWait = slotWaiters.find(w => w.team_id===myTeamId);
             waitHtml = myWait
@@ -7495,8 +7573,8 @@ function renderBookRange(rangeStart, rangeEnd, isMonthMode){
               : ` <button class="waitlist-btn" data-joinwait='${JSON.stringify({fieldId:selectedField,date:dateStr,subfield:sub,time}).replace(/'/g,"&#39;")}'>Waitlist${slotWaiters.length?` (${slotWaiters.length})`:''}</button>`;
           }
           html += `<span class="book-slot ${isMine?'mine':'booked'}" data-flip-id="${escSafe(slotFlipId(selectedField, dateStr, sub, time))}"><span class="sub">${escSafe(sub)}</span><span class="team">${escSafe(teamText)}</span>${isMine?` <button class="cancel" data-cancel="${existing.id}" title="Cancel booking">&times;</button>`:waitHtml}</span>`;
-        } else if(closureFor(selectedField, dateStr, time)){
-          const why = closureFor(selectedField, dateStr, time);
+        } else if(closureFor(selectedField, dateStr, time, sub)){
+          const why = closureFor(selectedField, dateStr, time, sub);
           html += `<span class="book-slot shut${isPast ? ' past' : ''}" data-flip-id="${escSafe(slotFlipId(selectedField, dateStr, sub, time))}"><span class="sub">${escSafe(sub)}</span><span class="team">Closed: ${escSafe(why.reason)}</span></span>`;
         } else if(isPast){
           html += `<span class="book-slot booked past"><span class="sub">${escSafe(sub)}</span><span class="team">Passed</span></span>`;
@@ -7600,7 +7678,7 @@ el.recurringBookBtn.addEventListener('click', async () => {
   while(d <= SEASON_END){
     if(days.includes(d.getDay())){
       // A closed date is skipped, not tried: the count below is what gets booked.
-      const iso = fmtDateISO(d), why = closureFor(selectedField, iso, time);
+      const iso = fmtDateISO(d), why = closureFor(selectedField, iso, time, sub);
       if(why) skipped.push({ dateStr: iso, reason: why.reason }); else dates.push(iso);
     }
     d = addDays(d, 1);
@@ -7811,16 +7889,17 @@ function calOpenAt(fields, dateStr, taken){
     const avail = f.availability.find(a => a.days.includes(d.getDay()));
     if(!avail) return;
     avail.times.forEach(time => {
-      if(closureFor(f.id, dateStr, time)) return;   // closed: listed by calClosedAt, never open
-      const subs = avail.subfields.filter(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time));
+      // A closed part is listed by calClosedAt, never open; the other parts at that time still are.
+      const subs = avail.subfields.filter(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time) && !closureFor(f.id, dateStr, time, sub));
       if(subs.length) out.push({ field: f, time, subs });
     });
   });
   return out.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time));
 }
 // The times a closure shuts that day, across the fields shown: what Open
-// shows in grey in place of a Book button. Only times with a free sub-field
-// (one nobody booked), as calOpenAt would have offered.
+// shows in grey in place of a Book button. Only free sub-fields (nobody
+// booked them), as calOpenAt would have offered; subs is set when the
+// closure shuts only some of the parts, so the row can name them.
 function calClosedAt(fields, dateStr, taken){
   const d = parseISO(dateStr), today = new Date(); today.setHours(0,0,0,0);
   if(d < today || d < SEASON_START || d > SEASON_END) return [];
@@ -7829,8 +7908,11 @@ function calClosedAt(fields, dateStr, taken){
     const avail = f.availability.find(a => a.days.includes(d.getDay()));
     if(!avail) return;
     avail.times.forEach(time => {
-      const why = closureFor(f.id, dateStr, time);
-      if(why && avail.subfields.some(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time))) out.push({ field: f, time, why });
+      const shut = avail.subfields.map(sub => ({ sub, why: closureFor(f.id, dateStr, time, sub) }))
+        .filter(x => x.why && !taken.has(f.id + '|' + dateStr + '|' + x.sub + '|' + time));
+      if(!shut.length) return;
+      const partial = avail.subfields.some(sub => !closureFor(f.id, dateStr, time, sub));
+      out.push({ field: f, time, why: shut[0].why, subs: partial ? shut.map(x => x.sub) : null });
     });
   });
   return out.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.field.name.localeCompare(b.field.name));
@@ -7955,7 +8037,7 @@ function renderMonthCalendar(which, host){
     const shut = calClosedAt(shownFields, st.selected, taken);
     if(!groups.length && !shut.length) return `<p class="cal-empty">${calEmptyText(which)}</p>`;
     const rows = groups.map(g => ({ time: g.time, html: `<div class="cal-item open" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.subs.join(', '))} open</div></span><button type="button" class="get-pill" data-bookat="${g.field.id}|${st.selected}|${escSafe(g.time)}" aria-label="Book ${escSafe(g.field.name)}, ${escSafe(formatSlotTime(g.time))}">Book</button></div>` }))
-      .concat(shut.map(g => ({ time: g.time, html: `<div class="cal-item shut" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.why.reason)}</div></span><span class="shut-pill">Closed</span></div>` })));
+      .concat(shut.map(g => ({ time: g.time, html: `<div class="cal-item shut" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${g.subs ? escSafe(g.subs.join(', ')) + ' &middot; ' : ''}${escSafe(g.why.reason)}</div></span><span class="shut-pill">Closed</span></div>` })));
     // One list in time order: what is open, and what is shut, side by side.
     return rows.sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time)).map(r => r.html).join('');
   })();
@@ -8402,7 +8484,7 @@ function findOpenSlots(){
         avail.times.forEach(time => {
           if(!finderTimeMatches(time)) return;
           avail.subfields.forEach(sub => {
-            if(!taken.has(field.id + '|' + dateStr + '|' + sub + '|' + time) && !closureFor(field.id, dateStr, time)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
+            if(!taken.has(field.id + '|' + dateStr + '|' + sub + '|' + time) && !closureFor(field.id, dateStr, time, sub)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
           });
         });
       });
@@ -8677,10 +8759,12 @@ function renderAdmin(){
 }
 
 // ============ ADMIN: CLOSED DATES (admin and director) ============
-// Writes go only through close_field / reopen_field (the table has no write
-// policy). The confirmation counts the practices it will cancel from the
-// page's own bookings; the toast afterwards uses the server's count.
+// Writes go only through close_field / edit_closure / reopen_field (the
+// table has no write policy). The confirmation counts the practices it will
+// cancel from the page's own bookings; the toast afterwards uses the
+// server's count.
 const CLOSE_REASONS = ['No permit', 'School game', 'Field closed'];
+const DOW_PLURAL = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
 function shortDate(iso){ const d = parseISO(iso); return `${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}`; }
 // "Thu, Mar 4" for one day, "Mar 4 to Mar 18" for a run.
 function closureDatesText(start, end){
@@ -8688,20 +8772,48 @@ function closureDatesText(start, end){
   return `${shortDate(start)} to ${shortDate(end)}`;
 }
 function closureTimesText(times){ return times && times.length ? times.map(formatSlotTime).join(', ') : 'All day'; }
+// "Fridays", "Tuesdays and Thursdays", "Mondays, Wednesdays and Fridays" (as the push says it).
+function closureDaysText(days){
+  if(!days || !days.length) return '';
+  const n = [...days].sort((a, b) => a - b).map(d => DOW_PLURAL[d]);
+  return n.length === 1 ? n[0] : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`;
+}
+// "Apr 1 to Apr 30 · Fridays · Field B · 5:00-6:30 PM · School game": every
+// day and every part say nothing, all day says so.
+function closureLineParts(c){
+  return [closureDatesText(c.start_date, c.end_date), closureDaysText(c.weekdays), c.subfields && c.subfields.length ? c.subfields.join(', ') : '',
+    closureTimesText(c.times)].filter(Boolean);
+}
 function todayISO(){ return fmtDateISO(new Date()); }
 function canManageClosures(){ return !!myProfile && (myProfile.role === 'admin' || myProfile.role === 'director'); }
-// The times a field runs on the weekdays inside a date range, earliest first.
-function fieldTimesInRange(field, startISO, endISO){
-  if(!field || !startISO || !endISO || endISO < startISO) return [];
-  const seen = new Set(), dows = new Set();
-  for(let d = parseISO(startISO), end = parseISO(endISO), n = 0; d <= end && n < 7; d = addDays(d, 1), n++) dows.add(d.getDay());
+// The weekdays the dates hold (at most a week is walked), kept to the ticked
+// ones when days is a Set.
+function closeDowsInRange(startISO, endISO, days){
+  const dows = new Set();
+  if(!startISO || !endISO || endISO < startISO) return dows;
+  for(let d = parseISO(startISO), end = parseISO(endISO), n = 0; d <= end && n < 7; d = addDays(d, 1), n++)
+    if(!days || days.has(d.getDay())) dows.add(d.getDay());
+  return dows;
+}
+// The times a field runs on those weekdays inside a date range, earliest first.
+function fieldTimesInRange(field, startISO, endISO, days){
+  if(!field) return [];
+  const dows = closeDowsInRange(startISO, endISO, days), seen = new Set();
   field.availability.forEach(a => { if(a.days.some(x => dows.has(x))) a.times.forEach(t => seen.add(t)); });
   return [...seen].sort((a, b) => slotStartMinutes(a) - slotStartMinutes(b));
 }
-// Practices a closure would cancel: booked, dated today or later, inside it.
-function practicesClosureCancels(fieldId, startISO, endISO, times){
-  const from = startISO > todayISO() ? startISO : todayISO();
-  return bookingsCache.filter(b => b.field_id === fieldId && b.date >= from && b.date <= endISO && (!times || times.includes(b.time)));
+// The parts a field has on those weekdays inside a date range, in the catalog's order.
+function fieldPartsInRange(field, startISO, endISO, days){
+  if(!field) return [];
+  const dows = closeDowsInRange(startISO, endISO, days), seen = new Set();
+  field.availability.forEach(a => { if(a.days.some(x => dows.has(x))) a.subfields.forEach(x => seen.add(x)); });
+  return [...seen];
+}
+function fieldAllParts(field){ return field ? [...new Set(field.availability.flatMap(a => a.subfields))] : []; }
+// Practices a closure would cancel: booked, dated today or later, in a slot it covers.
+function practicesClosureCancels(c){
+  const from = c.start_date > todayISO() ? c.start_date : todayISO();
+  return bookingsCache.filter(b => b.date >= from && closureCovers(c, b.field_id, b.date, b.time, b.subfield));
 }
 // "Girls 6th Grade (2), Boys 4th Grade (1)", biggest first.
 function practicesByTeamText(list){
@@ -8715,7 +8827,19 @@ function closeFormState(){
   return {
     field: f ? f.value : '', start: document.getElementById('closeFrom').value, end: document.getElementById('closeTo').value,
     allDay: document.getElementById('closeAllDay').checked, reason: document.getElementById('closeReason').value.trim(),
+    everyDay: document.getElementById('closeEveryDay').checked, allParts: document.getElementById('closeAllParts').checked,
   };
+}
+// The closure the form describes, as a field_closures row (lists null for
+// every day / all day / every part). Only what the form offers counts: a
+// time or part ticked earlier and since left out is not sent.
+function closeFormClosure(st){
+  const f = FIELD_MAP[st.field], end = st.end || st.start;
+  const weekdays = st.everyDay ? null : [...closeDaysPicked].sort((a, b) => a - b);
+  const days = weekdays ? new Set(weekdays) : null;
+  const times = st.allDay ? null : fieldTimesInRange(f, st.start, end, days).filter(t => closeTimesPicked.has(t));
+  const subfields = st.allParts || fieldAllParts(f).length <= 1 ? null : fieldPartsInRange(f, st.start, end, days).filter(x => closePartsPicked.has(x));
+  return { field_id: st.field, start_date: st.start, end_date: end, times, subfields, weekdays, reason: st.reason };
 }
 function renderClosedDates(){
   const card = document.getElementById('closedDatesCard');
@@ -8725,48 +8849,109 @@ function renderClosedDates(){
   const today = todayISO();
   const live = closuresCache.filter(c => c.end_date >= today).sort((a, b) => a.start_date.localeCompare(b.start_date)
     || (FIELD_MAP[a.field_id] ? FIELD_MAP[a.field_id].name : a.field_id).localeCompare(FIELD_MAP[b.field_id] ? FIELD_MAP[b.field_id].name : b.field_id));
+  // The closure being changed went away (reopened elsewhere): the form closes fields again.
+  if(closeEditingId && !live.some(c => c.id === closeEditingId)) endCloseEdit();
   document.getElementById('closureList').innerHTML = live.length ? live.map(c => {
-    const f = FIELD_MAP[c.field_id];
-    return `<div class="ios-row bd-row closure-row"><span class="bd-sub">${escSafe(f ? f.name : c.field_id)}<small>${escSafe(closureDatesText(c.start_date, c.end_date))} &middot; ${escSafe(closureTimesText(c.times))} &middot; ${escSafe(c.reason)}</small></span>
-      <button type="button" class="get-pill quiet" data-reopen="${escSafe(c.id)}" aria-label="Reopen ${escSafe(f ? f.name : c.field_id)}, ${escSafe(closureDatesText(c.start_date, c.end_date))}">Reopen</button></div>`;
+    const f = FIELD_MAP[c.field_id], name = f ? f.name : c.field_id, when = closureDatesText(c.start_date, c.end_date);
+    return `<div class="ios-row bd-row closure-row${c.id === closeEditingId ? ' editing' : ''}"><span class="bd-sub">${escSafe(name)}<small>${closureLineParts(c).concat(c.reason).map(escSafe).join(' &middot; ')}</small></span>
+      <span class="closure-acts">${f ? `<button type="button" class="get-pill quiet" data-editclosure="${escSafe(c.id)}" aria-label="Edit ${escSafe(name)}, ${escSafe(when)}">Edit</button>` : ''}
+      <button type="button" class="get-pill quiet" data-reopen="${escSafe(c.id)}" aria-label="Reopen ${escSafe(name)}, ${escSafe(when)}">Reopen</button></span></div>`;
   }).join('') : `<div class="ios-row closure-row"><span class="ios-value">No closed dates.</span></div>`;
-  // The field menu keeps its pick across a redraw.
+  // The field menu keeps its pick across a redraw; while a closure is being
+  // changed the field is fixed (edit_closure never moves a closure).
   const sel = document.getElementById('closeFieldSelect');
   if(sel){
     const keep = sel.value;
     sel.innerHTML = `<option value="" disabled>Choose a field</option>` + FIELDS.map(f => `<option value="${escSafe(f.id)}">${escSafe(f.name)}</option>`).join('');
     sel.value = FIELD_MAP[keep] ? keep : '';
     if(!sel.value) sel.selectedIndex = 0;
+    sel.disabled = !!closeEditingId;
+    sel.closest('.ios-row').classList.toggle('locked', !!closeEditingId);
     syncSelectRow(sel);
   }
+  const editing = !!closeEditingId;
+  document.getElementById('closeFormHeader').textContent = editing ? 'Change a Closure' : 'Close a Field';
+  document.getElementById('closeSaveBtn').textContent = editing ? 'Save Changes' : 'Close Field';
+  document.getElementById('closeEditCancel').hidden = !editing;
   const q = document.getElementById('closeQuick'), reason = document.getElementById('closeReason').value.trim();
   q.innerHTML = CLOSE_REASONS.map(r => `<button type="button" class="fchip" data-closequick="${escSafe(r)}" aria-pressed="${reason === r}">${escSafe(r)}</button>`).join('');
   renderCloseTimes();
 }
+// The pickable parts of the form: weekdays, then the times and parts those
+// weekdays offer inside the dates.
 function renderCloseTimes(){
-  const host = document.getElementById('closeTimes'), st = closeFormState();
+  const st = closeFormState(), f = FIELD_MAP[st.field], end = st.end || st.start;
+  const daysHost = document.getElementById('closeDays');
+  daysHost.hidden = st.everyDay;
+  if(!st.everyDay){
+    const inRange = closeDowsInRange(st.start, end, null);
+    daysHost.innerHTML = DOW_SHORT.map((d, i) => `<button type="button" class="fchip${st.start && !inRange.has(i) ? ' off' : ''}" data-closeday="${i}" aria-pressed="${closeDaysPicked.has(i)}" aria-label="${DOW_PLURAL[i]}">${d}</button>`).join('');
+  }
+  const days = !st.everyDay && closeDaysPicked.size ? new Set(closeDaysPicked) : null;
+  const host = document.getElementById('closeTimes');
   host.hidden = st.allDay;
-  if(st.allDay) return;
-  const times = fieldTimesInRange(FIELD_MAP[st.field], st.start, st.end || st.start);
-  closeTimesPicked = new Set([...closeTimesPicked].filter(t => times.includes(t)));
-  host.innerHTML = times.length ? times.map(t => `<button type="button" class="fchip" data-closetime="${escSafe(t)}" aria-pressed="${closeTimesPicked.has(t)}">${escSafe(formatSlotTime(t))}</button>`).join('')
-    : `<span class="ios-value">${st.field && st.start ? 'This field has no times on those days.' : 'Choose a field and dates to see its times.'}</span>`;
+  if(!st.allDay){
+    const times = fieldTimesInRange(f, st.start, end, days);
+    closeTimesPicked = new Set([...closeTimesPicked].filter(t => times.includes(t)));
+    host.innerHTML = times.length ? times.map(t => `<button type="button" class="fchip" data-closetime="${escSafe(t)}" aria-pressed="${closeTimesPicked.has(t)}">${escSafe(formatSlotTime(t))}</button>`).join('')
+      : `<span class="ios-value">${st.field && st.start ? 'This field has no times on those days.' : 'Choose a field and dates to see its times.'}</span>`;
+  }
+  // Parts: only for a field with more than one.
+  const partsRow = document.getElementById('closeAllPartsRow'), partsHost = document.getElementById('closeParts');
+  partsRow.hidden = fieldAllParts(f).length <= 1;
+  partsHost.hidden = partsRow.hidden || st.allParts;
+  if(!partsHost.hidden){
+    const parts = fieldPartsInRange(f, st.start, end, days);
+    closePartsPicked = new Set([...closePartsPicked].filter(x => parts.includes(x)));
+    partsHost.innerHTML = parts.length ? parts.map(x => `<button type="button" class="fchip" data-closepart="${escSafe(x)}" aria-pressed="${closePartsPicked.has(x)}">${escSafe(x)}</button>`).join('')
+      : `<span class="ios-value">${st.start ? 'This field has no parts on those days.' : 'Choose dates to see its parts.'}</span>`;
+  }
 }
 function closeStatusMsg(text, kind){
   document.getElementById('closeStatus').innerHTML = text ? `<span class="status${kind ? ' ' + kind : ''}">${escSafe(text)}</span>` : '';
 }
 // What stops a save before the server is asked; '' when the form is fine.
-function closeFormProblem(st){
+// The same refusals close_field and edit_closure make, in the page's words.
+function closeFormProblem(st, c){
   if(!st.field) return 'Choose a field first.';
   if(!st.start) return 'Choose the first date.';
   if(!st.end) return 'Choose the last date.';
   if(st.end < st.start) return 'The last date is before the first.';
   if(st.end < todayISO()) return 'Those dates are already over.';
-  if((Date.parse(st.end) - Date.parse(st.start)) / 86400000 + 1 > 366) return 'A closure can run at most a year.';
-  if(!st.allDay && !closeTimesPicked.size) return 'Tick at least one time, or switch on All Day.';
+  if((Date.parse(st.end) - Date.parse(st.start)) / 86400000 > 366) return 'A closure can run for a year at most.';
+  if(c.weekdays && !c.weekdays.length) return 'Tick at least one day of the week, or switch on Every Day.';
+  if(c.weekdays && !closeDowsInRange(st.start, st.end, new Set(c.weekdays)).size) return 'None of those days fall in the dates.';
+  if(c.times && !c.times.length) return 'Tick at least one time, or switch on All Day.';
+  if(c.subfields && !c.subfields.length) return 'Tick at least one part, or switch on All Parts.';
   if(!st.reason) return 'Give a reason, such as No permit.';
   if(st.reason.length > 40) return 'Keep the reason to 40 characters.';
   return '';
+}
+// Edit: the same form, filled in from the closure, with the field fixed.
+function startCloseEdit(c){
+  closeEditingId = c.id;
+  document.getElementById('closeFieldSelect').value = c.field_id;
+  document.getElementById('closeFrom').value = c.start_date;
+  document.getElementById('closeTo').value = c.end_date;
+  closeToTouched = true;
+  document.getElementById('closeEveryDay').checked = !c.weekdays;
+  document.getElementById('closeAllDay').checked = !c.times;
+  document.getElementById('closeAllParts').checked = !c.subfields;
+  closeDaysPicked = new Set(c.weekdays || []);
+  closeTimesPicked = new Set(c.times || []);
+  closePartsPicked = new Set(c.subfields || []);
+  document.getElementById('closeReason').value = c.reason || '';
+  closeStatusMsg('');
+  renderClosedDates();
+  const head = document.getElementById('closeFormHeader');
+  head.scrollIntoView({ block: 'start', behavior: motionOK() ? 'smooth' : 'auto' });
+}
+// Back to closing a field: an empty form, the field kept.
+function endCloseEdit(){
+  closeEditingId = null;
+  ['closeFrom', 'closeTo', 'closeReason'].forEach(id => { document.getElementById(id).value = ''; });
+  ['closeEveryDay', 'closeAllDay', 'closeAllParts'].forEach(id => { document.getElementById(id).checked = true; });
+  closeTimesPicked = new Set(); closePartsPicked = new Set(); closeDaysPicked = new Set(); closeToTouched = false;
 }
 document.getElementById('closedDatesCard').addEventListener('click', async e => {
   const quick = e.target.closest('[data-closequick]');
@@ -8776,12 +8961,21 @@ document.getElementById('closedDatesCard').addEventListener('click', async e => 
     document.querySelectorAll('#closeQuick .fchip').forEach(b => b.setAttribute('aria-pressed', String(b === quick)));
     return;
   }
-  const tm = e.target.closest('[data-closetime]');
-  if(tm){
-    const t = tm.dataset.closetime;
-    if(closeTimesPicked.has(t)) closeTimesPicked.delete(t); else closeTimesPicked.add(t);
-    tm.setAttribute('aria-pressed', String(closeTimesPicked.has(t)));
+  // A ticked weekday changes which times and parts are offered; a time or a part only flips itself.
+  const pick = e.target.closest('[data-closetime], [data-closepart], [data-closeday]');
+  if(pick){
+    const [set, v] = pick.dataset.closetime != null ? [closeTimesPicked, pick.dataset.closetime]
+      : pick.dataset.closepart != null ? [closePartsPicked, pick.dataset.closepart] : [closeDaysPicked, Number(pick.dataset.closeday)];
+    if(set.has(v)) set.delete(v); else set.add(v);
+    pick.setAttribute('aria-pressed', String(set.has(v)));
     haptic('selection'); closeStatusMsg('');
+    if(pick.dataset.closeday != null) renderCloseTimes();
+    return;
+  }
+  const ed = e.target.closest('[data-editclosure]');
+  if(ed){
+    const c = closuresCache.find(x => x.id === ed.dataset.editclosure);
+    if(c){ haptic('selection'); startCloseEdit(c); }
     return;
   }
   const re = e.target.closest('[data-reopen]');
@@ -8791,12 +8985,13 @@ document.getElementById('closedDatesCard').addEventListener('click', async e => 
     const f = FIELD_MAP[c.field_id], name = f ? f.name : c.field_id;
     if(!await confirmAction({
       title: `Reopen ${name}?`,
-      body: `${closureDatesText(c.start_date, c.end_date)}, ${closureTimesText(c.times)} (${c.reason}) opens for booking again. Practices cancelled by the closure do not come back.`,
+      body: `${closureLineParts(c).join(', ')} (${c.reason}) opens for booking again. Practices cancelled by the closure do not come back.`,
       verb: 'Reopen',
     })) return;
     re.disabled = true;
     const { error } = await sb.rpc('reopen_field', { p_id: c.id });
     if(error){ re.disabled = false; closeStatusMsg(closeErrorText(error, 'The field wasn\'t reopened.'), 'err'); return; }
+    if(closeEditingId === c.id) endCloseEdit();
     closeStatusMsg(`${name} is open again for ${closureDatesText(c.start_date, c.end_date)}.`, 'ok');
     flash(`${name} reopened`, 'ok');
     await Promise.all([loadClosures(), refreshBookings(), refreshWaitlist()]);
@@ -8808,7 +9003,7 @@ function closeErrorText(error, lead){
   if(error && (error.code === '22023' || error.code === '42501') && error.message) return `${lead} ${error.message}.`.replace(/\.\.$/, '.');
   return friendlyError(error, lead);
 }
-['closeFieldSelect', 'closeAllDay'].forEach(id => document.getElementById(id).addEventListener('change', () => { closeStatusMsg(''); renderCloseTimes(); }));
+['closeFieldSelect', 'closeAllDay', 'closeEveryDay', 'closeAllParts'].forEach(id => document.getElementById(id).addEventListener('change', () => { closeStatusMsg(''); renderCloseTimes(); }));
 document.getElementById('closeFrom').addEventListener('change', e => {
   const to = document.getElementById('closeTo');
   if(!closeToTouched || !to.value || to.value < e.target.value) to.value = e.target.value;   // To follows From until it is chosen
@@ -8819,27 +9014,36 @@ document.getElementById('closeReason').addEventListener('input', e => {
   closeStatusMsg('');
   document.querySelectorAll('#closeQuick .fchip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.closequick === e.target.value.trim())));
 });
+document.getElementById('closeEditCancel').addEventListener('click', () => {
+  endCloseEdit(); closeStatusMsg(''); renderClosedDates();
+});
 document.getElementById('closeSaveBtn').addEventListener('click', async () => {
-  const st = closeFormState(), problem = closeFormProblem(st);
+  const st = closeFormState(), c = closeFormClosure(st), problem = closeFormProblem(st, c);
   if(problem){ closeStatusMsg(problem, 'err'); return; }
   const f = FIELD_MAP[st.field], name = f ? f.name : st.field;
-  const times = st.allDay ? null : fieldTimesInRange(f, st.start, st.end).filter(t => closeTimesPicked.has(t));
-  const lost = practicesClosureCancels(st.field, st.start, st.end, times);
-  const what = `${closureDatesText(st.start, st.end)}, ${closureTimesText(times)}. Reason: ${st.reason}.`;
+  const editId = closeEditingId, old = editId ? closuresCache.find(x => x.id === editId) : null;
+  if(editId && !old){ endCloseEdit(); renderClosedDates(); closeStatusMsg('That closure no longer exists.', 'err'); return; }
+  // An edit names only what it newly cancels: practices still booked in slots the old closure didn't cover.
+  const lost = practicesClosureCancels(c).filter(b => !old || !closureCovers(old, b.field_id, b.date, b.time, b.subfield));
+  const what = `${closureLineParts(c).join(', ')}. Reason: ${st.reason}.`;
   const effect = lost.length
     ? `This cancels ${lost.length} ${lost.length === 1 ? 'practice' : 'practices'}: ${practicesByTeamText(lost)}. Their coaches will be told.`
-    : 'No practices are booked then.';
-  if(!await confirmAction({ title: `Close ${name}?`, body: `${what} ${effect}`, verb: 'Close field' })) return;
+    : old ? 'No practices are booked in the slots it adds.' : 'No practices are booked then.';
+  if(!await confirmAction(old
+    ? { title: `Change the ${name} closure?`, body: `${what} ${effect}`, verb: 'Save changes' }
+    : { title: `Close ${name}?`, body: `${what} ${effect}`, verb: 'Close field' })) return;
   const btn = document.getElementById('closeSaveBtn');
   btn.disabled = true;
-  const { data, error } = await sb.rpc('close_field', { p_field: st.field, p_start: st.start, p_end: st.end, p_times: times, p_reason: st.reason });
+  const args = { p_start: c.start_date, p_end: c.end_date, p_reason: st.reason, p_times: c.times, p_subfields: c.subfields, p_weekdays: c.weekdays };
+  const { data, error } = old ? await sb.rpc('edit_closure', { p_id: editId, ...args }) : await sb.rpc('close_field', { p_field: st.field, ...args });
   btn.disabled = false;
-  if(error){ closeStatusMsg(closeErrorText(error, 'The field wasn\'t closed.'), 'err'); return; }
+  if(error){ closeStatusMsg(closeErrorText(error, old ? 'The closure wasn\'t changed.' : 'The field wasn\'t closed.'), 'err'); return; }
   const n = data && Number.isFinite(Number(data.cancelled)) ? Number(data.cancelled) : 0;
-  const msg = `${name} closed ${closureDatesText(st.start, st.end)}. ${n ? `${n} ${n === 1 ? 'practice' : 'practices'} cancelled and their coaches told.` : 'No practices were cancelled.'}`;
+  const told = n ? `${n} ${n === 1 ? 'practice' : 'practices'} cancelled and their coaches told.` : 'No practices were cancelled.';
+  const msg = old ? `${name} closure changed. ${told}` : `${name} closed ${closureDatesText(c.start_date, c.end_date)}. ${told}`;
   closeStatusMsg(msg, 'ok'); flash(msg, 'ok');
-  document.getElementById('closeReason').value = '';
-  closeTimesPicked = new Set();
+  if(old) endCloseEdit();
+  else { document.getElementById('closeReason').value = ''; closeTimesPicked = new Set(); closePartsPicked = new Set(); closeDaysPicked = new Set(); }
   await Promise.all([loadClosures(), refreshBookings(), refreshWaitlist()]);
   renderClosedDates(); rerenderCurrentView(true);
 });

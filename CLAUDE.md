@@ -32,7 +32,7 @@ same commit that made it untrue. Superseded decisions go entirely — leaving
 grown past a screen, it wants its own file with one line pointing to it here.
 
 ## Structure
-- `index.html` — markup, styles and app script (~6,500 lines)
+- `index.html` — markup, styles and app script (~9,900 lines)
 - `ui/*.js` — design v2 components, each self-contained and wired by event
   delegation so load order never matters: `spring.js` (interruptible spring
   solver), `field-menu.js` (field switcher), `aurora.js` (WebGL hero surface),
@@ -52,7 +52,6 @@ grown past a screen, it wants its own file with one line pointing to it here.
 - `supabase/*.sql` — reference copies of applied schema/policy work
 - `supabase/functions/*.ts` — reference copies of `manage-user` and `invite-coach` (`send-push` and `team-ics` are read-only in the dashboard; both reviewed 2026-09-18)
 - `tools/render-audit.js`, `tools/pixel-audit.js` — see Verifying below
-- `MOBILE_APP_HANDOFF.md` — Capacitor shell backend contract
 
 ## Deploy
 Push to `main` → GitHub Pages. **`cache-control: max-age=600`**, so a change can
@@ -65,7 +64,9 @@ curl -s "https://seafordlax.com/?v=$RANDOM" | grep -c "some-new-string"
 
 ## Backend
 Supabase project `gjpqwmcdejpvffdimddk`. Tables: `bookings`, `teams`,
-`profiles`, `waitlist`, `app_settings`, `field_closures`. The **Supabase MCP tool points at a
+`profiles`, `team_members`, `waitlist`, `app_settings`, `fields`,
+`field_slots`, `field_closures`, `games`, `notification_prefs`,
+`notification_teams`, `activity_log`. The **Supabase MCP tool points at a
 different project** — drive the dashboard in the browser instead.
 
 **The database is the enforcement layer, not the UI.** Verified live:
@@ -114,8 +115,12 @@ different project** — drive the dashboard in the browser instead.
 - A tier's deadline is *derived*, not stored: it opened when the tier above
   finished (`max(priority_finished_at)`). 3 days, then an admin's session
   auto-advances via `priority_forced_ranks`
-- Changing a field's hours in `FIELDS` also requires updating `field_slots`, or
-  new bookings get rejected
+- **The field list comes from the database.** `FIELDS` is built at boot from
+  `fields` and `field_slots` (`lib/field-catalog.js`), so a field's hours
+  change in `field_slots`, which is also the allowlist the booking trigger
+  enforces. `FIELDS_FALLBACK` is only used when that read fails: keep it
+  equal to the tables (`tools/check-field-catalog.mjs`), as the app's
+  `FieldCatalog.swift` is
 - **A grade can hold two teams** ("Girls 2nd Grade Green" / "White",
   `teams.name`). Find a team by id, never by gender + grade, and name it with
   `teamLabelOf`/`teamLabelById`. A person's teams come from `team_members`,

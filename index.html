@@ -614,7 +614,6 @@
     --danger: #d70015;
     --danger-bg: #fbe9e4;
     /* Restrained, hairline-first depth — a thin border does most of the work, shadow is just a whisper */
-    --shadow: 0 1px 2px rgba(15,30,20,.04);
     --shadow-turf: none;
     /* Layered "material" elevation for actual content cards — a soft contact
        shadow plus a longer ambient falloff reads as depth; a single flat
@@ -628,14 +627,11 @@
     --radius-sm: 8px;
     --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-    --font-wordmark: "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    /* Spacing scale — consistent rhythm instead of ad-hoc values */
-    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
     /* Type scale — every text size in the page maps to one of these steps */
     /* Relative to the root, which iOS scales with the reader's text-size
        setting, so Dynamic Type actually does something here. */
     --fs-2xs: .72rem; --fs-xs: .82rem; --fs-sm: .88rem; --fs-base: 1rem;
-    --fs-md: 1.09rem; --fs-lg: 1.25rem; --fs-xl: 1.5rem; --fs-2xl: clamp(1.75rem, 5.5vw, 2.75rem);
+    --fs-md: 1.09rem; --fs-lg: 1.25rem; --fs-xl: 1.5rem;
     --ease: cubic-bezier(.4,0,.2,1);
     /* "This is mine" accent — distinct from neutral silver so your own bookings pop */
     --mine: #b8860b;
@@ -648,7 +644,6 @@
        stay light in dark mode while their text color goes light-on-light. */
     --chip-bg: rgba(118,118,128,.12);
     --chip-hover-bg: rgba(118,118,128,.20);
-    --ok-bg: #e6f2ea;
     /* Notch / home-indicator safe areas (iPhone) — 0px on devices without them */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -691,11 +686,9 @@
       --mine-text: #ffd60a;
       --chip-bg: rgba(118,118,128,.24);
       --chip-hover-bg: rgba(118,118,128,.36);
-      --ok-bg: rgba(48,209,88,.18);
       --chevron: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2398989f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
       /* Dark mode separates surfaces with lightness, not shadow. Big drop
          shadows on near-black just make a grey smear. */
-      --shadow: none;
       --shadow-turf: none;
       --shadow-card: none;
       --shadow-card-hover: none;
@@ -736,18 +729,16 @@
     --mine-text: #ffd60a;
     --chip-bg: rgba(118,118,128,.24);
     --chip-hover-bg: rgba(118,118,128,.36);
-    --ok-bg: rgba(48,209,88,.18);
     --chevron: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2398989f' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
       /* Dark mode separates surfaces with lightness, not shadow. Big drop
          shadows on near-black just make a grey smear. */
-    --shadow: none;
     --shadow-turf: none;
     --shadow-card: none;
     --shadow-card-hover: none;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   /* Proportional digits made calendar columns shimmer as the month changed. */
-  .cal-num, .cal-day, .book-month-cell, .timelabel, .time, .weeknav .label, .cal-dow, .count { font-variant-numeric: tabular-nums; }
+  .cal-num, .cal-day, .book-month-cell, .timelabel, .time, .weeknav .label, .count { font-variant-numeric: tabular-nums; }
   html { color-scheme: light dark; -webkit-overflow-scrolling: touch; font: -apple-system-body; -webkit-text-size-adjust: 100%; }
   /* Custom thin scrollbar (desktop) — Firefox via scrollbar-width/color, WebKit via ::-webkit-scrollbar */
   html { scrollbar-width: thin; scrollbar-color: var(--silver-deep) transparent; }
@@ -760,7 +751,6 @@
      that moment, and the app's own window colour is dark green, which flashed
      as a band above the header. Paint the page's own surface instead. */
   html { background: var(--chalk); }
-  .cal-slots { overscroll-behavior: contain; } /* nested scroll areas don't chain into the page scroll */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: .001ms !important; animation-iteration-count: 1 !important;
@@ -779,11 +769,11 @@
      button, menu and field in Arial. */
   button, select, input, textarea { font-family: inherit; }
   a { color: var(--turf); }
-  button, .fchip, .mtab, .gcard, .daytoggle, .cal-slot.empty, .book-slot, .allbtn, .btn-primary, .view-tab {
+  button, .fchip, .mtab, .daytoggle, .book-slot, .allbtn, .btn-primary, .view-tab {
     transition: background-color .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease), transform .1s var(--ease), box-shadow .14s var(--ease);
   }
-  button:active, .fchip:active, .mtab:active, .gcard:active, .book-slot:active, .cal-slot.empty:active { transform: scale(.98); }
-  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .fchip:focus-visible, .mtab:focus-visible, .gcard:focus-visible, .view-tab:focus-visible {
+  button:active, .fchip:active, .mtab:active, .book-slot:active { transform: scale(.98); }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .fchip:focus-visible, .mtab:focus-visible, .view-tab:focus-visible {
     outline: 2px solid var(--turf); outline-offset: 2px;
   }
 
@@ -827,49 +817,12 @@
     margin-top: 24px;
     background: linear-gradient(90deg, transparent 0%, var(--turf) 20%, var(--text-strong) 50%, var(--turf) 80%, transparent 100%);
   }
-  #hamburgerBtn {
-    position: fixed; top: calc(14px + var(--safe-top)); left: calc(16px + var(--safe-left)); z-index: 610;
-    width: 36px; height: 36px; border-radius: var(--radius-md); border: 1px solid var(--line);
-    background: var(--card); color: var(--ink); cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background-color .15s var(--ease), border-color .15s var(--ease);
-  }
-  #hamburgerBtn svg { width: 19px; height: 19px; }
-  #hamburgerBtn:hover, #hamburgerBtn.open { border-color: var(--hover-edge); background: var(--chip-bg); }
-  .hamburger-menu {
-    position: fixed; top: 56px; left: 16px; z-index: 610; min-width: 210px;
-    max-height: calc(100vh - 72px); overflow-y: auto;
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card);
-    box-shadow: var(--shadow-card-hover); padding: 6px; display: none; flex-direction: column; gap: 2px;
-  }
-  .hamburger-menu.open { display: flex; animation: viewFadeIn .16s var(--ease); }
-  .hamburger-menu button {
-    display: flex; align-items: center; gap: 10px; text-align: left; border: none; background: none;
-    color: var(--ink); font-family: inherit; font-size: var(--fs-base); font-weight: 600;
-    padding: 10px 12px; border-radius: var(--radius-chip); cursor: pointer; width: 100%;
-  }
-  .hamburger-menu button:hover { background: var(--chip-bg); }
   .activity-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 12px 0; border-bottom: .5px solid var(--sep); }
   .activity-row:last-child { border-bottom: none; }
   .activity-what { font-weight: 600; color: var(--ink); font-size: var(--fs-sm); }
   .activity-who { color: var(--muted); font-size: var(--fs-xs); grid-column: 1; }
   .activity-when { color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; grid-row: 1; grid-column: 2; }
   .activity-empty { color: var(--muted); font-size: var(--fs-sm); padding: 14px 0; }
-  .hamburger-name { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
-  .hamburger-name input { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
-  .hamburger-name .allbtn { margin-left: 0; }
-  .hamburger-editname { width: 100%; }
-  .hamburger-menu button.active { color: var(--text-strong); background: var(--chip-bg); }
-  .hamburger-identity {
-    display: flex; align-items: center; gap: 8px; padding: 8px 12px 10px; margin-bottom: 4px;
-    border-bottom: 1px solid var(--line);
-  }
-  .hamburger-identity .who { font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hamburger-identity .role-pill { font-size: var(--fs-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; background: var(--accent-fill); color: var(--on-accent); padding: 4px 8px; border-radius: var(--radius-pill); flex: none; }
-  .hamburger-menu .hamburger-signout {
-    color: var(--danger); font-weight: 600; border-top: 1px solid var(--line); margin-top: 2px; padding-top: 12px; border-radius: 0 0 var(--radius-chip) var(--radius-chip);
-  }
-  .hamburger-menu .hamburger-signout:hover { background: var(--danger-bg); }
   .header-hero { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 4vw, 40px); }
   .header-sub { font-size: var(--fs-xs); color: var(--muted); font-weight: 400; margin-top: 2px; white-space: nowrap; } /* "Girls 2nd Grade Green" on one line */
   /* Dark-mode crest carries a white halo; the light one must not. */
@@ -926,11 +879,9 @@
   .btn-primary { width: 100%; min-height: 44px; background: var(--accent-fill); color: var(--on-accent); border: none; padding: 12px 20px; border-radius: var(--radius-pill); font-family: inherit; font-size: var(--ios-body); font-weight: 600; cursor: pointer; margin-top: 6px; box-shadow: var(--shadow-turf); }
   .btn-primary:hover { background: var(--turf); }
   .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-  .link-btn { background: none; border: none; color: var(--turf); font-size: var(--fs-sm); font-weight: 600; cursor: pointer; margin-top: 14px; text-decoration: underline; }
   .auth-msg { font-size: var(--fs-sm); margin-top: 12px; padding: 10px; border-radius: var(--radius-chip); }
   .auth-msg.err { background: var(--danger-bg); color: var(--danger); }
   .auth-msg.ok { background: var(--chip-bg); color: var(--text-strong); }
-  .invite-note { font-size: var(--fs-xs); color: var(--muted); margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
 
   /* ===== Team picker (schedule filter) ===== */
   .picker { max-width: 1000px; margin: 22px auto 0; padding: 0 20px; }
@@ -1001,7 +952,7 @@
   .slot-band-label { display: block; font-size: var(--fs-2xs); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
   .slots .slot { font-size: var(--fs-xs); background: var(--chip-bg); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 4px 8px; color: var(--text-strong); }
   .slots .slot.mine { background: var(--mine-bg); border-color: var(--mine); color: var(--mine-deep); font-weight: 600; }
-  .slots .slot.mine::before, .book-slot.mine::before, .cal-slot.mine::before { content: '✓'; font-weight: 600; margin-right: 4px; }
+  .slots .slot.mine::before, .book-slot.mine::before { content: '✓'; font-weight: 600; margin-right: 4px; }
   .slots .slot .time { color: var(--muted); font-weight: 600; }
   .slots .slot.mine .time { color: var(--mine-deep); }
   .slots .slot .sub { font-weight: 600; }
@@ -1033,15 +984,6 @@
   .booking { max-width: 1000px; margin: 16px auto 0; padding: 0 20px; }
   .section-label { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 10px; font-weight: 600; }
   .field-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px; }
-  .fchip-short { display: none; }
-  @media (max-width: 480px) {
-    /* Shorter labels so all 5 fields wrap into two complete rows with nothing
-       cut off and no scrolling needed to find one — a scroll strip here (an
-       earlier attempt) just traded "orphan row" for "have to swipe to see
-       your field," which is worse. */
-    .fchip-full { display: none; }
-    .fchip-short { display: inline; }
-  }
   .fchip { border: 1.5px solid transparent; background: var(--chip-bg); color: var(--ink); padding: 8px 12px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
   .fchip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
   .fchip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); box-shadow: var(--shadow-turf); }
@@ -1062,16 +1004,6 @@
   .fchip.active .fav-star.active { color: var(--mine); opacity: 1; }
   .field-note { color: var(--muted); font-size: var(--fs-xs); font-style: italic; margin-bottom: 14px; }
   .weeknav { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 4px 2px; background: none; border: none; }
-  .pull-refresh-indicator {
-    position: fixed; top: 0; left: 50%; z-index: 800;
-    transform: translate(-50%, -60px); opacity: 0; pointer-events: none;
-    background: var(--card); border: 1px solid var(--line); border-radius: 50%;
-    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    box-shadow: var(--shadow-card-hover); transition: transform .25s var(--ease), opacity .25s var(--ease);
-  }
-  .pull-refresh-indicator .spinner { width: 20px; height: 20px; border-width: 2.5px; animation: none; }
-  .pull-refresh-indicator.ready .spinner { border-top-color: var(--turf); }
-  .pull-refresh-indicator.refreshing .spinner { animation: spin .7s linear infinite; }
   /* Segmented control: one sliding pill (.mode-toggle-thumb) glides to the active
      button instead of each button separately swapping its own background — the
      iOS-native segmented-control look. */
@@ -1143,7 +1075,6 @@
   .sh-part { display: flex; flex-direction: column; justify-content: center; gap: 1px; box-sizing: border-box; width: 100%; min-height: 44px;
     margin: 0 0 4px; padding: 4px 10px; border: none; border-radius: 10px; font: inherit; text-align: left; color: var(--ink); background: none; }
   .sh-part:last-child { margin-bottom: 0; }
-  .sh-part .sh-sub { color: var(--muted); font-size: var(--ios-foot); }
   .sh-part .sh-who, .sh-part .plus { font-weight: 600; overflow-wrap: anywhere; }
   .sh-part.taken { background: var(--chip-bg); }
   .sh-part.mine { background: var(--mine-bg); }
@@ -1153,7 +1084,7 @@
   .sh-part.open:active { opacity: .6; }
   .sh-part.open[aria-busy="true"] { opacity: .6; cursor: default; }
   .sh-part.shut { background: var(--chip-bg); }
-  .sh-part.shut .sh-who, .sh-part.shut .sh-sub { color: var(--muted); }
+  .sh-part.shut .sh-who { color: var(--muted); }
   .sh-bar { background: var(--chip-bg); color: var(--muted); font-weight: 600; vertical-align: middle; }
   .sh-bar span { position: sticky; left: 88px; }
   .closure-acts { flex: none; display: flex; gap: 8px; margin-left: auto; }
@@ -1185,37 +1116,6 @@
   .book-month-badge.mine { background: var(--mine-bg); color: var(--mine-text); }
   .book-month-badge.past { background: none; color: var(--muted); font-weight: 600; }
   .book-month-cell.selected { border-color: var(--text-strong); box-shadow: 0 0 0 2px var(--text-strong) inset; }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
-  .cal-dow { text-align: center; font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-bottom: 4px; }
-  .cal-cell { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-chip); padding: 6px; min-height: 92px; display: flex; flex-direction: column; }
-  .cal-cell.pad { background: transparent; border: none; }
-  .cal-cell.closed { background: var(--chalk); }
-  .cal-daynum { font-size: var(--fs-xs); font-weight: 600; color: var(--text-strong); margin-bottom: 4px; flex: none; }
-  .cal-slots { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; max-height: 100px; }
-  .cal-slot { font-size: 10.5px; padding: 2px 6px; border-radius: var(--radius-chip); background: var(--chip-bg); color: var(--text-strong); line-height: 1.35; border: none; text-align: left; font-family: inherit; }
-  .cal-slot.empty { background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer; width: 100%; }
-  .cal-slot.empty:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
-  .cal-slot.mine { background: var(--mine-bg); color: var(--mine-deep); font-weight: 600; border: 1px solid var(--mine); }
-  @media (max-width: 700px) and (min-width: 481px) {
-    .cal-grid { gap: 3px; }
-    .cal-cell { min-height: 72px; padding: 4px; }
-    .cal-daynum { font-size: 10px; }
-    .cal-slot { font-size: 10px; padding: 4px 6px; min-height: 22px; }
-    .cal-slots { max-height: 84px; }
-  }
-  /* Under ~480px a 7-col grid can't fit real touch targets — switch month view
-     to an agenda list: same DOM, just re-flowed (grid → stacked rows) so no JS changes needed. */
-  @media (max-width: 480px) {
-    .cal-grid { display: flex; flex-direction: column; gap: 6px; }
-    .cal-dow { display: none; }
-    .cal-cell { flex-direction: row; align-items: flex-start; gap: 10px; min-height: 0; padding: 10px; }
-    .cal-cell.pad { display: none; }
-    .cal-cell.closed { display: none; }
-    .cal-daynum { flex: 0 0 34px; font-size: var(--fs-sm); margin-bottom: 0; padding-top: 2px; }
-    .cal-slots { flex: 1; max-height: none; gap: 6px; }
-    .cal-slot { font-size: var(--fs-xs); padding: 8px 10px; min-height: 40px; display: flex; align-items: center; gap: 5px; }
-    .cal-slot.empty { justify-content: flex-start; }
-  }
   .daytoggle { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid transparent; background: var(--chip-bg); color: var(--ink); padding: 8px 14px; border-radius: var(--radius-chip); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; }
   .daytoggle:hover:not(:disabled) { border-color: var(--hover-edge); color: var(--hover-edge); }
   .daytoggle.active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
@@ -1267,9 +1167,8 @@
   }
   .book-slot.mine .cancel::before { content: ''; position: absolute; inset: -9px; }
   .book-slot.mine .cancel:hover { background: rgba(0,0,0,.24); }
-  .book-slot:disabled, .cal-slot.empty:disabled { opacity: .45; cursor: not-allowed; }
+  .book-slot:disabled { opacity: .45; cursor: not-allowed; }
   .book-slot[aria-busy="true"]:disabled { opacity: .7; cursor: progress; }
-  .book-slot.found-highlight { animation: foundPulse 2.6s var(--ease); }
   /* Two-tap confirm countdown ring — shows how long the armed state lasts
      instead of leaving people guessing when it silently disarms. */
   .armed:has(> .arm-ring) { position: relative; padding-right: 28px !important; }
@@ -1298,9 +1197,6 @@
      well not have existed — half of why the sideways drag got attempted at
      all. Fade the trailing edge so there's visibly more to reach. */
   .cal-filter { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); mask-image: linear-gradient(to right, #000 calc(100% - 34px), transparent 100%); }
-  .cal-chip { flex: 0 0 auto; min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--line); background: var(--card); color: var(--muted); padding: 8px 14px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; }
-  .cal-chip:hover { border-color: var(--hover-edge); color: var(--hover-edge); }
-  .cal-chip.active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
   .cal-weekdays, .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
   .cal-weekdays span { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; padding-bottom: 8px; }
   .cal-days { row-gap: 4px; }
@@ -1358,12 +1254,6 @@
   .cal-item-cancel { min-width: 44px; min-height: 44px; align-self: center; border: none; background: none; color: var(--mine-deep); font-size: 20px; font-weight: 600; line-height: 1; cursor: pointer; border-radius: var(--radius-chip); }
   .cal-item-cancel:hover { background: rgba(0,0,0,.07); }
   .cal-empty { color: var(--muted); font-size: var(--fs-sm); padding: 6px 0 2px; }
-  .cal-legend { display: flex; gap: 14px; margin-top: 6px; font-size: var(--fs-2xs); font-weight: 600; color: var(--muted); }
-  .cal-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
-  /* Big one-tap "next open slot" button */
-  .next-slot-hero { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 0 0 18px; padding: 14px 18px; border-radius: var(--radius-pill); font-size: var(--fs-md); line-height: 1.2; }
-  .next-slot-hero .next-slot-main { display: inline-flex; align-items: center; gap: 8px; }
-  .next-slot-hero .next-slot-sub { font-size: var(--fs-xs); font-weight: 600; opacity: .85; }
   /* Toast action (Undo) */
   .toast-action { margin-left: 6px; background: rgba(255,255,255,.16); color: #fff; border: none; border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: var(--fs-xs); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .toast-action:hover { background: rgba(255,255,255,.26); }
@@ -1407,17 +1297,8 @@
   .changes-strip { max-width: 1000px; margin: 12px auto 0; padding: 0 20px; display: flex; gap: 8px; align-items: stretch; }
   .changes-body { flex: 1; text-align: left; background: var(--mine-bg); border: 1.5px solid var(--mine); color: var(--mine-deep); border-radius: var(--radius-pill); padding: 10px 16px; font-size: var(--fs-sm); font-family: inherit; cursor: pointer; line-height: 1.4; }
   .changes-close { flex: none; width: 40px; border-radius: var(--radius-pill); border: 1.5px solid var(--line); background: var(--card); color: var(--muted); font-size: 18px; cursor: pointer; }
-  /* Welcome checklist + install nudge */
   /* A coach opens this app to answer one question. It should not be below a
      grid of dots. */
-  .ctx-head { font-size: var(--fs-xs); color: var(--muted); padding: 4px 4px 10px; }
-  .ctx-item {
-    display: block; width: 100%; min-height: 52px; padding: 14px 16px; margin-bottom: 6px;
-    background: var(--chip-bg); border: none; border-radius: var(--radius-md);
-    font-family: inherit; font-size: var(--fs-md); font-weight: 400; color: var(--ink);
-    text-align: left; cursor: pointer;
-  }
-  .ctx-item.danger { color: var(--danger); font-weight: 600; }
   .large-title { max-width: 1000px; margin: 6px auto 0; padding: 0 20px; display: flex; align-items: center; gap: 12px; }
   .large-title .lt-text { flex: 1; min-width: 0; }
   .large-title h2 { font-family: var(--font-display); font-size: var(--ios-large, 2rem); font-weight: 700; letter-spacing: normal; color: var(--ink); line-height: 1.2; } /* Large Title 34pt; SF's own tracking */
@@ -1466,25 +1347,16 @@
     border-radius: var(--radius-pill); border: none; background: var(--chip-bg); color: var(--ink);
     font-family: inherit; font-size: var(--fs-xs); font-weight: 600; text-decoration: none; cursor: pointer;
   }
-  .next-card .hintline { font-size: var(--fs-2xs); color: var(--muted); margin-top: 10px; }
   .welcome-card, .install-nudge { max-width: 1000px; margin: 16px auto 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: 16px 18px; }
   .welcome-card { margin-left: 20px; margin-right: 20px; }
   .install-nudge { margin-left: 20px; margin-right: 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
   @media (min-width: 1041px) { .welcome-card, .install-nudge { margin-left: auto; margin-right: auto; } }
   .welcome-card h3 { font-family: var(--font-body); color: var(--text-strong); font-size: var(--fs-md); margin: 0 0 2px; font-weight: 600; }
   .welcome-card .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
-  .welcome-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--chip-bg); border: 1.5px solid transparent; border-radius: var(--radius-pill); padding: 12px 14px; margin-bottom: 8px; font-family: inherit; font-size: var(--fs-base); font-weight: 600; color: var(--text-strong); cursor: pointer; }
-  .welcome-row:hover { border-color: var(--hover-edge); }
-  .welcome-row.done { background: var(--chip-bg); color: var(--muted); text-decoration: line-through; cursor: default; }
-  .welcome-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--turf); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex: none; }
-  .welcome-row.done .welcome-check { background: var(--turf); border-color: var(--turf); color: #fff; }
-  .welcome-card .link-btn { margin-top: 2px; }
   .nudge-text { font-size: var(--fs-sm); color: var(--ink); line-height: 1.5; }
   .nudge-actions { display: flex; gap: 8px; }
   .kbd { display: inline-block; background: var(--chip-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; font-weight: 600; font-size: var(--fs-xs); }
-  .cal-title { font-family: var(--font-body); color: var(--text-strong); font-size: var(--fs-md); margin: 0 0 4px; font-weight: 600; }
   .share-sheet .hint { color: var(--muted); font-size: var(--fs-sm); margin: 0 0 12px; }
-  .cal-google-hint { margin: 12px 0 0 !important; }
   /* Share card sheet */
   #confirmModal .btn-primary { background: var(--danger); }
   #confirmModal .btn-primary:hover { background: var(--danger); filter: brightness(.9); }
@@ -1512,10 +1384,6 @@
   .share-actions .allbtn { flex: 1 1 110px; }
   /* (It used to drip forever: motion that meant nothing.) */
   @keyframes drip { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
-  @keyframes foundPulse {
-    0%, 100% { box-shadow: none; }
-    15%, 55% { box-shadow: 0 0 0 4px var(--mine); background: var(--mine-bg); border-color: var(--mine); }
-  }
   .waitlist-btn {
     border: 1px solid var(--mine); background: none; color: var(--mine-deep); font-size: var(--fs-2xs);
     font-weight: 600; padding: 2px 8px; border-radius: var(--radius-chip); cursor: pointer; font-family: inherit; margin-left: 2px;
@@ -1593,15 +1461,6 @@
      hand-listed selectors of the first Fitts pass - turned up eleven more
      controls under 44px, nearly all bare <button id> or <a>, which is exactly
      what a curated selector list cannot see. */
-  .hamburger-delete {
-    width: 100%; min-height: 44px; margin-top: 4px; padding: 10px 12px;
-    background: none; border: none; border-top: 1px solid var(--line);
-    color: var(--danger); font-family: inherit; font-size: var(--fs-sm); font-weight: 400;
-    text-align: left; cursor: pointer; border-radius: 0 0 var(--radius-md) var(--radius-md);
-  }
-  .hamburger-delete:hover { color: var(--danger); }
-  #hamburgerBtn { width: 44px; height: 44px; }
-  #hamburgerBtn svg { width: 20px; height: 20px; }
   .signout-btn { min-height: 44px; display: inline-flex; align-items: center; }
   .invite-form button { min-height: 44px; }
   #themeToggleBtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
@@ -1609,8 +1468,8 @@
      they get an invisible 44px hit area instead - the trick .fav-star uses. */
   .footer-links { font-size: var(--fs-2xs); font-weight: 600; }
   .footer-links a { color: var(--muted); }
-  .link-btn, .template-link { position: relative; display: inline-block; }
-  .link-btn::before, .template-link::before {
+  .template-link { position: relative; display: inline-block; }
+  .template-link::before {
     content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 44px; transform: translateY(-50%);
   }
   #userSearch { min-height: 44px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--radius-chip); font-size: 16px; font-family: var(--font-body); background: var(--card); color: var(--ink); }
@@ -1667,13 +1526,8 @@
   #status.ok .toast-icon { color: #30d158; }
   #status.err .toast-icon { color: #ff6961; }
   .toast-icon { width: 19px; height: 19px; flex: none; }
-  .toast-icon-ring { stroke-dasharray: 63; stroke-dashoffset: 63; animation: toastRing .35s var(--ease) forwards; }
-  .toast-icon-check { stroke-dasharray: 12; stroke-dashoffset: 12; animation: toastCheck .25s var(--ease) .3s forwards; }
-  @keyframes toastRing { to { stroke-dashoffset: 0; } }
-  @keyframes toastCheck { to { stroke-dashoffset: 0; } }
   .status.ok { color: var(--text-strong); font-weight: 600; }
   .status.err { color: var(--danger); font-weight: 600; }
-  .spinner-note { color: var(--muted); font-size: var(--fs-sm); text-align: center; padding: 30px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
   .spinner { width: 26px; height: 26px; border: 3px solid var(--line); border-top-color: var(--turf); border-radius: 50%; animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -1908,8 +1762,6 @@
   }
 
   /* ---- Bar button and bar hairline ---------------------------------- */
-  #hamburgerBtn { border: none; border-radius: 50%; background: var(--chip-bg); }
-  #hamburgerBtn:hover, #hamburgerBtn.open { background: var(--chip-hover-bg); }
   @media (max-width: 700px) {
     header.title-hidden { box-shadow: none !important; }
     #scheduleModeToggle { margin: 16px 16px 0; }
@@ -1924,12 +1776,6 @@
   .cal-weekdays span { letter-spacing: .2px; font-size: 11px; }
 
   /* ---- Phone chrome: no footer, menu carries its contents ----------- */
-  .hamburger-extras { border-top: .5px solid var(--line); margin-top: 6px; padding-top: 4px; }
-  .hamburger-row { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px;
-    padding: 10px 12px; background: none; border: none; font: inherit; font-size: var(--fs-base); color: var(--ink);
-    text-decoration: none; text-align: left; cursor: pointer; border-radius: 10px; }
-  .hamburger-row span { color: var(--muted); font-size: var(--fs-xs); }
-  .hamburger-row:active { background: var(--chip-bg); }
   @media (max-width: 700px) {
     #pageFooter { display: none !important; }
     .picker { padding: 0 16px; margin-top: 18px; }
@@ -1988,7 +1834,7 @@
   #weekGrid .book-slot .cancel { border: none; background: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 0 0 0 4px; }
 
   /* ---- Filters: selected is tinted, not flooded ---------------------- */
-  .fchip.active, .daytoggle.active, .cal-chip.active {
+  .fchip.active, .daytoggle.active {
     background: color-mix(in srgb, var(--accent-fill) 20%, transparent) !important;
     border-color: transparent !important; color: var(--accent-fill) !important; box-shadow: none !important;
   }
@@ -2013,13 +1859,11 @@
      so a day you scrolled past stayed highlighted. Touch-only devices get
      the resting look back; real pointers keep their hover. */
   @media (hover: none) {
-    .cal-day:hover:not(.pad):not(.out), .book-month-cell:hover, .fm-row:hover,
-    .hamburger-row:hover, .hamburger-menu button:hover { background: none; }
-    .fchip:hover, .daytoggle:hover:not(:disabled), .cal-chip:hover { border-color: transparent; color: var(--ink); }
+    .cal-day:hover:not(.pad):not(.out), .book-month-cell:hover, .fm-row:hover { background: none; }
+    .fchip:hover, .daytoggle:hover:not(:disabled) { border-color: transparent; color: var(--ink); }
     .mtab:hover, .gtab:hover { color: color-mix(in srgb, var(--ink) 70%, transparent); }
     .weeknav button:hover:not(:disabled) { opacity: 1; }
     select:hover, .grade-select:hover { border-color: transparent; }
-    #hamburgerBtn:hover { background: var(--chip-bg); }
   }
 
   /* ---- Book: choosing a field is the first step, and looks like one --- */
@@ -2044,13 +1888,10 @@
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
   #fieldNote .field-note-text.full { display: block; -webkit-line-clamp: none; line-clamp: none; }
 
-  /* ---- Menu: On this iPhone (app 1.1+) -------------------------------- */
-  .hamburger-heading { margin: 8px 12px 2px; font-size: var(--fs-xs); font-weight: 600; letter-spacing: .3px;
-    text-transform: uppercase; color: var(--muted); }
+  /* ---- Switch rows --------------------------------------------------- */
   .switch-row { gap: 12px; cursor: pointer; }
   .switch-row .switch-text { display: flex; flex-direction: column; gap: 1px; color: var(--ink); font-size: var(--fs-base); }
   .switch-row .switch-text small { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; }
-  .hamburger-note { margin: 2px 12px 8px; font-size: var(--fs-xs); line-height: 1.4; color: var(--muted); }
   .ios-switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 51px; height: 31px;
     margin: 0; border-radius: 999px; background: var(--seg-track); cursor: pointer;
     transition: background-color .25s ease; }
@@ -2104,7 +1945,6 @@
     border: .5px solid rgba(255,255,255,.18);
   }
   .next-card.hero .row2 a:active, .next-card.hero .row2 button:active { transform: scale(.96); }
-  .next-card.hero .hintline { display: none; }
 
   /* ===================================================================
      DESIGN v3 — "as if Apple built it". docs/DESIGN.md, v3 section.

@@ -6930,17 +6930,14 @@ function renderBookMonthGridMobile(monthFirst){
   while(cursor <= last){
     const dateStr = fmtDateISO(cursor);
     const inSeason = cursor >= SEASON_START && cursor <= SEASON_END;
-    const avail = inSeason ? field.availability.find(a => a.days.includes(cursor.getDay())) : null;
-    if(!avail){
+    const slots = inSeason ? daySlots(field, dateStr, myTeamId) : null;
+    if(!slots){
       html += `<div class="book-month-cell closed"><span class="book-month-daynum">${cursor.getDate()}</span></div>`;
     } else {
-      let bookedCount = 0, mineCount = 0, totalSlots = 0, closedCount = 0;
-      avail.times.forEach(time => avail.subfields.forEach(sub => {
-        totalSlots++;
-        const existing = bookingsCache.find(b => b.field_id===selectedField && b.date===dateStr && b.subfield===sub && b.time===time);
-        if(existing){ bookedCount++; if(myTeamId && existing.team_id===myTeamId) mineCount++; }
-        else if(closureFor(selectedField, dateStr, time, sub)) closedCount++;   // closed and unbooked: not open
-      }));
+      const totalSlots = slots.length;
+      const bookedCount = slots.filter(s => s.booking).length;
+      const mineCount = slots.filter(s => s.state === 'mine').length;
+      const closedCount = slots.filter(s => s.state === 'closed').length;   // closed and unbooked: not open
       const openCount = totalSlots - bookedCount - closedCount;
       const isPast = cursor < today;
       let badgeHtml;
@@ -7010,17 +7007,15 @@ function renderWeek(){
 // "Book" appeared forty times on one screen.
 let bookSelectedDate = null;   // ISO date the strip has selected
 function bookDayCounts(field, dateStr, myTeamId){
-  const avail = field.availability.find(a => a.days.includes(parseISO(dateStr).getDay()));
-  if(!avail) return null;
-  let open = 0, mine = 0, closed = 0, total = 0;
-  avail.times.forEach(time => avail.subfields.forEach(sub => {
-    total++;
-    const b = bookingsCache.find(x => x.field_id === field.id && x.date === dateStr && x.subfield === sub && x.time === time);
-    if(b){ if(myTeamId && b.team_id === myTeamId) mine++; }
-    else if(closureFor(field.id, dateStr, time, sub)) closed++;
-    else open++;
-  }));
-  return { open, mine, closed, allClosed: total > 0 && closed === total };
+  const slots = daySlots(field, dateStr, myTeamId);
+  if(!slots) return null;
+  let open = 0, mine = 0, closed = 0;
+  slots.forEach(s => {
+    if(s.state === 'mine') mine++;
+    else if(s.state === 'closed') closed++;
+    else if(!s.booking) open++;   // open or past: the strip says past itself
+  });
+  return { open, mine, closed, allClosed: slots.length > 0 && closed === slots.length };
 }
 function renderBookDayMobile(monday){
   const field = FIELD_MAP[selectedField];

@@ -112,9 +112,18 @@ different project** — drive the dashboard in the browser instead.
   `app_settings` trigger refuses any other column for directors
 - **The priority ladder is combined across genders.** Girls 6th finishing does
   not unlock 5th until Boys 6th finishes too. Working as designed
-- A tier's deadline is *derived*, not stored: it opened when the tier above
-  finished (`max(priority_finished_at)`). 3 days, then an admin's session
-  auto-advances via `priority_forced_ranks`
+- **The database enforces the 3-day priority deadline**
+  (`season_priority_2026_11.sql`, pg_cron every 10 minutes,
+  `advance_overdue_priority()`). A tier's clock starts at the later of the
+  switch-on (`app_settings.priority_enabled_at`) and when the tier above
+  cleared: all its teams finished, or it was opened by Override or the
+  deadline (`priority_forced_at`). Both stamps are server-owned. The page's
+  own countdown (`tierOpenedAt`) still only knows the "tier above finished"
+  case, so it shows no countdown for the top tier or after a forced advance;
+  an admin's session also still auto-advances, which is harmless
+- **Season dates live in `app_settings.season_start` / `season_end`**, and the
+  booking and waitlist date rule reads them (a trigger, refusal 23514). A new
+  season is one edit there; saved rows are not re-checked
 - **The field list comes from the database.** `FIELDS` is built at boot from
   `fields` and `field_slots` (`lib/field-catalog.js`), so a field's hours
   change in `field_slots`, which is also the allowlist the booking trigger

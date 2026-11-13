@@ -555,10 +555,8 @@
     return reply({ ok: true });
   };
 
-  const realCreate = window.supabase && window.supabase.createClient;
   window.supabase = window.supabase || {};
   window.supabase.createClient = function(){ return client; };
-  window.__fixtureRealCreateClient = realCreate;
 
   // Unmistakable on screen: nobody should ever confuse this for real data.
   // &shots=1 drops the banner for App Store screenshot capture, where the
@@ -3031,13 +3029,6 @@
        team or field. Each Clear goes through confirmAction(). -->
   <p class="ios-group-header">Clear by Team</p>
   <div class="ios-group">
-    <label class="ios-row ios-select-row" id="clearGenderField" style="display:none"><span>Program</span>
-      <span class="ios-value"><span class="sel-text" data-select-text>Girls</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
-      <select id="clearGenderSelect" aria-label="Program">
-        <option value="girls">Girls</option>
-        <option value="boys">Boys</option>
-      </select>
-    </label>
     <label class="ios-row ios-select-row"><span>Team</span>
       <span class="ios-value"><span class="sel-text" data-select-text>Choose a team</span><svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg></span>
       <select id="clearTeamSelect" aria-label="Team"></select>
@@ -3174,7 +3165,6 @@ let currentMonthFirst = new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMon
 // ============ ELEMENTS ============
 const el = {
   authArea: document.getElementById('authArea'),
-  loadingScreen: document.getElementById('loadingScreen'),
   viewTabs: document.getElementById('viewTabs'),
   adminTab: document.getElementById('adminTab'),
   myTeamTab: document.getElementById('myTeamTab'),
@@ -3278,7 +3268,6 @@ const el = {
   bulkFileInput: document.getElementById('bulkFileInput'),
   bulkUploadBtn: document.getElementById('bulkUploadBtn'),
   bulkResults: document.getElementById('bulkResults'),
-  lockHint: document.getElementById('lockHint'),
   lockToggleBtn: document.getElementById('lockToggleBtn'),
   priorityToggleBtn: document.getElementById('priorityToggleBtn'),
   priorityLockedBanner: document.getElementById('priorityLockedBanner'),
@@ -3287,8 +3276,6 @@ const el = {
   priorityResetBtn: document.getElementById('priorityResetBtn'),
   priorityForceAdvanceBtn: document.getElementById('priorityForceAdvanceBtn'),
   priorityForceHint: document.getElementById('priorityForceHint'),
-  clearGenderField: document.getElementById('clearGenderField'),
-  clearGenderSelect: document.getElementById('clearGenderSelect'),
   clearTeamSelect: document.getElementById('clearTeamSelect'),
   clearTeamBtn: document.getElementById('clearTeamBtn'),
   clearTeamStatus: document.getElementById('clearTeamStatus'),
@@ -3315,7 +3302,6 @@ const el = {
 // The bottom bar owns destinations; this owns identity, this iPhone's
 // settings and the account actions, in the order iOS uses: who you are,
 // settings, then the destructive actions last and in red.
-const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.2a.8.8 0 0 1 .72.45l2.5 5.06 5.59.81a.8.8 0 0 1 .44 1.37l-4.04 3.94.95 5.57a.8.8 0 0 1-1.16.84L12 17.6l-5 2.63a.8.8 0 0 1-1.16-.84l.95-5.57-4.04-3.94a.8.8 0 0 1 .44-1.37l5.59-.81 2.5-5.06A.8.8 0 0 1 12 2.2Z"/></svg>';
 const CHEVRON_SVG = '<svg class="row-chevron" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5.5 6.5 6.5L9 18.5"/></svg>';
 const XMARK_CIRCLE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm3.54 12.13a1 1 0 0 1-1.41 1.41L12 13.41l-2.13 2.13a1 1 0 0 1-1.41-1.41L10.59 12 8.46 9.87a1 1 0 0 1 1.41-1.41L12 10.59l2.13-2.13a1 1 0 0 1 1.41 1.41L13.41 12l2.13 2.13Z"/></svg>';
 // A grouped row over a native <select> (.ios-select-row) shows the chosen
@@ -5066,7 +5052,7 @@ async function refreshWaitlist(){
 }
 
 // ============ CLOSED DATES ============
-// field_closures (closed_dates_2026_11_11.sql): a field, a run of dates, and
+// field_closures (field_closures_2026_11.sql): a field, a run of dates, and
 // all day (times null) or chosen times. Everyone signed in reads it; writes go
 // only through close_field / reopen_field. The table may not exist yet, or the
 // read may fail: then there are no closures and the page is exactly as it was
@@ -5173,7 +5159,7 @@ const PRIORITY_TIER_DAYS = 3;
 function tierOpenedAt(rank){
   const above = [];
   for(let r = rank + 1; r <= 6; r++) above.push(...teamsAtGradeRank(r));
-  if(!above.length) return SEASON_START > new Date() ? null : null;
+  if(!above.length) return null;
   const stamps = above.map(t => t.priority_finished_at).filter(Boolean);
   if(stamps.length !== above.length) return null;   // tier above isn't done, so this one hasn't opened
   return new Date(stamps.sort().slice(-1)[0]);
@@ -5307,7 +5293,6 @@ function renderPriorityBookingGate(){
   const teamLabelText = teamLabelOf(team);
   if(!unlocked){
     const blockers = blockingTeamsFor(team.grade);
-    const blockerList = blockers.map(teamLabelOf).join(', ');
     const blockRank = currentBlockingRank();
     const left = (blockRank === null || blockRank === undefined) ? '' : tierTimeLeftText(blockRank);
     const clock = left ? `<div class="priority-clock${tierOverdue(blockRank) ? ' overdue' : ''}">${escSafe(GRADES[blockRank])} has <b>${escSafe(left)}</b> to finish booking${tierOverdue(blockRank) ? '. The next grade opens automatically' : ''}.</div>` : '';
@@ -7473,10 +7458,6 @@ el.weekGrid.addEventListener('click', async e => {
   }
 });
 
-// ============ FIELD AVAILABILITY VIEW (read-only, everyone) ============
-
-
-
 // ============ MONTH CALENDAR (shared by Schedule and League) ============
 // One component, two callers. Each caller owns a little state object and
 // says which bookings belong to it; everything about how a month looks and
@@ -8869,10 +8850,8 @@ function renderClearControls(){
   // Both menus open on a placeholder: a delete never starts on a real team.
   const pick = label => `<option value="" disabled selected>${label}</option>`;
   if(myProfile.role === 'admin'){
-    el.clearGenderField.style.display = 'none';
     el.clearTeamSelect.innerHTML = pick('Choose a team') + teamOptionsHTML(teams, true);
   } else {
-    el.clearGenderField.style.display = 'none';
     el.clearTeamSelect.innerHTML = pick('Choose a team') + teamOptionsHTML(teamsOfProgram(myProfile.gender), false);
   }
 
@@ -9070,7 +9049,6 @@ function whoName(p){
   if(!p) return '';
   return [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
 }
-function personRoleLabel(p){ return p.role === 'director' ? 'Director' : p.role === 'assistant' ? 'Assistant' : 'Head coach'; }
 // The database's own words; only a dead connection gets ours.
 function rpcText(error){
   const msg = String((error && error.message) || error || '').trim();

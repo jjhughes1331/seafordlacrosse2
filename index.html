@@ -2840,11 +2840,6 @@
     <button class="mtab" data-mode="list">List</button>
   </div>
   <div class="wrap">
-    <div class="weeknav" id="leagueMonthNavBar">
-      <button id="leaguePrevMonth">&larr; <span class="navlabel">Prev month</span></button>
-      <span class="label" id="leagueMonthLabel"></span>
-      <button id="leagueNextMonth"><span class="navlabel">Next month</span> &rarr;</button>
-    </div>
     <div id="leagueMonthGrid"></div>
     <div id="leagueUtil" class="league-util" style="display:none"></div>
     <p class="count" id="leagueCount"></p>
@@ -3253,10 +3248,6 @@ const el = {
   leagueCount: document.getElementById('leagueCount'),
   leagueResults: document.getElementById('leagueResults'),
   leagueModeToggle: document.getElementById('leagueModeToggle'),
-  leagueMonthNavBar: document.getElementById('leagueMonthNavBar'),
-  leagueMonthLabel: document.getElementById('leagueMonthLabel'),
-  leaguePrevMonth: document.getElementById('leaguePrevMonth'),
-  leagueNextMonth: document.getElementById('leagueNextMonth'),
   leagueMonthGrid: document.getElementById('leagueMonthGrid'),
   usageHint: document.getElementById('usageHint'),
   usageDashboard: document.getElementById('usageDashboard'),
@@ -4723,7 +4714,6 @@ async function loadCatalog(){
         SEASON_TODAY = (() => { const t = new Date(); t.setHours(0,0,0,0); return t < SEASON_START ? new Date(SEASON_START) : t > SEASON_END ? new Date(SEASON_END) : t; })();
         currentWeekMonday = mondayOf(SEASON_TODAY);
         currentMonthFirst = new Date(SEASON_TODAY.getFullYear(), SEASON_TODAY.getMonth(), 1);
-        leagueMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
       }
     }
   } catch(err){
@@ -6572,7 +6562,6 @@ el.shareSaveBtn.addEventListener('click', () => {
 // wants the old scrollable agenda back.
 let leagueGenderFilter = 'all'; // 'all' | 'girls' | 'boys'
 let leagueViewMode = 'month'; // 'list' | 'month'
-let leagueMonthFirst = new Date(SEASON_START.getFullYear(), SEASON_START.getMonth(), 1);
 
 let leagueTeamFilter = 'all';   // 'all' | <team id>
 // Gender scope only. The field-fullness panel must stay on this, never on a
@@ -6616,21 +6605,12 @@ el.leagueModeToggle.addEventListener('click', e => {
   syncBarButtons();
   renderLeague();
 });
-el.leaguePrevMonth.addEventListener('click', () => {
-  const next = addMonths(leagueMonthFirst, -1);
-  if(next >= firstDayOfMonth(SEASON_START)){ leagueMonthFirst = next; renderLeague(); }
-});
-el.leagueNextMonth.addEventListener('click', () => {
-  const next = addMonths(leagueMonthFirst, 1);
-  if(next <= SEASON_END){ leagueMonthFirst = next; renderLeague(); }
-});
 
 function renderLeague(){
   buildLeagueTeamSelect();
   const isMonth = leagueViewMode === 'month';
   el.leagueMonthGrid.style.display = isMonth ? 'block' : 'none';
   document.getElementById('leagueUtil').style.display = isMonth ? 'block' : 'none';
-  el.leagueMonthNavBar.style.display = 'none'; // calendar carries its own month nav
   el.leagueCount.style.display = isMonth ? 'none' : '';
   el.leagueResults.style.display = isMonth ? 'none' : '';
 

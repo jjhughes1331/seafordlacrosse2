@@ -7022,7 +7022,7 @@ function renderBookDayMobile(monday){
   const myTeamId = myBookingTeamId();
   const today = new Date(); today.setHours(0,0,0,0);
   const days = [...Array(7)].map((_, i) => addDays(monday, i));
-  const isOpenDay = d => d >= SEASON_START && d <= SEASON_END && field.availability.some(a => a.days.includes(d.getDay()));
+  const isOpenDay = d => d >= SEASON_START && d <= SEASON_END && !!availOn(field, d.getDay());
   let sel = bookSelectedDate ? parseISO(bookSelectedDate) : null;
   if(!sel || sel < monday || sel > days[6] || !isOpenDay(sel))
     sel = days.find(d => isOpenDay(d) && d >= today) || days.find(isOpenDay) || null;
@@ -7250,7 +7250,7 @@ const recurringSelectedDays = new Set();
 const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
 function pairsForDay(field, dayNum){
-  const avail = field.availability.find(a => a.days.includes(dayNum));
+  const avail = availOn(field, dayNum);
   if(!avail) return null;
   const pairs = [];
   avail.subfields.forEach(sub => avail.times.forEach(time => pairs.push(sub+'||'+time)));
@@ -7263,7 +7263,7 @@ function buildRecurringUI(){
   el.recurringFieldName.textContent = field.name;
   el.recurringDays.innerHTML = '';
   for(let d=0; d<7; d++){
-    const hasAny = !!field.availability.find(a => a.days.includes(d));
+    const hasAny = !!availOn(field, d);
     const btn = document.createElement('button');
     btn.className = 'daytoggle' + (recurringSelectedDays.has(d) ? ' active' : '');
     btn.textContent = DOW_SHORT[d];
@@ -8119,21 +8119,13 @@ function findOpenSlots(){
   const today = new Date(); today.setHours(0,0,0,0);
   let d = today < SEASON_START ? new Date(SEASON_START) : new Date(today);
   const out = [];
-  // One lookup instead of scanning every booking for every candidate slot
-  // (a season is ~3,000 candidates x every booking, on each filter tap).
-  const taken = new Set(bookingsCache.map(b => b.field_id + '|' + b.date + '|' + b.subfield + '|' + b.time));
   while(d <= SEASON_END){
     const dow = d.getDay();
     if(finderDays.size === 0 || finderDays.has(dow)){
       const dateStr = fmtDateISO(d);
       FIELDS.filter(f => !openWeekField || f.id === openWeekField).forEach(field => {
-        const avail = field.availability.find(a => a.days.includes(dow));
-        if(!avail) return;
-        avail.times.forEach(time => {
-          if(!finderTimeMatches(time)) return;
-          avail.subfields.forEach(sub => {
-            if(!taken.has(field.id + '|' + dateStr + '|' + sub + '|' + time) && !closureFor(field.id, dateStr, time, sub)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
-          });
+        (daySlots(field, dateStr) || []).forEach(({ time, sub, booking, closure }) => {
+          if(!booking && !closure && finderTimeMatches(time)) out.push({ fieldId: field.id, fieldName: field.name, sub, time, dateStr });
         });
       });
     }
@@ -8171,8 +8163,7 @@ function renderOpenWeek(){
     Object.keys(byField).forEach(fieldName => {
       const list = byField[fieldName];
       const slotBtn = sl => {
-        const payload = JSON.stringify({fieldId:sl.fieldId, date:dateStr, subfield:sl.sub, time:sl.time});
-        return `<button class="book-slot" data-book='${payload.replace(/'/g,"&#39;")}'><span class="time">${escSafe(formatSlotTime(sl.time))}</span><span class="sub">${escSafe(sl.sub)}</span><span class="plus">Book</span></button>`;
+        return `<button class="book-slot" data-book='${slotPayload(sl.fieldId, dateStr, sl.sub, sl.time)}'><span class="time">${escSafe(formatSlotTime(sl.time))}</span><span class="sub">${escSafe(sl.sub)}</span><span class="plus">Book</span></button>`;
       };
       html += `<div class="row"><div class="date">${escSafe(fieldName)}</div><div class="slot-bands">`;
       if(list.length > 7){
@@ -8262,7 +8253,7 @@ function renderOpenWeekMobile(all, shown, usual){
     const slots = byDay[dateStr].sort((a, b) => slotStartMinutes(a.time) - slotStartMinutes(b.time) || a.fieldName.localeCompare(b.fieldName) || a.sub.localeCompare(b.sub));
     html += `<p class="ios-group-header fw-day"><span>${dowOfISO(dateStr)}, ${fmtDateLong(dateStr)}</span><span>${slots.length} open</span></p><div class="ios-group">`;
     slots.forEach(sl => {
-      const payload = JSON.stringify({fieldId: sl.fieldId, date: dateStr, subfield: sl.sub, time: sl.time}).replace(/'/g, "&#39;");
+      const payload = slotPayload(sl.fieldId, dateStr, sl.sub, sl.time);
       const when = formatSlotTime(sl.time), f = FIELD_MAP[sl.fieldId];
       html += `<div class="ios-row bd-row">
         <span class="fw-dot" style="--c:var(--field-${sl.fieldId})" aria-hidden="true"></span>

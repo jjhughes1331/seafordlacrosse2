@@ -32,7 +32,7 @@ same commit that made it untrue. Superseded decisions go entirely — leaving
 grown past a screen, it wants its own file with one line pointing to it here.
 
 ## Structure
-- `index.html` — markup, styles and app script (~9,900 lines)
+- `index.html` — markup, styles and app script (~9,450 lines)
 - `ui/*.js` — design v2 components, each self-contained and wired by event
   delegation so load order never matters: `spring.js` (interruptible spring
   solver), `field-menu.js` (field switcher), `aurora.js` (WebGL hero surface),
@@ -51,7 +51,8 @@ grown past a screen, it wants its own file with one line pointing to it here.
 - `sw.js`, `manifest.json` — PWA. The SW is **network-first** and skips Supabase, so it never serves stale data
 - `supabase/*.sql` — reference copies of applied schema/policy work
 - `supabase/functions/*.ts` — reference copies of `manage-user` and `invite-coach` (`send-push` and `team-ics` are read-only in the dashboard; both reviewed 2026-09-18)
-- `tools/render-audit.js`, `tools/pixel-audit.js` — see Verifying below
+- `tools/fixture.js` — the `?fixture=1` mock (seed data, mock Supabase client and
+  RPCs); `tools/render-audit.js`, `tools/pixel-audit.js` — see Verifying below
 
 ## Deploy
 Push to `main` → GitHub Pages. **`cache-control: max-age=600`**, so a change can
@@ -237,7 +238,11 @@ overflowed once a real long email was in it. **Source is what we wrote;
 rendered output is what a coach sees.**
 
 - `?fixture=1` boots the whole signed-in app against in-memory data with a mock
-  Supabase client and **zero network calls**. `&as=coach` / `&as=director`
+  Supabase client and **zero network calls**. The mock is `tools/fixture.js`,
+  which a stub near the top of `index.html` `document.write`s in only for that
+  URL: parser-blocking on purpose, since it must replace `supabase.createClient`
+  before the app script calls it. Not in `sw.js` SHELL_FILES; normal visits
+  never fetch it. `&as=coach` / `&as=director`
   switch role (default admin; `&as=assistant` too: assistant only). The
   fixture coach heads Girls 6th and assists on the split Girls 2nd Grade
   Green; `&shots=1` hides the banner

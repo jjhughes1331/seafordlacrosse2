@@ -183,8 +183,7 @@ Full spec in `docs/DESIGN.md`. The rules that get broken by accident:
 - **44pt minimum** tap target; small controls get a `::before` overlay
 - **One confirmation model**: `confirmAction()` sheet for anything destructive.
   **Book books on one tap** (JJ, 2026-11-06): the button shows "Booking..."
-  while in flight, and the Booked toast's Undo is the safety net. `armTwoTap`
-  is kept but has no booking caller
+  while in flight, and the Booked toast's Undo is the safety net.
 - Phones have **no footer**: Appearance, Privacy, Support live in the account
   sheet (monogram, top right). There is no hamburger
 - **v3 type tokens are ratios of the root**: `1rem` is iOS Body (17pt), not

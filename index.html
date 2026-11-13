@@ -1169,13 +1169,6 @@
   .book-slot.mine .cancel:hover { background: rgba(0,0,0,.24); }
   .book-slot:disabled { opacity: .45; cursor: not-allowed; }
   .book-slot[aria-busy="true"]:disabled { opacity: .7; cursor: progress; }
-  /* Two-tap confirm countdown ring — shows how long the armed state lasts
-     instead of leaving people guessing when it silently disarms. */
-  .armed:has(> .arm-ring) { position: relative; padding-right: 28px !important; }
-  .arm-ring { position: absolute; right: 7px; top: 50%; width: 14px; height: 14px; margin-top: -8px; pointer-events: none; }
-  .arm-ring svg { width: 14px; height: 14px; display: block; transform: rotate(-90deg); }
-  .arm-ring circle { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 50.27; stroke-dashoffset: 0; animation: armRing 3s linear forwards; opacity: .95; }
-  @keyframes armRing { to { stroke-dashoffset: 50.27; } }
   .fx-confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 900; }
   /* ===== Month calendar (Apple Calendar shape: numbers + dots, tap for the day) =====
      A grid of "9 open" badges answered a question nobody asked. What a coach
@@ -1407,7 +1400,6 @@
     display: inline-block; font-size: var(--fs-2xs); font-weight: 600; color: color-mix(in srgb, #0a84ff 80%, var(--ink));
     background: color-mix(in srgb, #0a84ff 14%, transparent); padding: 2px 8px; border-radius: var(--radius-chip); margin-left: 6px; vertical-align: middle;
   }
-  .book-slot.mine .cancel.armed { background: var(--danger) !important; color: #fff !important; }
   .plus { color: var(--muted); font-weight: 600; }
   .empty-week { text-align: center; padding: 36px 20px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
 
@@ -1481,7 +1473,7 @@
   .user-actions-inner { display: flex; flex-wrap: wrap; gap: 8px; }
   .user-actions .allbtn { flex: 1 1 auto; }
   .user-actions .danger { border-color: var(--danger); color: var(--danger); }
-  .user-actions .danger:hover, .user-actions .danger.armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .user-actions .danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
   .user-actions-status { flex-basis: 100%; }
   .credential-box { background: var(--chip-bg); border: 1.5px solid var(--line); border-radius: var(--radius-chip); padding: 12px 14px; margin-top: 8px; }
   .credential-box > div { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -4302,37 +4294,6 @@ function fieldLabel(fieldId, subfield){
   const name = f ? f.name : fieldId;
   return subfield ? `${name} \u00b7 ${subfield}` : name;
 }
-// Two-tap confirm: an inline "tap again" state on the button itself. First
-// tap arms it and shows armedHtml for 3s; a second tap within that window
-// proceeds. Returns true only on the second tap. Book no longer uses it (JJ,
-// 2026-11-06: one tap books, and the Booked toast's Undo is the safety net);
-// destructive actions use confirmAction().
-function armTwoTap(btn, armedHtml){
-  if(btn.dataset.armed === '1'){
-    clearTimeout(btn._armTimer);
-    btn.dataset.armed = '';
-    btn.querySelector('.arm-ring')?.remove();
-    return true;
-  }
-  haptic('light');
-  btn.dataset.armed = '1';
-  btn.dataset.origHtml = btn.innerHTML;
-  btn.classList.add('armed');
-  btn.innerHTML = armedHtml;
-  // Countdown ring for the 3s armed window (skipped on the tiny × cancel
-  // button, where there's no room for it).
-  if(!btn.classList.contains('cancel')){
-    const ring = document.createElement('span');
-    ring.className = 'arm-ring';
-    ring.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8"/></svg>';
-    btn.appendChild(ring);
-  }
-  btn._armTimer = setTimeout(() => {
-    if(btn.isConnected){ btn.innerHTML = btn.dataset.origHtml; btn.classList.remove('armed'); btn.dataset.armed = ''; }
-  }, 3000);
-  return false;
-}
-
 // One tap books. While the insert is in flight the button is disabled and
 // says so, so a second tap can't book the slot twice. The re-render that
 // follows the result replaces the button.
@@ -4492,7 +4453,7 @@ function haptic(kind){
   try {
     if(kind === 'success') navigator.vibrate([10, 30, 10]);
     else if(kind === 'error') navigator.vibrate([15, 40, 15, 40, 15]);
-    else navigator.vibrate(10); // 'light' — tab switches, arming a two-tap confirm
+    else navigator.vibrate(10); // 'light': tab switches, opening things
   } catch(e) {}
 }
 
@@ -4566,7 +4527,7 @@ function endToast(){
 document.getElementById('statusClose').addEventListener('click', endToast);
 // "Booked · Undo" — one tap to take it back for a few seconds. Cold thumbs at
 // a field hit the wrong slot; an undo beats making them find the × and
-// two-tap a cancel. Needs the new row's id, so callers insert with .select().
+// confirm a cancel. Needs the new row's id, so callers insert with .select().
 // "Booked Seaford Harbor Field 2, Mon Mar 1, 4:30 to 5:30 PM": "Field 2" is at
 // four of the five sites, so the toast says which site and which day, and the
 // time never breaks across two lines.

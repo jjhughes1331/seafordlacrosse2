@@ -80,7 +80,7 @@
       });
 
       // A soft fill that breathes out from the point of contact.
-      const f = Math.min(1, age / 0.35);
+      const f = Math.max(0, Math.min(1, age / 0.35));   // age can be a hair negative on the first frame
       if (f < 1) {
         const grd = ctx.createRadialGradient(B.x, B.y, 0, B.x, B.y, 44 * out(f) + 1);
         grd.addColorStop(0, `rgba(${B.r},${B.g},${B.b},${0.22 * (1 - f)})`);

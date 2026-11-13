@@ -95,7 +95,7 @@ scratchpad; the rules it produced are below.
    took the slot). Tab taps are silent, as in iOS.
 6. **Motion**: tabs appear instantly on a phone; sheets drag with the finger's
    velocity (`ui/sheet.js`); the hero shader runs ~20fps, rests after 12s
-   idle, and is still under Reduce Motion or Low Power Mode (`html.lpm`).
+   idle, and is still under Reduce Motion.
 7. **The app works offline**: scripts are vendored (`vendor/`), boot reads
    the session from the device, and a cached schedule draws before the
    network answers.

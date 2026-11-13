@@ -139,11 +139,10 @@
 
     // The drift is slow (t * 0.045), so ~20fps is indistinguishable from 120
     // and a sixth of the work; after 12s with no touch or scroll it holds its
-    // last frame until someone interacts. Low Power Mode (html.lpm, set by
-    // the app) gets one still frame, like Reduce Motion.
+    // last frame until someone interacts. Reduce Motion gets one still frame.
     const FRAME_MS = 50, IDLE_MS = 12000;
     let last = 0, idleAt = performance.now() + IDLE_MS;
-    const still = () => reduced || document.documentElement.classList.contains('lpm');
+    const still = () => reduced;
     function loop(now) {
       if (now - last >= FRAME_MS || !last) { draw(now); last = now; }
       if (!still() && visible && !document.hidden && now < idleAt) raf = requestAnimationFrame(loop);

@@ -40,9 +40,9 @@ grown past a screen, it wants its own file with one line pointing to it here.
   inert page for every `.share-modal`). **`docs/DESIGN.md` is the design
   source of truth** — principles, tokens, components, log; v3 rules at its end
 - `vendor/` — supabase-js, GSAP, Flip, **pinned and served from here, not a
-  CDN**: the app bundles this page and must draw with no network. To upgrade,
-  replace the file and update the `<script>` tag and `sw.js` SHELL_FILES
-  (`sync-web.sh` in the app repo copies `vendor/`)
+  CDN**: the page draws nothing without them, so they are in the service
+  worker's offline shell. To upgrade, replace the file and update the
+  `<script>` tag and `sw.js` SHELL_FILES
 - `lib/*.js` — `field-catalog.js`, and `league-sheet.js`: the .xlsx reader for Admin > Teams > League Schedule. No third-party code; a **port of the app's `LeagueSheet.swift`/`XLSX.swift`**, so change both together (same workbook, same rows; checked identical on the two 2026 workbooks, which give 94 games, 47 at home). Both are in `sw.js` SHELL_FILES
 - `seaford-lacrosse-badge-192.png` / `-dark-192.png` — the crest as the page
   shows it (header, large title, account sheet, favicon): 38 and 36 KB against
@@ -138,46 +138,23 @@ different project** — drive the dashboard in the browser instead.
   empty list (null = back to assigned teams), as the app does
 
 ## iOS app (App Store)
-The Capacitor shell lives in `../seaford-lax-app` (branch `app-store`). It
-**bundles this site into the binary** — Apple rejects apps that only load a
-website — so a web change reaches the app only after `./sync-web.sh && npx cap
-sync ios` and a new build. The web keeps deploying instantly as always.
-- App Apple ID 6814956251, bundle `com.seafordlax.app`, team 66YQ74WLDA
-- `tools/asc.py` there pushes listing text, screenshots and review details
-  through Apple's API. App Privacy answers have **no API** — website only
-- `window.__IS_NATIVE_APP` gates native behaviour in this file: Taptic haptics,
-  the iOS share sheet, native OneSignal (the web SDK is not loaded there), the
-  system browser for external links, no service worker, no install nudge
+The iPhone app is **native SwiftUI** in `../seaford-lax-app` (branch `main`).
+It shares only the Supabase backend with this site: it does not bundle or
+load this page, so nothing here runs inside it and a web change never needs
+an app build. What the site still owes the app:
 - Account deletion is an App Store requirement: account sheet (the monogram,
   top right) > Delete Account, `manage-user` action `delete-me`
-- The app's pull-to-refresh is a native `UIRefreshControl`
-  (`MainViewController`) that awaits `window.appRefresh()`; the JS pull is
-  Safari-only. The app also sets `html.lpm` (Low Power Mode); `html.kb` is
-  set while the keyboard is up
-- Native launch: `MainViewController` (set in **SceneDelegate**, not the
-  storyboard, which Capacitor 8 ignores) lays a Metal scene
-  (`LaunchShader.swift`) over the web view. Its clock starts in
-  `viewDidAppear`, or the opening strokes play during iOS's icon zoom unseen
-- `App.entitlements` carries `aps-environment`; without it OneSignal can never
-  get an APNs token and push fails silently. The other half is OneSignal's
-  **Apple iOS (APNs)** platform, which needs a `.p8` key from Apple: JJ set it
-  up 2026-09-22 and holds the file. Until then only Web was active there
 - `privacy.html` / `support.html` must stay publicly reachable — App Review
   cannot sign in
 - **Face ID sign-in is Password AutoFill**: `.well-known/apple-app-site-association`
   (webcredentials for `66YQ74WLDA.com.seafordlax.app`) + the app's
   `webcredentials:seafordlax.com` entitlement let iOS offer the saved
-  seafordlax.com password on the sign-in form and fill it with Face ID. It
-  depends on the form's `autocomplete="username"` / `current-password` and on
-  `.nojekyll` (Jekyll would drop the dot-folder). Apple reads the file through
-  its CDN: `curl https://app-site-association.cdn-apple.com/a/v1/seafordlax.com`
-- **1.1 native features** (widgets, Live Activity, calendar sync, Siri, Watch):
-  `window.Native.setContext/clearContext/settings/setSetting/onRoute` talk to
-  the app's `SeafordBridge` plugin and no-op everywhere else. The app is told
-  *what to show* and never gets a login; it refreshes from the `team-ics`
-  feed. The sign-in screen always calls `clearContext`, so an expired session
-  can't leave practices on a Lock Screen. Design and status:
-  `../seaford-lax-app/docs/NATIVE.md`
+  seafordlax.com password on the app's sign-in screen and fill it with Face ID. It
+  depends on `.nojekyll` (Jekyll would drop the dot-folder). Apple reads the
+  file through its CDN:
+  `curl https://app-site-association.cdn-apple.com/a/v1/seafordlax.com`
+- Rules both sides implement (field catalog, league sheet reader, the Sheet
+  view, notification prefs) change together; each is marked where it lives
 
 ## Dark mode
 Neutral iOS greys, not green-tinted ones: true black page, `#1C1C1E` and
@@ -253,14 +230,10 @@ rendered output is what a coach sees.**
   Green; `&shots=1` hides the banner
   for store screenshots. `invite-coach`/`manage-user` are called with fetch,
   so fixture mode stands them in with the same rules (the team RPCs and `set_notification_teams` too, on the mock client's `rpc()`, which also takes `upsert`). `&now=soon` / `&now=live`
-  add a practice today for the fixture coach (Live Activity, widget states)
+  add a practice today for the fixture coach
 - `tools/pixel-audit.js` — fetch and `eval` it on a phone-width fixture page.
   Walks every tab, reports sub-44pt targets and text under WCAG contrast measured
   against the real painted background. Run it in **both** themes
-- `../seaford-lax-app/tools/dev-sim.sh` builds a simulator app pointed at the
-  local server, and `tools/frames.swift` pulls frames from a `simctl
-  recordVideo` capture — the only way to audit a transition, since the Browser
-  pane is a hidden document where rAF never runs
 - `tools/render-audit.js` — paste into the console on `?fixture=1`. Checks
   emoji in rendered text, mixed icon vocabularies, tap targets, overflow, em
   dashes, gradients, fonts
@@ -285,8 +258,6 @@ rendered output is what a coach sees.**
 - Fixed layers must sit **under `<header>`'s z-index (550)** unless they mean
   to cover the tab bar: the bar is a fixed child of the header, so it paints
   at 550, not at its own 700
-- The dev simulator (iPhone 17 Pro) is shared with JJ's other project's
-  session; `dev-sim.sh` takes `DEV=<udid>` to use another
 - Sign-out is for a shared phone: `teardown()` ends in
   `clearSignedInTraces()`, which removes `seaford-cache-v1` and
   `seaford-seen`, closes every sheet, empties Admin's lists and resets

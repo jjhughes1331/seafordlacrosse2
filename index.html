@@ -268,7 +268,7 @@
       onAuthStateChange: (cb) => { authListener = cb; return { data: { subscription: { unsubscribe(){} } } }; },
       signInWithPassword: async () => ({ data: { session }, error: null }),
       // Sign out the way the real client does (a SIGNED_OUT event), so the app's
-      // own teardown runs: it clears the native widgets, Watch and calendar too.
+      // own teardown runs.
       signOut: async () => {
         if(authListener) authListener('SIGNED_OUT', null); else location.href = location.pathname;
         return { error: null };
@@ -2434,8 +2434,6 @@
   /* The page behind an open sheet is inert (ui/sheet.js). */
   .share-backdrop { touch-action: none; }
   .share-sheet { overscroll-behavior: contain; }
-  /* The keyboard covers the tab bar and the toast, as it does in every app. */
-  html.kb .view-tabs, html.kb .actions, html.kb .edge-bottom { display: none !important; }
 
   /* ---- Sign in: Apple's own shape ---------------------------------------- */
   html.signed-out header, html.signed-out .edge-top { display: none !important; }
@@ -2628,21 +2626,17 @@
   }
 
 </style>
-<!-- OneSignal — push notifications. App: "Seaford Lacrosse" in OneSignal dashboard.
-     In the App Store build push runs through the native SDK (APNs) instead,
-     so the web SDK is not loaded there: two SDKs on one page fight over the
-     same subscription record. See the native bridge below. -->
+<!-- OneSignal: push notifications. App: "Seaford Lacrosse" in OneSignal dashboard. -->
 <script>
-  window.__IS_NATIVE_APP = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
-  if(!window.__IS_NATIVE_APP){
+  (function(){
     const t = document.createElement('script');
     t.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
     t.defer = true; document.head.appendChild(t);
-  }
+  })();
 </script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  if(!window.__IS_NATIVE_APP) OneSignalDeferred.push(async function(OneSignal) {
+  OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "6566d2f0-7fee-4091-849f-d39551d3f360",
       // Merged into the site's own sw.js (see that file) instead of the
@@ -2661,168 +2655,6 @@
      Project Settings > API gives you the URL and anon (public) key.
      The Edge Function URL is the same project ref with /functions/v1/invite-coach
      ============================================================ -->
-<!-- ============ NATIVE APP BRIDGE ============
-     One page runs in three places: a browser tab, an installed PWA, and the
-     App Store build. Everything here is a no-op outside the native shell, so
-     the web build is untouched. Plugin calls are wrapped: a missing plugin
-     must degrade to the web behaviour, never throw into the app. -->
-<script>
-(function(){
-  const ONESIGNAL_APP_ID = "6566d2f0-7fee-4091-849f-d39551d3f360";
-  const native = !!window.__IS_NATIVE_APP;
-  const P = () => (window.Capacitor && window.Capacitor.Plugins) || {};
-  const os = () => (window.plugins && window.plugins.OneSignal) || null;
-  let pendingExternalId = null;
-
-  function call(plugin, method, args){
-    try { const pl = P()[plugin]; if(pl && pl[method]) return pl[method](args); } catch(e){}
-    return null;
-  }
-
-  window.Native = {
-    active: native,
-    // Returns true when it handled the feedback, so the caller skips its own.
-    // One feeling per outcome, the way iOS does it: a selection tick for
-    // pickers and segments, a light tap for opening things, a firmer one for
-    // committing, and the three notification patterns for how it turned out.
-    haptic(kind){
-      if(!native) return false;
-      if(kind === 'success' || kind === 'error' || kind === 'warning'){
-        call('Haptics', 'notification', { type: kind.toUpperCase() });
-      } else if(kind === 'selection'){
-        call('Haptics', 'selectionStart'); call('Haptics', 'selectionChanged'); call('Haptics', 'selectionEnd');
-      } else {
-        call('Haptics', 'impact', { style: kind === 'medium' ? 'MEDIUM' : 'LIGHT' });
-      }
-      return true;
-    },
-    // The web share sheet cannot take a File in a WKWebView, so the image is
-    // written to the app's cache directory and shared by file URI instead.
-    async shareImage(blob, filename, title){
-      if(!native) return false;
-      const fs = P().Filesystem, share = P().Share;
-      if(!fs || !share) return false;
-      try {
-        const data = await new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => res(String(r.result).split(',')[1]);
-          r.onerror = rej; r.readAsDataURL(blob);
-        });
-        const w = await fs.writeFile({ path: filename, data, directory: 'CACHE' });
-        await share.share({ title, files: [w.uri] });
-        return true;
-      } catch(e){
-        // Dismissing the share sheet rejects too; that's the coach's choice,
-        // not a failure to fall back from.
-        return /cancel/i.test(String(e && (e.message || e)));
-      }
-    },
-    async openExternal(url){
-      if(!native) return false;
-      try { await P().Browser.open({ url }); return true; } catch(e){ return false; }
-    },
-    async pushRequestPermission(){
-      if(!native){
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.Notifications.requestPermission(); } catch(e){} });
-        return;
-      }
-      try { await os()?.Notifications.requestPermission(true); } catch(e){}
-    },
-    pushLogin(id){
-      if(!native){
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.login(id); } catch(e){} });
-        return;
-      }
-      // deviceready may not have fired yet on a cold start
-      if(os()){ try { os().login(id); } catch(e){} } else { pendingExternalId = id; }
-    },
-    pushLogout(){
-      if(!native){
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async OneSignal => { try { await OneSignal.logout(); } catch(e){} });
-        return;
-      }
-      pendingExternalId = null;
-      try { os()?.logout(); } catch(e){}
-    },
-    // Push permission is asked for on the first booking, not at launch:
-    // Apple rejects apps that demand notifications before showing value.
-    pushEnabled(){
-      if(!native) return ('Notification' in window) && Notification.permission === 'granted';
-      return !!window.__nativePushGranted;
-    },
-
-    // ---- Widgets, Watch, Live Activity, Calendar, Siri (app 1.1+) ----
-    // The app is told WHAT to show (team, practices), never handed a login.
-    // Each call is a no-op on the web and on a 1.0 app without the plugin.
-    features(){ return !!bridge(); },
-    setContext(ctx){ const b = bridge(); if(b) b.setContext(ctx).catch(() => {}); },
-    clearContext(){ const b = bridge(); if(b) b.clearContext().catch(() => {}); },
-    async settings(){ const b = bridge(); try { return b ? await b.getSettings() : null; } catch(e){ return null; } },
-    async setSetting(key, value){ const b = bridge(); try { return b ? await b.setSetting({ key, value }) : null; } catch(e){ return null; } },
-    // Widget taps and Siri land here: { view: 'schedule' | 'book' | 'find' | 'practice', field?, id? }
-    onRoute(fn){ const b = bridge(); if(b && b.addListener) b.addListener('route', fn); },
-  };
-
-  function bridge(){
-    if(!native || !window.Capacitor) return null;
-    const C = window.Capacitor;
-    if(C.Plugins && C.Plugins.SeafordBridge) return C.Plugins.SeafordBridge;
-    if(!C.isPluginAvailable || !C.isPluginAvailable('SeafordBridge') || !C.registerPlugin) return null;
-    return (window.__seafordBridge = window.__seafordBridge || C.registerPlugin('SeafordBridge'));
-  }
-
-  if(!native) return;
-
-  document.documentElement.classList.add('native-app');
-
-  document.addEventListener('deviceready', () => {
-    try {
-      const O = os();
-      if(!O) return;
-      O.initialize(ONESIGNAL_APP_ID);
-      O.Notifications.addEventListener('permissionChange', granted => { window.__nativePushGranted = !!granted; });
-      O.Notifications.getPermissionAsync().then(g => { window.__nativePushGranted = !!g; }).catch(() => {});
-      if(pendingExternalId){ O.login(pendingExternalId); pendingExternalId = null; }
-    } catch(e){}
-  }, { once: true });
-
-  const darkQuery = matchMedia('(prefers-color-scheme: dark)');
-  // iOS calls it the style of the CONTENT: DARK means dark text on a light bar.
-  const syncStatusBar = () => {
-    const forced = document.documentElement.getAttribute('data-theme');
-    const dark = forced ? forced === 'dark' : darkQuery.matches;
-    call('StatusBar', 'setStyle', { style: dark ? 'DARK' : 'LIGHT' });
-  };
-  window.__syncStatusBar = syncStatusBar;
-  darkQuery.addEventListener('change', syncStatusBar);
-  window.addEventListener('DOMContentLoaded', () => {
-    syncStatusBar();
-    call('Keyboard', 'setResizeMode', { mode: 'native' });
-    // The keyboard covers the tab bar and toast, as in every app; with the
-    // web view resized they would otherwise ride up on top of it.
-    try {
-      const kb = P().Keyboard;
-      if(kb && kb.addListener){
-        kb.addListener('keyboardWillShow', () => document.documentElement.classList.add('kb'));
-        kb.addListener('keyboardWillHide', () => document.documentElement.classList.remove('kb'));
-      }
-    } catch(e){}
-    setTimeout(() => call('SplashScreen', 'hide'), 200);
-  });
-
-  // Links that open a new tab have nowhere to go inside an app. Hand them to
-  // the system browser sheet, which keeps the user one swipe from coming back.
-  document.addEventListener('click', e => {
-    const a = e.target.closest('a[target="_blank"]');
-    if(!a || !a.href) return;
-    e.preventDefault();
-    window.Native.openExternal(a.href);
-  }, true);
-})();
-</script>
 <script>
   const SUPABASE_URL = "https://gjpqwmcdejpvffdimddk.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_wmEJ2j6OTyiSLE04BP0JSw_zAeEBFMh";
@@ -3481,10 +3313,6 @@ let closuresChannel = null;   // field_closures has its own channel: see setupCl
 let closeTimesPicked = new Set(), closePartsPicked = new Set(), closeDaysPicked = new Set(), closeToTouched = false;   // Admin > Closed Dates form
 let closeEditingId = null;    // the closure the form is changing (Edit), or null when it closes a field
 let closuresCache = [];       // field_closures rows; empty when the table is missing or unreadable
-// What the native app was last told (see syncNativeContext); declared up here
-// because showLoginScreen resets it and can run before that section loads.
-let lastNativeContext = '';
-let pendingNativeRoute = null;
 
 let currentView = 'schedule';
 let scheduleGender = 'girls';
@@ -3721,18 +3549,6 @@ function rebuildAccountSheet(){
       <label class="ios-row ios-field"><span>Last</span><input type="text" id="myLastName" placeholder="Required" autocomplete="family-name" enterkeyhint="done" value="${escSafe(myProfile.last_name || '')}"></label>
     </div>
     <p class="ios-group-footer" id="myNameStatus">${named ? 'This is how directors and other coaches see you.' : 'Directors see this when you book, instead of your team name.'}</p>`;
-  const device = window.Native.features() ? `<p class="ios-group-header">On This iPhone</p>
-    <div class="ios-group" id="deviceSettings">
-      <label class="ios-row switch-row">
-        <span class="switch-text">Practice on Lock Screen<small>A countdown on practice day</small></span>
-        <input type="checkbox" class="ios-switch" data-device-setting="liveActivity" disabled>
-      </label>
-      <label class="ios-row switch-row">
-        <span class="switch-text">Add Practices to Calendar<small>A Seaford Lacrosse calendar that stays up to date</small></span>
-        <input type="checkbox" class="ios-switch" data-device-setting="calendar" disabled>
-      </label>
-    </div>
-    <p class="ios-group-footer" id="deviceSettingsNote" hidden></p>` : '';
   const alertsRow = `<div class="ios-group">
       <button type="button" class="ios-row" id="openNotifBtn" aria-haspopup="dialog"><span>Notifications</span>${CHEVRON_SVG}</button>
     </div>`;
@@ -3763,8 +3579,7 @@ function rebuildAccountSheet(){
       <picture><source srcset="seaford-lacrosse-badge-dark-192.png" media="(prefers-color-scheme: dark)"><img src="seaford-lacrosse-badge-192.png" alt=""></picture>
       <span>Seaford Lacrosse</span>
     </div>`;
-  body.innerHTML = hero + nameGroup + alertsRow + device + general + actions;
-  if(device) wireDeviceSettings(body);
+  body.innerHTML = hero + nameGroup + alertsRow + general + actions;
   document.getElementById('openNotifBtn').addEventListener('click', openNotifSheet);
 
   document.getElementById('appearanceSelect').addEventListener('change', e => {
@@ -3811,34 +3626,6 @@ async function saveMyName(){
   haptic('success');
   if(document.getElementById('accountSheet').style.display !== 'none') rebuildAccountSheet();
   else flash('Name saved', 'ok');
-}
-// The two native switches. The app owns the truth (permissions can change in
-// Settings at any time), so the switches read it every time the menu opens.
-async function wireDeviceSettings(menu){
-  const note = menu.querySelector('#deviceSettingsNote');
-  const paint = st => {
-    if(!st) return;
-    menu.querySelectorAll('[data-device-setting]').forEach(inp => {
-      inp.checked = !!st[inp.dataset.deviceSetting];
-      inp.disabled = false;
-    });
-    const msgs = [];
-    if(st.liveActivity && st.liveActivityAllowed === false) msgs.push('Live Activities are off for Seaford Lacrosse in Settings.');
-    if(st.calendarAccess === 'denied') msgs.push('Calendar access is off. Turn it on in Settings > Apps > Seaford Lacrosse.');
-    note.textContent = msgs.join(' ');
-    note.hidden = !msgs.length;
-  };
-  paint(await window.Native.settings());
-  menu.querySelectorAll('[data-device-setting]').forEach(inp => inp.addEventListener('change', async () => {
-    const want = inp.checked;
-    inp.disabled = true;
-    haptic('light');
-    const st = await window.Native.setSetting(inp.dataset.deviceSetting, want);
-    paint(st);
-    if(st && want && inp.dataset.deviceSetting === 'calendar'){
-      if(st.calendar) flash('Your practices are in Calendar, in a Seaford Lacrosse calendar.', 'ok');
-    }
-  }));
 }
 let accountOpenedByKeyboard = false;
 function openAccountSheet(viaKeyboard){
@@ -3902,17 +3689,25 @@ const nfMine = me => !!myProfile && myProfile.id === me;
 // Not $tid: that const is declared further down the file (TDZ at load).
 const nfEl = id => document.getElementById(id);
 
-// Push permission, the app's PushPermission states. In the App Store build
-// OneSignal's native SDK reports it (window.__nativePushGranted, unknown until
-// deviceready); on the web it is the browser's own permission.
+// Web push runs through OneSignal's web SDK, loaded in <head>. Calls queue on
+// OneSignalDeferred, so they are safe before the SDK arrives and when it never
+// does (localhost, a blocker).
+function oneSignal(fn){
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async OneSignal => { try { await fn(OneSignal); } catch(e){} });
+}
+function pushLogin(id){ oneSignal(OneSignal => OneSignal.login(id)); }
+function pushLogout(){ oneSignal(OneSignal => OneSignal.logout()); }
+function pushRequestPermission(){ oneSignal(OneSignal => OneSignal.Notifications.requestPermission()); }
+function pushEnabled(){ return ('Notification' in window) && Notification.permission === 'granted'; }
+
+// Push permission, the app's PushPermission states: the browser's own permission.
 function pushState(){
-  if(window.__IS_NATIVE_APP) return window.__nativePushGranted === undefined ? 'unknown' : window.__nativePushGranted ? 'on' : 'ask';
   if(!('Notification' in window)) return 'unsupported';
   return Notification.permission === 'granted' ? 'on' : Notification.permission === 'denied' ? 'off' : 'ask';
 }
 function pushGroupHTML(){
   const st = pushState();
-  if(st === 'unknown') return '';
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const value = v => `<div class="ios-group"><div class="ios-row"><span>Notifications</span><span class="ios-value">${v}</span></div></div>`;
   if(st === 'on') return value('On');
@@ -3934,7 +3729,7 @@ function pushGroupHTML(){
 // system prompt, or Settings), so watch for it while the sheet is up.
 async function turnOnPush(){
   const before = pushState();
-  await window.Native.pushRequestPermission();
+  pushRequestPermission();
   clearInterval(nf.pushWatch);
   let ticks = 0;
   nf.pushWatch = setInterval(() => {
@@ -4075,7 +3870,7 @@ function renderNotifSheet(){
   // Push not on: the switches still save, but read as dimmed so no one takes
   // a green switch for an alert that can't arrive. Text stays at --muted, not
   // faded, so it keeps its contrast.
-  const pst = pushState(), dimAlerts = pst !== 'on' && pst !== 'unknown';
+  const pst = pushState(), dimAlerts = pst !== 'on';
   const alerts = `<p class="ios-group-header">Alerts</p>
     <div class="ios-group${dimAlerts ? ' nf-dim' : ''}">${ALERTS.map(([k, name, note]) => `<label class="ios-row switch-row">
         <span class="switch-text">${escSafe(name)}<small>${escSafe(note)}</small></span>
@@ -4147,8 +3942,7 @@ document.addEventListener('keydown', e => {
 }, true);
 
 // ============ REFRESH ============
-// One refresh, whoever asks: the app's native UIRefreshControl calls it
-// (MainViewController), Safari's pull-to-refresh below calls it. There were
+// One refresh, whoever asks (pull-to-refresh, the realtime rejoin). There were
 // two JS versions racing, and one repainted Schedule whatever tab was open.
 window.appRefresh = async function(){
   if(!myProfile) return;
@@ -4184,8 +3978,6 @@ window.appRefresh = async function(){
       btn.classList.toggle('is-dark', activeDark);
     }
     if(label) label.textContent = stored === 'light' ? 'Light mode' : stored === 'dark' ? 'Dark mode' : 'Match system theme';
-    // Inside the app the OS status bar has to follow the in-app override too.
-    if(window.__syncStatusBar) window.__syncStatusBar();
   }
 
   window.Theme = { get: getStored, set(v){ setStored(v); apply(); } };
@@ -4449,9 +4241,7 @@ document.addEventListener('visibilitychange', () => { if(document.hidden) saveSe
 function noteVisit(){ try { localStorage.setItem('seaford-visits', String((parseInt(localStorage.getItem('seaford-visits') || '0', 10) || 0) + 1)); } catch(e){} }
 let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstallPrompt = e; });
-// The App Store build IS installed, by definition — a "put this on your home
-// screen" card inside it is nonsense, and it showed up in store screenshots.
-function isInstalled(){ return window.__IS_NATIVE_APP || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+function isInstalled(){ return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
 // Once anything on the checklist is done it folds to one row ("Get Set Up,
 // 1 of 3") until tapped open, so it never holds the slots below the fold.
 let welcomeOpen = false;
@@ -4475,7 +4265,7 @@ function renderWelcome(){
   const favDone = !!getFavoriteField();
   const bookDone = myProfile.role === 'coach' ? bookingsCache.some(b => b.team_id === myTeam)
     : bookingsCache.some(b => { const t = teamsById[b.team_id]; return t && (myProfile.role === 'admin' || t.gender === myProfile.gender); });
-  const pushDone = window.Native.pushEnabled();
+  const pushDone = pushEnabled();
   const allDone = favDone && bookDone && pushDone;
   if(myProfile.role !== 'coach' || flags.dismissed || allDone){
     card.style.display = 'none';
@@ -4536,7 +4326,7 @@ document.addEventListener('click', async e => {
     if(a === 'dismiss'){ try { localStorage.setItem('seaford-welcome', JSON.stringify({ dismissed: true })); } catch(e2){} renderWelcome(); }
     else if(a === 'open'){ welcomeOpen = true; haptic('light'); renderWelcome(); document.querySelector('#welcomeCard .tip-row:not(.done)')?.focus(); }
     else if(a === 'push'){
-      await window.Native.pushRequestPermission(); renderWelcome();
+      pushRequestPermission(); renderWelcome();
     }
     else if(a === 'book'){
       // On Book already: open the field menu, where a field is both chosen
@@ -4733,8 +4523,6 @@ function positionModeThumb(container){
 // Pull to refresh. Every iPhone user tries it on a schedule; doing nothing
 // made live sync feel like luck. Only fires from a genuine top-of-page pull.
 (function(){
-  // In the app, iOS's own refresh control owns this gesture.
-  if(window.__IS_NATIVE_APP) return;
   let startY = null, pulling = false, fired = false;
   const el2 = () => document.getElementById('ptr');
   addEventListener('touchstart', e => {
@@ -4814,7 +4602,7 @@ function positionModeThumb(container){
     if(!act) return;
     host.style.display = 'none';
     const kind = act.dataset.ctxAct;
-    if(kind === 'directions'){ if(!await window.Native.openExternal(act.dataset.url)) window.open(act.dataset.url, '_blank', 'noopener'); }
+    if(kind === 'directions'){ window.open(act.dataset.url, '_blank', 'noopener'); }
     else if(kind === 'favorite'){
       toggleFavoriteField(act.dataset.fid);
       haptic('success');
@@ -4860,7 +4648,6 @@ window.addEventListener('resize', () => {
 // Vibration API — supported on Android Chrome, silently a no-op everywhere
 // else (iOS Safari, desktop). Never throws, never blocks.
 function haptic(kind){
-  if(window.Native && window.Native.haptic(kind)) return; // Taptic Engine in the app
   if(!navigator.vibrate) return;
   try {
     if(kind === 'success') navigator.vibrate([10, 30, 10]);
@@ -5017,10 +4804,6 @@ async function init(){
 }
 
 function showLoginScreen(msg){
-  // However we got here (signed out, session expired, account removed), the
-  // phone's widgets, Watch and Live Activity must stop showing the team.
-  window.Native.clearContext();
-  lastNativeContext = '';
   document.documentElement.classList.add('signed-out');
   // A form, so iOS offers Password AutoFill and the keyboard's Go signs in;
   // one grouped block for both fields, the way Apple's own sign-ins look.
@@ -5200,7 +4983,7 @@ async function loadProfileAndStartInner(){
   // server-side triggers (waitlist slot opens, priority tier unlocks) can
   // target specific people via OneSignal's external_id instead of only
   // being able to broadcast to everyone.
-  window.Native.pushLogin(myProfile.id);
+  pushLogin(myProfile.id);
 
   // Paint what we had last time first: a coach opening the app on a field
   // with one bar should see last night's schedule instantly, not a skeleton.
@@ -5284,9 +5067,7 @@ function teardown(){
   // Detach this browser's push subscription from the signed-out user's id —
   // otherwise a shared/reused device would keep getting that person's
   // targeted notifications after someone else signs in on it.
-  window.Native.pushLogout();
-  window.Native.clearContext();
-  lastNativeContext = '';
+  pushLogout();
   document.querySelectorAll('.view-tab[data-view="book"], .view-tab[data-view="openweek"]').forEach(t => { t.style.display = ''; });
   document.documentElement.classList.remove('role-assistant');
   // A shared phone: the next person doesn't inherit this one's Book team.
@@ -5447,9 +5228,6 @@ async function refreshBookings(){
     writeCache();
     paintSyncedLabel();
     checkWaitlistOpenings();
-    // The Lock Screen, widgets and Watch follow every refresh, not only a visit
-    // to Schedule (a booking made on Book used to wait for one).
-    syncNativeContext();
   });
 }
 
@@ -5842,7 +5620,6 @@ function setupRealtime(){
       // switchView on Admin would rerun renderAdmin() and reset the invite form.
       if(['book', 'openweek', 'myteam'].includes(currentView)) switchView(currentView);
       else rerenderCurrentView();
-      syncNativeContext();
     }))
     // The channel rejoins by itself after a drop, but whatever changed while
     // it was down never arrives as an event: read it all again.
@@ -6224,7 +6001,6 @@ el.gradeGrid.addEventListener('change', e => {
     writePref(BOOK_TEAM_KEY, id);
     haptic('selection');
     switchView('book');
-    syncNativeContext();
   } else if(currentView === 'book' && (myProfile.role === 'director' || myProfile.role === 'admin')){
     bookAsTeam = id;
     writePref(BOOK_TEAM_KEY, id);
@@ -6538,47 +6314,8 @@ function practiceCountdown(dateISO, time){
   return months === 1 ? 'In a month' : `In ${months} months`;
 }
 let heroAurora = null, heroFieldId = null;
-// The app's widgets, Watch, Live Activity and calendar show the coach's team
-// (for someone on several, the one chosen on My Team): its upcoming
-// practices, as the raw rows (the app parses times itself, the same way the
-// team-ics feed is parsed). Sent only when something changed.
-function syncNativeContext(){
-  if(!window.Native.features() || !myProfile || !teams.length) return;
-  const teamId = chosenTeamId();
-  const t = teamId ? teamsById[teamId] : null;
-  const todayISO = fmtDateISO(new Date());
-  const ctx = t ? {
-    teamId, teamLabel: teamLabelOf(t),
-    practices: bookingsCache
-      .filter(b => b.team_id === teamId && b.date >= todayISO)
-      .sort((a, b) => a.date.localeCompare(b.date) || slotStartMinutes(a.time) - slotStartMinutes(b.time))
-      .slice(0, 120)
-      .map(b => ({ id: b.id, field: b.field_id, date: b.date, subfield: b.subfield || '', time: b.time })),
-  } : {};
-  const key = JSON.stringify(ctx);
-  if(key !== lastNativeContext){ lastNativeContext = key; window.Native.setContext(ctx); }
-  if(pendingNativeRoute){ const r = pendingNativeRoute; pendingNativeRoute = null; setTimeout(() => openNativeRoute(r), 0); }
-}
-function openNativeRoute(r){
-  if(!r) return;
-  if(!myProfile || !teams.length){ pendingNativeRoute = r; return; }
-  if(r.view === 'book'){
-    switchView('book');
-    if(r.field && FIELD_MAP[r.field]) selectBookField(r.field);
-  } else if(r.view === 'find'){
-    switchView('openweek');
-  } else if(r.view === 'practice'){
-    const b = bookingsCache.find(x => x.id === r.id);
-    switchView('schedule');
-    if(b) setTimeout(() => jumpToScheduleDay(b.date), 350); // after the view settles
-  } else {
-    switchView('schedule');
-  }
-}
-window.Native.onRoute(openNativeRoute);
 
 function renderNextPractice(){
-  syncNativeContext();
   const card = document.getElementById('nextPracticeCard');
   if(!card || !myProfile) return;
   const teamId = chosenTeamId();
@@ -6810,15 +6547,6 @@ el.myTeamExportCsvBtn.addEventListener('click', () => {
 el.myTeamExportIcsBtn.addEventListener('click', async () => {
   const id = shownTeamId();
   if(!id) return;
-  // In the app, Calendar is the app's own job (EventKit, kept in sync), the
-  // same switch as Account > Add Practices to Calendar. A web subscription
-  // link would be a second, lesser way to do the same thing.
-  if(window.Native.features()){
-    const st = await window.Native.setSetting('calendar', true);
-    if(st && st.calendar) flash('Your practices are in Calendar, in a Seaford Lacrosse calendar.', 'ok');
-    else if(st && st.calendarAccess === 'denied') flash('Calendar access is off. Turn it on in Settings > Apps > Seaford Lacrosse.', 'warn');
-    return;
-  }
   openCalendarSheet(id, teamLabelById(id));
 });
 // Calendar + share for whichever team the Schedule view is filtered to — so a
@@ -6973,11 +6701,6 @@ async function openShareCard(teamId, teamLabelText){
   if(currentShare?.url) URL.revokeObjectURL(currentShare.url);
   const filename = `${teamLabelText.replace(/\s+/g,'-').toLowerCase()}-this-week.png`;
   currentShare = { blob, url: URL.createObjectURL(blob), filename, title: `${teamLabelText}: this week's practices` };
-  // In the app, straight to iOS's share sheet (it shows its own preview);
-  // a web dialog in front of it was one screen too many.
-  if(window.__IS_NATIVE_APP && await window.Native.shareImage(blob, filename, currentShare.title)){
-    haptic('success'); URL.revokeObjectURL(currentShare.url); currentShare = null; return;
-  }
   el.shareImg.src = currentShare.url;
   el.shareModal.style.display = 'flex';
   const sheet = el.shareModal.querySelector('.share-sheet'), backdrop = el.shareModal.querySelector('.share-backdrop');
@@ -7026,9 +6749,6 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && el.shareModal.style.display !== 'none') closeShareCard(); });
 el.shareSendBtn.addEventListener('click', async () => {
   if(!currentShare) return;
-  if(await window.Native.shareImage(currentShare.blob, currentShare.filename, currentShare.title)){
-    haptic('success'); closeShareCard(); return;
-  }
   const file = new File([currentShare.blob], currentShare.filename, { type: 'image/png' });
   if(navigator.canShare && navigator.canShare({ files: [file] })){
     try { await navigator.share({ files: [file], title: currentShare.title, text: currentShare.title }); haptic('success'); closeShareCard(); }
@@ -10447,7 +10167,7 @@ el.bulkUploadBtn.addEventListener('click', async () => {
 window.switchView = switchView;
 
 // ============ PWA: register service worker (independent of login state) ============
-if('serviceWorker' in navigator && !window.__IS_NATIVE_APP){
+if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });

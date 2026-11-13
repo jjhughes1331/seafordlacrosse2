@@ -7130,22 +7130,20 @@ function renderBookSheet(){
   // Columns: the parts of every group that runs this time, in the catalog's
   // order (a Saturday's half fields never become columns of a weeknight time).
   const columns = [...new Set(field.availability.filter(a => a.times.includes(time)).flatMap(a => a.subfields))];
-  const held = new Map();
-  bookingsCache.forEach(b => { if(b.field_id === field.id && b.time === time && b.date >= fromISO) held.set(b.date + '|' + b.subfield, b); });
   let rows = '', n = 0;
   for(let d = new Date(from); d <= SEASON_END; d = addDays(d, 1)){
-    const avail = field.availability.find(a => a.days.includes(d.getDay()));
+    const avail = availOn(field, d.getDay());
     if(!avail || !avail.times.includes(time)) continue;
     n++;
     const iso = fmtDateISO(d);
+    const atTime = new Map(daySlots(field, iso, myTeamId).filter(x => x.time === time).map(x => [x.sub, x]));
     const reasons = new Set();
     let anyOpen = false;
     const cells = columns.map(sub => {
-      if(!avail.subfields.includes(sub)) return null;
-      const b = held.get(iso + '|' + sub);
-      if(b){ anyOpen = true; return { sub, b }; }
-      const why = closureFor(field.id, iso, time, sub);
-      if(why){ reasons.add(why.reason); return { sub, why }; }
+      const slot = atTime.get(sub);
+      if(!slot) return null;   // this part doesn't run this day
+      if(slot.booking){ anyOpen = true; return { sub, b: slot.booking }; }
+      if(slot.closure){ reasons.add(slot.closure.reason); return { sub, why: slot.closure }; }
       anyOpen = true;
       return { sub };
     });
@@ -7165,8 +7163,7 @@ function renderBookSheet(){
       } else if(x.why){
         inner = `<span class="sh-part shut" data-flip-id="${fid}" title="${escSafe(x.why.reason)}"><span class="sh-who">Closed<span class="sr-only">: ${escSafe(x.why.reason)}</span></span></span>`;
       } else {
-        const payload = JSON.stringify({ fieldId: field.id, date: iso, subfield: x.sub, time }).replace(/'/g, '&#39;');
-        inner = `<button type="button" class="sh-part open" data-flip-id="${fid}" data-book='${payload}' aria-label="Book ${escSafe(x.sub)}, ${DOW_FULL[d.getDay()]} ${escSafe(dateText)}, ${escSafe(formatSlotTime(time))}"><span class="plus">Open</span></button>`;
+        inner = `<button type="button" class="sh-part open" data-flip-id="${fid}" data-book='${slotPayload(field.id, iso, x.sub, time)}' aria-label="Book ${escSafe(x.sub)}, ${DOW_FULL[d.getDay()]} ${escSafe(dateText)}, ${escSafe(formatSlotTime(time))}"><span class="plus">Open</span></button>`;
       }
       return `<td class="sh-cell">${inner}</td>`;
     }).join('') + '</tr>';

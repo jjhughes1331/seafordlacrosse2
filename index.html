@@ -7529,16 +7529,16 @@ function calShow(which){
 }
 // Every open slot on a day across the fields shown, one entry per field and
 // time with the sub-fields still free, earliest first.
-function calOpenAt(fields, dateStr, taken){
+function calOpenAt(fields, dateStr){
   const d = parseISO(dateStr), today = new Date(); today.setHours(0,0,0,0);
   if(d < today || d < SEASON_START || d > SEASON_END) return [];
   const out = [];
   fields.forEach(f => {
-    const avail = f.availability.find(a => a.days.includes(d.getDay()));
-    if(!avail) return;
-    avail.times.forEach(time => {
+    const slots = daySlots(f, dateStr);
+    if(!slots) return;
+    availOn(f, d.getDay()).times.forEach(time => {
       // A closed part is listed by calClosedAt, never open; the other parts at that time still are.
-      const subs = avail.subfields.filter(sub => !taken.has(f.id + '|' + dateStr + '|' + sub + '|' + time) && !closureFor(f.id, dateStr, time, sub));
+      const subs = slots.filter(s => s.time === time && !s.booking && !s.closure).map(s => s.sub);
       if(subs.length) out.push({ field: f, time, subs });
     });
   });
@@ -7548,18 +7548,18 @@ function calOpenAt(fields, dateStr, taken){
 // shows in grey in place of a Book button. Only free sub-fields (nobody
 // booked them), as calOpenAt would have offered; subs is set when the
 // closure shuts only some of the parts, so the row can name them.
-function calClosedAt(fields, dateStr, taken){
+function calClosedAt(fields, dateStr){
   const d = parseISO(dateStr), today = new Date(); today.setHours(0,0,0,0);
   if(d < today || d < SEASON_START || d > SEASON_END) return [];
   const out = [];
   fields.forEach(f => {
-    const avail = f.availability.find(a => a.days.includes(d.getDay()));
-    if(!avail) return;
-    avail.times.forEach(time => {
-      const shut = avail.subfields.map(sub => ({ sub, why: closureFor(f.id, dateStr, time, sub) }))
-        .filter(x => x.why && !taken.has(f.id + '|' + dateStr + '|' + x.sub + '|' + time));
+    const slots = daySlots(f, dateStr);
+    if(!slots) return;
+    availOn(f, d.getDay()).times.forEach(time => {
+      const here = slots.filter(s => s.time === time);
+      const shut = here.filter(s => s.closure && !s.booking).map(s => ({ sub: s.sub, why: s.closure }));
       if(!shut.length) return;
-      const partial = avail.subfields.some(sub => !closureFor(f.id, dateStr, time, sub));
+      const partial = here.some(s => !s.closure);
       out.push({ field: f, time, why: shut[0].why, subs: partial ? shut.map(x => x.sub) : null });
     });
   });
@@ -7612,8 +7612,8 @@ function renderMonthCalendar(which, host){
 
   const show = calShow(which);
   const shownFields = calFieldsShown(which);
-  // Open is worked out against every booking, whatever else is filtered.
-  const taken = show === 'open' ? new Set(bookingsCache.map(b => b.field_id + '|' + b.date + '|' + b.subfield + '|' + b.time)) : null;
+  // Open is worked out against every booking, whatever else is filtered
+  // (calOpenAt and calClosedAt ask daySlots, which reads them all).
   const modes = calShowModes(which);
   const seg = modes.length > 1 ? `<div class="mode-toggle cal-show" role="group" aria-label="Show">
       <span class="mode-toggle-thumb"></span>
@@ -7638,7 +7638,7 @@ function renderMonthCalendar(which, host){
     const SHOW = 3;
     // Open slots are drawn as outlines, the way Calendar draws an event that
     // is not yet confirmed: the same colour, not yet anybody's.
-    const openHere = show === 'open' && inSeason ? calOpenAt(shownFields, dateStr, taken) : [];
+    const openHere = show === 'open' && inSeason ? calOpenAt(shownFields, dateStr) : [];
     const evs = show === 'open'
       ? openHere.slice(0, SHOW).map(g => `<span class="cal-ev open" style="--c:var(--field-${g.field.id})">${escSafe(slotStartShort(g.time))}</span>`).join('')
         + (openHere.length > SHOW ? `<span class="cal-more">+${openHere.length - SHOW}</span>` : '')
@@ -7681,8 +7681,8 @@ function renderMonthCalendar(which, host){
     return canCancel ? `<div class="cal-swipe"><button type="button" class="cal-swipe-del" data-cancel="${escSafe(b.id)}" tabindex="-1">Cancel</button>${row}</div>` : row;
   }).join('') : `<p class="cal-empty">${calEmptyText(which)}</p>`;
   const openList = show !== 'open' ? '' : (() => {
-    const groups = calOpenAt(shownFields, st.selected, taken);
-    const shut = calClosedAt(shownFields, st.selected, taken);
+    const groups = calOpenAt(shownFields, st.selected);
+    const shut = calClosedAt(shownFields, st.selected);
     if(!groups.length && !shut.length) return `<p class="cal-empty">${calEmptyText(which)}</p>`;
     const rows = groups.map(g => ({ time: g.time, html: `<div class="cal-item open" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${escSafe(g.subs.join(', '))} open</div></span><button type="button" class="get-pill" data-bookat="${g.field.id}|${st.selected}|${escSafe(g.time)}" aria-label="Book ${escSafe(g.field.name)}, ${escSafe(formatSlotTime(g.time))}">Book</button></div>` }))
       .concat(shut.map(g => ({ time: g.time, html: `<div class="cal-item shut" style="--c:var(--field-${g.field.id})"><span class="cal-time">${slotTimeStack(g.time)}</span><span><span class="cal-team">${escSafe(g.field.name)}</span><div class="cal-where">${g.subs ? escSafe(g.subs.join(', ')) + ' &middot; ' : ''}${escSafe(g.why.reason)}</div></span><span class="shut-pill">Closed</span></div>` })));
